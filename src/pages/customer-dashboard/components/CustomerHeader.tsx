@@ -1,0 +1,111 @@
+
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+
+interface CustomerHeaderProps {
+  onMenuClick: () => void;
+}
+
+export default function CustomerHeader({ onMenuClick }: CustomerHeaderProps) {
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+
+  return (
+    <header className="bg-white shadow-sm border-b border-gray-200">
+      <div className="flex items-center justify-between h-16 px-6">
+        <div className="flex items-center">
+          <button
+            onClick={onMenuClick}
+            className="lg:hidden p-2 rounded-md hover:bg-gray-100"
+          >
+            <i className="ri-menu-line text-gray-600"></i>
+          </button>
+          
+          <div className="hidden md:flex items-center ml-4">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i className="ri-search-line text-gray-400"></i>
+              </div>
+              <input
+                type="text"
+                className="w-80 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                placeholder="Tìm kiếm dịch vụ, thông báo..."
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-4">
+          {/* Notifications */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="p-2 rounded-lg hover:bg-gray-100 relative"
+            >
+              <i className="ri-notification-line text-gray-600 text-xl"></i>
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                2
+              </span>
+            </button>
+
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="p-4 border-b border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-900">Thông báo</h3>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  <div className="p-4 hover:bg-gray-50 border-b border-gray-100">
+                    <p className="text-sm text-gray-900">Hóa đơn tháng 12 đã sẵn sàng</p>
+                    <p className="text-xs text-gray-500 mt-1">1 giờ trước</p>
+                  </div>
+                  <div className="p-4 hover:bg-gray-50">
+                    <p className="text-sm text-gray-900">Yêu cầu sửa chữa đã được xử lý</p>
+                    <p className="text-xs text-gray-500 mt-1">3 giờ trước</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Profile */}
+          <div className="relative">
+            <button
+              onClick={() => setShowProfile(!showProfile)}
+              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100"
+            >
+              <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm font-medium">A</span>
+              </div>
+              <span className="hidden md:block text-sm font-medium text-gray-700">Nguyễn Văn A</span>
+              <i className="ri-arrow-down-s-line text-gray-400"></i>
+            </button>
+
+            {showProfile && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="p-2">
+                  <a href="#" className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50">
+                    <i className="ri-user-line mr-3"></i>
+                    Thông tin cá nhân
+                  </a>
+                  <a href="#" className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50">
+                    <i className="ri-settings-line mr-3"></i>
+                    Cài đặt
+                  </a>
+                  <hr className="my-2" />
+                  <Link 
+                    to="/login" 
+                    className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50"
+                    onClick={() => setShowProfile(false)}
+                  >
+                    <i className="ri-logout-box-line mr-3"></i>
+                    Đăng xuất
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}

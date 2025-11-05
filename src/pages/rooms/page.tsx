@@ -8,7 +8,6 @@ import ConfirmDialog from '../../components/base/ConfirmDialog';
 interface Room {
   id: string;
   number: string;
-  floor: number;
   building: string;
   type: string;
   area: number;
@@ -54,23 +53,21 @@ interface Room {
 interface Building {
   id: string;
   name: string;
-  floors: number;
-  roomsPerFloor: number;
+  address: string;
   description?: string;
 }
 
 const mockBuildings: Building[] = [
-  { id: '1', name: 'Dãy A', floors: 4, roomsPerFloor: 10, description: 'Dãy phòng chính' },
-  { id: '2', name: 'Dãy B', floors: 4, roomsPerFloor: 8, description: 'Dãy phòng VIP' },
-  { id: '3', name: 'Dãy C', floors: 3, roomsPerFloor: 12, description: 'Dãy phòng mới' },
-  { id: '4', name: 'Dãy D', floors: 4, roomsPerFloor: 6, description: 'Dãy phòng cao cấp' }
+  { id: '1', name: 'Dãy A', address: '17/2A Nguyễn Hữu Tiến, Tây Thạnh', description: '' },
+  { id: '2', name: 'Dãy B', address: '17/2B Nguyễn Hữu Tiến, Tây Thạnh', description: '' },
+  { id: '3', name: 'Dãy C', address: '17/2C Nguyễn Hữu Tiến, Tây Thạnh', description: '' },
+  { id: '4', name: 'Dãy D', address: '17/2D Nguyễn Hữu Tiến, Tây Thạnh', description: '' }
 ];
 
 const mockRooms: Room[] = [
   {
     id: '1',
     number: 'A101',
-    floor: 1,
     building: 'Dãy A',
     type: 'Phòng đơn',
     area: 20,
@@ -117,7 +114,6 @@ const mockRooms: Room[] = [
   {
     id: '2',
     number: 'A102',
-    floor: 1,
     building: 'Dãy A',
     type: 'Phòng đôi',
     area: 30,
@@ -136,7 +132,6 @@ const mockRooms: Room[] = [
   {
     id: '3',
     number: 'B201',
-    floor: 2,
     building: 'Dãy B',
     type: 'Phòng VIP',
     area: 35,
@@ -155,7 +150,6 @@ const mockRooms: Room[] = [
   {
     id: '4',
     number: 'B202',
-    floor: 2,
     building: 'Dãy B',
     type: 'Phòng đơn',
     area: 22,
@@ -211,7 +205,6 @@ const mockRooms: Room[] = [
   {
     id: '5',
     number: 'C301',
-    floor: 3,
     building: 'Dãy C',
     type: 'Phòng đôi',
     area: 28,
@@ -230,7 +223,6 @@ const mockRooms: Room[] = [
   {
     id: '6',
     number: 'C302',
-    floor: 3,
     building: 'Dãy C',
     type: 'Phòng VIP',
     area: 40,
@@ -295,7 +287,6 @@ const mockRooms: Room[] = [
   {
     id: '7',
     number: 'D401',
-    floor: 4,
     building: 'Dãy D',
     type: 'Phòng đơn',
     area: 25,
@@ -314,7 +305,6 @@ const mockRooms: Room[] = [
   {
     id: '8',
     number: 'D402',
-    floor: 4,
     building: 'Dãy D',
     type: 'Phòng VIP',
     area: 45,
@@ -372,7 +362,6 @@ export default function Rooms() {
   const [showCheckOutModal, setShowCheckOutModal] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterFloor, setFilterFloor] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [detailActiveTab, setDetailActiveTab] = useState('basic');
@@ -415,18 +404,16 @@ export default function Rooms() {
   };
 
   const buildings = ['all', ...Array.from(new Set(rooms.map(room => room.building)))];
-  const floors = ['all', ...Array.from(new Set(rooms.map(room => room.floor.toString())))];
   const roomTypes = ['all', ...Array.from(new Set(rooms.map(room => room.type)))];
 
   const filteredRooms = rooms.filter(room => {
     const matchesBuilding = activeTab === 'all' || room.building === activeTab;
     const matchesStatus = filterStatus === 'all' || room.status === filterStatus;
-    const matchesFloor = filterFloor === 'all' || room.floor.toString() === filterFloor;
     const matchesType = filterType === 'all' || room.type === filterType;
     const matchesSearch = room.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (room.tenant?.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    return matchesBuilding && matchesStatus && matchesFloor && matchesType && matchesSearch;
+    return matchesBuilding && matchesStatus && matchesType && matchesSearch;
   });
 
   // Bulk selection handlers
@@ -827,19 +814,6 @@ export default function Rooms() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tầng</label>
-                    <select
-                      value={filterFloor}
-                      onChange={(e) => setFilterFloor(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm"
-                    >
-                      <option value="all">Tất cả tầng</option>
-                      {floors.filter(f => f !== 'all').map(floor => (
-                        <option key={floor} value={floor}>Tầng {floor}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Loại phòng</label>
                     <select
                       value={filterType}
@@ -869,7 +843,6 @@ export default function Rooms() {
                     <button
                       onClick={() => {
                         setSearchTerm('');
-                        setFilterFloor('all');
                         setFilterType('all');
                         setFilterStatus('all');
                       }}
@@ -917,7 +890,7 @@ export default function Rooms() {
                           />
                           <div>
                             <h3 className="text-lg font-semibold text-gray-900">{room.number}</h3>
-                            <p className="text-sm text-gray-600">Tầng {room.floor} • {room.type}</p>
+                            <p className="text-sm text-gray-600">• {room.type}</p>
                           </div>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(room.status)}`}>
@@ -1055,7 +1028,6 @@ export default function Rooms() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{room.building}</div>
-                            <div className="text-sm text-gray-500">Tầng {room.floor}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{room.type}</div>
@@ -1208,10 +1180,6 @@ export default function Rooms() {
                         <div className="flex justify-between">
                           <span className="text-gray-600">Dãy:</span>
                           <span className="font-medium">{selectedRoom.building}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Tầng:</span>
-                          <span className="font-medium">{selectedRoom.floor}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Loại phòng:</span>
@@ -1471,22 +1439,14 @@ export default function Rooms() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số tầng</label>
-                  <input
-                    type="number"
-                    value={editingBuilding.floors}
-                    onChange={(e) => setEditingBuilding({ ...editingBuilding, floors: parseInt(e.target.value) })}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+                  <textarea
+                    value={editingBuilding.address || ''}
+                    onChange={(e) => setEditingBuilding({ ...editingBuilding, address: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số phòng mỗi tầng</label>
-                  <input
-                    type="number"
-                    value={editingBuilding.roomsPerFloor}
-                    onChange={(e) => setEditingBuilding({ ...editingBuilding, roomsPerFloor: parseInt(e.target.value) })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  />
+                    rows={3}
+                    placeholder="Nhập địa chỉ của dãy nhà..."
+                  ></textarea>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
@@ -1534,12 +1494,12 @@ export default function Rooms() {
                   <input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Dãy E" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số tầng</label>
-                  <input type="number" className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="4" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số phòng mỗi tầng</label>
-                  <input type="number" className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="10" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    rows={3}
+                    placeholder="Nhập địa chỉ của dãy nhà..."
+                  ></textarea>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
@@ -1592,15 +1552,6 @@ export default function Rooms() {
                     {buildings.filter(b => b !== 'all').map(building => (
                       <option key={building} value={building}>{building}</option>
                     ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tầng</label>
-                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
-                    <option value="1">Tầng 1</option>
-                    <option value="2">Tầng 2</option>
-                    <option value="3">Tầng 3</option>
-                    <option value="4">Tầng 4</option>
                   </select>
                 </div>
                 <div>
@@ -1720,15 +1671,6 @@ export default function Rooms() {
                             <option key={building} value={building}>{building}</option>
                           ))}
                         </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Tầng</label>
-                        <input
-                          type="number"
-                          value={editingRoom.floor}
-                          onChange={(e) => setEditingRoom({ ...editingRoom, floor: parseInt(e.target.value) })}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Loại phòng</label>

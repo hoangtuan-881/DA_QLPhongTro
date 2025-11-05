@@ -12,13 +12,8 @@ interface Tenant {
   phone2?: string;
   email: string;
   room: string;
-  startDate: string;
-  endDate: string;
-  deposit: number;
-  monthlyRent: number;
-  status: 'active' | 'expired' | 'pending';
+  status: 'active' | 'expired';
   avatar?: string;
-  // Thông tin chi tiết
   idCard?: string;
   idCardDate?: string;
   idCardPlace?: string;
@@ -27,6 +22,7 @@ interface Tenant {
   birthPlace?: string;
   vehicleNumber?: string;
   notes?: string;
+  currentBuildingAddress?: string;
 }
 
 const mockTenants: Tenant[] = [
@@ -37,10 +33,6 @@ const mockTenants: Tenant[] = [
     phone2: '0987654321',
     email: 'nguyenvana@email.com',
     room: 'A101',
-    startDate: '2024-01-15',
-    endDate: '2024-12-15',
-    deposit: 7000000,
-    monthlyRent: 3500000,
     status: 'active',
     idCard: '123456789',
     idCardDate: '2020-01-15',
@@ -58,10 +50,6 @@ const mockTenants: Tenant[] = [
     phone2: '0976543210',
     email: 'tranthib@email.com',
     room: 'B202',
-    startDate: '2024-02-01',
-    endDate: '2024-11-30',
-    deposit: 7600000,
-    monthlyRent: 3800000,
     status: 'active',
     idCard: '987654321',
     idCardDate: '2019-08-10',
@@ -78,10 +66,6 @@ const mockTenants: Tenant[] = [
     phone: '0912345678',
     email: 'levanc@email.com',
     room: 'A105',
-    startDate: '2023-12-01',
-    endDate: '2024-01-31',
-    deposit: 6000000,
-    monthlyRent: 3000000,
     status: 'expired',
     idCard: '456789123',
     idCardDate: '2018-05-20',
@@ -98,11 +82,7 @@ const mockTenants: Tenant[] = [
     phone2: '0954321098',
     email: 'phamthid@email.com',
     room: 'C301',
-    startDate: '2024-03-01',
-    endDate: '2025-02-28',
-    deposit: 9600000,
-    monthlyRent: 4800000,
-    status: 'pending',
+    status: 'expired',
     idCard: '789123456',
     idCardDate: '2021-12-05',
     idCardPlace: 'CA Hải Phòng',
@@ -118,10 +98,6 @@ const mockTenants: Tenant[] = [
     phone: '0923456789',
     email: 'hoangvane@email.com',
     room: 'D402',
-    startDate: '2024-04-01',
-    endDate: '2025-03-31',
-    deposit: 8000000,
-    monthlyRent: 4000000,
     status: 'active',
     idCard: '321654987',
     idCardDate: '2022-01-10',
@@ -149,11 +125,7 @@ export default function TenantsPage() {
     phone2: '',
     email: '',
     room: '',
-    startDate: '',
-    endDate: '',
-    deposit: 0,
-    monthlyRent: 0,
-    status: 'pending' as const,
+    status: 'active' as const,
     idCard: '',
     idCardDate: '',
     idCardPlace: '',
@@ -170,7 +142,7 @@ export default function TenantsPage() {
     type: 'info' as 'danger' | 'warning' | 'info',
     title: '',
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
     loading: false
   });
 
@@ -182,8 +154,6 @@ export default function TenantsPage() {
         return 'bg-green-100 text-green-800';
       case 'expired':
         return 'bg-red-100 text-red-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -192,11 +162,9 @@ export default function TenantsPage() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'active':
-        return 'Đang thuê';
+        return 'Đang trọ';
       case 'expired':
-        return 'Hết hạn';
-      case 'pending':
-        return 'Chờ duyệt';
+        return 'Không trọ';
       default:
         return status;
     }
@@ -238,7 +206,7 @@ export default function TenantsPage() {
     });
   };
 
-  const handleAddTenant = (formData: any) => {
+  const handleAddTenant = (formData: Omit<Tenant, 'id'>) => {
     setConfirmDialog({
       isOpen: true,
       type: 'info',
@@ -247,24 +215,19 @@ export default function TenantsPage() {
       onConfirm: () => confirmAddTenant(formData),
       loading: false
     });
-  };
+  }
 
-  const confirmAddTenant = async (formData: any) => {
+  const confirmAddTenant = async (formData: Omit<Tenant, 'id'>) => {
     setConfirmDialog(prev => ({ ...prev, loading: true }));
     await new Promise(resolve => setTimeout(resolve, 1000));
-    const newTenantData = {
+    const newTenantData: Tenant = {
       id: (tenants.length + 1).toString(),
-      ...formData,
-      joinDate: new Date().toISOString().split('T')[0],
-      contractStatus: 'Đang thuê'
+      ...formData
     };
     setTenants(prev => [...prev, newTenantData]);
     setShowAddModal(false);
     setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
-    toast.success({
-      title: 'Thêm thành công',
-      message: `Đã thêm khách thuê "${formData.name}" vào hệ thống`
-    });
+    toast.success({ title: 'Thêm thành công', message: `Đã thêm khách thuê "${formData.name}" vào hệ thống` });
   };
 
   const handleEditTenantConfirm = (formData: any) => {
@@ -293,27 +256,26 @@ export default function TenantsPage() {
     });
   };
 
-  const handleStatusChange = (tenant: any, newStatus: string) => {
+  const handleStatusChange = (tenant: Tenant, newStatus: 'active' | 'expired') => {
     setConfirmDialog({
       isOpen: true,
       type: 'warning',
       title: 'Xác nhận thay đổi trạng thái',
-      message: `Bạn có chắc chắn muốn chuyển trạng thái của "${tenant.name}" sang "${newStatus}" không?`,
+      message: `Bạn có chắc chắn muốn chuyển trạng thái của "${tenant.name}" sang "${getStatusText(newStatus)}" không?`,
       onConfirm: () => confirmStatusChange(tenant, newStatus),
       loading: false
     });
   };
 
-  const confirmStatusChange = async (tenant: any, newStatus: string) => {
+
+  const confirmStatusChange = async (tenant: Tenant, newStatus: 'active' | 'expired') => {
     setConfirmDialog(prev => ({ ...prev, loading: true }));
     await new Promise(resolve => setTimeout(resolve, 1000));
-    setTenants(prev =>
-      prev.map(t => (t.id === tenant.id ? { ...t, contractStatus: newStatus } : t))
-    );
+    setTenants(prev => prev.map(t => (t.id === tenant.id ? { ...t, status: newStatus } : t)));
     setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
     toast.success({
       title: 'Cập nhật trạng thái thành công',
-      message: `Đã chuyển trạng thái của "${tenant.name}" sang "${newStatus}"`
+      message: `Đã chuyển trạng thái của "${tenant.name}" sang "${getStatusText(newStatus)}"`
     });
   };
 
@@ -379,9 +341,8 @@ export default function TenantsPage() {
                   className="border border-gray-300 rounded-lg px-3 py-2 pr-8"
                 >
                   <option value="all">Tất cả trạng thái</option>
-                  <option value="active">Đang thuê</option>
-                  <option value="expired">Hết hạn</option>
-                  <option value="pending">Chờ duyệt</option>
+                  <option value="active">Đang trọ</option>
+                  <option value="expired">Không trọ</option>
                 </select>
                 <input
                   type="text"
@@ -413,16 +374,13 @@ export default function TenantsPage() {
                         Khách thuê
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Liên hệ
+                        Liên hệ &amp; Địa chỉ thường trú
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Phòng đang ở
+                        Phòng đã ở
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Hợp đồng
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tiền thuê
+                        Trống
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Trạng thái
@@ -435,6 +393,7 @@ export default function TenantsPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredTenants.map(tenant => (
                       <tr key={tenant.id} className="hover:bg-gray-50">
+                        {/* 1) Khách thuê */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10">
@@ -452,33 +411,36 @@ export default function TenantsPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{tenant.phone}</div>
-                          {tenant.phone2 && (
-                            <div className="text-sm text-gray-500">{tenant.phone2}</div>
-                          )}
-                          <div className="text-sm text-gray-500">{tenant.email}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{tenant.room}</div>
-                          {tenant.address && (
-                            <div className="text-xs text-gray-500 max-w-32 truncate">{tenant.address}</div>
-                          )}
-                        </td>
+
+                        {/* 2) Liên hệ & Địa chỉ thường trú */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                            {new Date(tenant.startDate).toLocaleDateString('vi-VN')} -{' '}
-                            {new Date(tenant.endDate).toLocaleDateString('vi-VN')}
+                            {tenant.phone}
+                            {tenant.phone2 && <span> • {tenant.phone2}</span>}
+                          </div>
+                          <div className="text-sm text-gray-500">{tenant.email}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            <span className="font-medium"></span>{' '}
+                            {tenant.address || '-'}
                           </div>
                         </td>
+
+                        {/* 3) Phòng đã ở (dòng phụ đổi label) */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-green-600">
-                            {tenant.monthlyRent.toLocaleString('vi-VN')}đ
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Cọc: {tenant.deposit.toLocaleString('vi-VN')}đ
+                          <div className="text-sm font-medium text-gray-900">{tenant.room}</div>
+                          <div className="text-xs text-gray-500 max-w-56 truncate">
+                            <span className="font-medium">Dãy ??</span>{' '}
+                            {tenant.currentBuildingAddress || '-'}
                           </div>
                         </td>
+
+                        {/* 4) Trống thêm thông tin khác sau */}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                          </div>
+                        </td>
+
+                        {/* 5) Trạng thái (2 giá trị) */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
@@ -488,6 +450,8 @@ export default function TenantsPage() {
                             {getStatusText(tenant.status)}
                           </span>
                         </td>
+
+                        {/* 6) Thao tác */}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button
@@ -626,52 +590,6 @@ export default function TenantsPage() {
                 </div>
               </div>
 
-              <div className="mt-8">
-                <h3 className="font-semibold text-gray-900 mb-4">Thông tin hợp đồng</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-orange-50 p-4 rounded-lg">
-                  <div className="text-center">
-                    <span className="text-gray-600 text-sm">Phòng</span>
-                    <div className="font-medium text-lg">{selectedTenant.room}</div>
-                  </div>
-                  <div className="text-center">
-                    <span className="text-gray-600 text-sm">Ngày bắt đầu</span>
-                    <div className="font-medium">
-                      {new Date(selectedTenant.startDate).toLocaleDateString('vi-VN')}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <span className="text-gray-600 text-sm">Ngày kết thúc</span>
-                    <div className="font-medium">
-                      {new Date(selectedTenant.endDate).toLocaleDateString('vi-VN')}
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <span className="text-gray-600 text-sm">Trạng thái</span>
-                    <div
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(
-                        selectedTenant.status
-                      )}`}
-                    >
-                      {getStatusText(selectedTenant.status)}
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div className="bg-green-50 p-4 rounded-lg text-center">
-                    <span className="text-gray-600 text-sm">Tiền thuê hàng tháng</span>
-                    <div className="font-medium text-green-600 text-xl">
-                      {selectedTenant.monthlyRent.toLocaleString('vi-VN')}đ
-                    </div>
-                  </div>
-                  <div className="bg-orange-50 p-4 rounded-lg text-center">
-                    <span className="text-gray-600 text-sm">Tiền cọc</span>
-                    <div className="font-medium text-orange-600 text-xl">
-                      {selectedTenant.deposit.toLocaleString('vi-VN')}đ
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <div className="flex gap-3 mt-8 pt-6 border-t">
                 <button
                   onClick={() => {
@@ -683,13 +601,9 @@ export default function TenantsPage() {
                   <i className="ri-edit-line mr-2"></i>
                   Chỉnh sửa
                 </button>
-                <button className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 cursor-pointer whitespace-nowrap flex items-center justify-center">
-                  <i className="ri-calendar-line mr-2"></i>
-                  Gia hạn
-                </button>
                 <button className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 cursor-pointer whitespace-nowrap flex items-center justify-center">
                   <i className="ri-close-circle-line mr-2"></i>
-                  Kết thúc
+                  Xóa
                 </button>
               </div>
             </div>
@@ -854,94 +768,6 @@ export default function TenantsPage() {
                         rows={2}
                         placeholder="Thông tin bổ sung..."
                       />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-4">Thông tin hợp đồng</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phòng *
-                      </label>
-                      <select
-                        value={editingTenant.room}
-                        onChange={e => setEditingTenant({ ...editingTenant, room: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
-                        required
-                      >
-                        <option value="">Chọn phòng</option>
-                        <option value="A101">A101</option>
-                        <option value="A102">A102</option>
-                        <option value="B201">B201</option>
-                        <option value="B202">B202</option>
-                        <option value="C301">C301</option>
-                        <option value="C302">C302</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Ngày bắt đầu *
-                      </label>
-                      <input
-                        type="date"
-                        value={editingTenant.startDate}
-                        onChange={e => setEditingTenant({ ...editingTenant, startDate: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Ngày kết thúc *
-                      </label>
-                      <input
-                        type="date"
-                        value={editingTenant.endDate}
-                        onChange={e => setEditingTenant({ ...editingTenant, endDate: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tiền cọc (VNĐ) *
-                      </label>
-                      <input
-                        type="number"
-                        value={editingTenant.deposit}
-                        onChange={e => setEditingTenant({ ...editingTenant, deposit: parseInt(e.target.value) })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tiền thuê (VNĐ) *
-                      </label>
-                      <input
-                        type="number"
-                        value={editingTenant.monthlyRent}
-                        onChange={e => setEditingTenant({ ...editingTenant, monthlyRent: parseInt(e.target.value) })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Trạng thái *
-                      </label>
-                      <select
-                        value={editingTenant.status}
-                        onChange={e => setEditingTenant({ ...editingTenant, status: e.target.value as 'active' | 'expired' | 'pending' })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
-                        required
-                      >
-                        <option value="active">Đang thuê</option>
-                        <option value="pending">Chờ duyệt</option>
-                        <option value="expired">Hết hạn</option>
-                      </select>
                     </div>
                   </div>
                 </div>
@@ -1130,96 +956,6 @@ export default function TenantsPage() {
                         rows={2}
                         placeholder="Thông tin bổ sung..."
                       />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-4">Thông tin hợp đồng</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Phòng *
-                      </label>
-                      <select
-                        value={newTenant.room}
-                        onChange={e => setNewTenant({ ...newTenant, room: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
-                        required
-                      >
-                        <option value="">Chọn phòng</option>
-                        <option value="A101">A101</option>
-                        <option value="A102">A102</option>
-                        <option value="B201">B201</option>
-                        <option value="B202">B202</option>
-                        <option value="C301">C301</option>
-                        <option value="C302">C302</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Ngày bắt đầu *
-                      </label>
-                      <input
-                        type="date"
-                        value={newTenant.startDate}
-                        onChange={e => setNewTenant({ ...newTenant, startDate: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Ngày kết thúc *
-                      </label>
-                      <input
-                        type="date"
-                        value={newTenant.endDate}
-                        onChange={e => setNewTenant({ ...newTenant, endDate: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tiền cọc (VNĐ) *
-                      </label>
-                      <input
-                        type="number"
-                        value={newTenant.deposit}
-                        onChange={e => setNewTenant({ ...newTenant, deposit: parseInt(e.target.value) || 0 })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        placeholder="7000000"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Tiền thuê (VNĐ) *
-                      </label>
-                      <input
-                        type="number"
-                        value={newTenant.monthlyRent}
-                        onChange={e => setNewTenant({ ...newTenant, monthlyRent: parseInt(e.target.value) || 0 })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        placeholder="3500000"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Trạng thái *
-                      </label>
-                      <select
-                        value={newTenant.status}
-                        onChange={e => setNewTenant({ ...newTenant, status: e.target.value as 'active' | 'expired' | 'pending' })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
-                        required
-                      >
-                        <option value="pending">Chờ duyệt</option>
-                        <option value="active">Đang thuê</option>
-                        <option value="expired">Hết hạn</option>
-                      </select>
                     </div>
                   </div>
                 </div>

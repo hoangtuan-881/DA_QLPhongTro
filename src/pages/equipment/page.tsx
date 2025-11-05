@@ -20,29 +20,15 @@ interface Equipment {
   notes?: string;
 }
 
-interface MaintenanceRequest {
-  id: string;
-  equipmentId: string;
-  equipmentName: string;
-  type: 'routine' | 'repair' | 'replacement';
-  description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  scheduledDate: string;
-  estimatedCost: number;
-  assignedTo?: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  notes?: string;
-}
-
 const mockEquipment: Equipment[] = [
   {
     id: '1',
-    name: 'Điều hòa Daikin 12000BTU',
-    code: 'AC001',
-    category: 'appliance',
-    room: 'P101',
+    name: 'Bình chữa cháy khí CO2 24kg',
+    code: 'CC001',
+    category: 'safety',
+    room: 'A101',
     purchaseDate: '2023-06-15',
-    purchasePrice: 8500000,
+    purchasePrice: 3700000,
     condition: 'good',
     lastMaintenance: '2024-01-15',
     nextMaintenance: '2024-07-15',
@@ -51,61 +37,62 @@ const mockEquipment: Equipment[] = [
   },
   {
     id: '2',
-    name: 'Tủ lạnh Samsung 180L',
-    code: 'RF001',
-    category: 'appliance',
-    room: 'P101',
+    name: 'Bình chữa cháy khí CO2 5kg',
+    code: 'CC002',
+    category: 'safety',
+    room: 'A101',
     purchaseDate: '2023-06-20',
-    purchasePrice: 6200000,
+    purchasePrice: 680000,
     condition: 'good',
     lastMaintenance: '2024-02-10',
-    warranty: '2025-06-20'
+    warranty: '2025-06-20',
+    notes: 'Bảo dưỡng định kỳ 6 tháng/lần'
   },
   {
     id: '3',
-    name: 'Giường đơn',
-    code: 'BED001',
-    category: 'furniture',
-    room: 'P101',
+    name: 'Router Wifi Chuẩn N Mercusys',
+    code: 'MW302R',
+    category: 'electronics',
+    room: 'A101',
     purchaseDate: '2023-05-10',
-    purchasePrice: 2500000,
+    purchasePrice: 210000,
     condition: 'good'
   },
   {
     id: '4',
-    name: 'Máy nước nóng Ariston',
-    code: 'WH001',
+    name: 'Máy lạnh Midea Inverter 1',
+    code: 'MAFA-09CDN8',
     category: 'appliance',
-    room: 'P102',
+    room: 'A102',
     purchaseDate: '2023-07-05',
-    purchasePrice: 3200000,
+    purchasePrice: 5290000,
     condition: 'fair',
     lastMaintenance: '2024-01-20',
     nextMaintenance: '2024-04-20',
     warranty: '2024-07-05',
-    notes: 'Cần thay bộ đốt sớm'
+    notes: 'Cần thay ống đồng'
   },
   {
     id: '5',
-    name: 'Tủ quần áo 3 cánh',
+    name: 'Tủ quần áo',
     code: 'WD001',
     category: 'furniture',
-    room: 'P102',
+    room: 'A102',
     purchaseDate: '2023-05-15',
-    purchasePrice: 1800000,
+    purchasePrice: 800000,
     condition: 'good'
   },
   {
     id: '6',
-    name: 'Bình cứu hỏa',
-    code: 'FE001',
-    category: 'safety',
-    room: 'Tầng 1',
+    name: 'Bảng nội quy',
+    code: 'NQ001',
+    category: 'other',
+    room: 'Dãy A',
     purchaseDate: '2023-04-10',
     purchasePrice: 450000,
     condition: 'good',
     nextMaintenance: '2024-04-10',
-    notes: 'Kiểm tra áp suất hàng năm'
+    notes: 'Không'
   }
 ];
 
@@ -114,13 +101,13 @@ export default function Equipment() {
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterCondition, setFilterCondition] = useState<string>('all');
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
-  const [deletingEquipment, setDeletingEquipment] = useState<Equipment | null>(null);
   const [maintenanceEquipment, setMaintenanceEquipment] = useState<Equipment | null>(null);
+  const [equipments, setEquipments] = useState<Equipment[]>(mockEquipment);
+
 
   // ConfirmDialog states
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -131,7 +118,7 @@ export default function Equipment() {
     type?: 'danger' | 'warning' | 'info';
   } | null>(null);
 
-  const { success, error, warning } = useToast();
+  const toast = useToast();
 
   // Form states
   const [newEquipment, setNewEquipment] = useState({
@@ -199,31 +186,12 @@ export default function Equipment() {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'low': return 'bg-blue-100 text-blue-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'high': return 'bg-orange-100 text-orange-800';
-      case 'urgent': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case 'low': return 'Thấp';
-      case 'medium': return 'Trung bình';
-      case 'high': return 'Cao';
-      case 'urgent': return 'Khẩn cấp';
-      default: return priority;
-    }
-  };
-
-  const filteredEquipment = mockEquipment.filter(item => {
+  const filteredEquipment = equipments.filter(item => {
     const categoryMatch = filterCategory === 'all' || item.category === filterCategory;
     const conditionMatch = filterCondition === 'all' || item.condition === filterCondition;
     return categoryMatch && conditionMatch;
   });
+
 
   const isMaintenanceDue = (nextMaintenance?: string) => {
     if (!nextMaintenance) return false;
@@ -278,12 +246,10 @@ export default function Equipment() {
   };
 
   const confirmDelete = (equipment: Equipment) => {
-    console.log('Xóa thiết bị:', equipment.id);
-    success({
-      title: 'Xóa thiết bị thành công',
-      message: `Đã xóa thiết bị "${equipment.name}" thành công`
-    });
+    setEquipments(prev => prev.filter(e => e.id !== equipment.id));  // <- cập nhật UI
+    toast.success({ title: 'Đã xóa thiết bị', message: `Đã xóa "${equipment.name}" (${equipment.code})` });
   };
+
 
   const handleMaintenance = (equipment: Equipment) => {
     setMaintenanceEquipment(equipment);
@@ -315,73 +281,101 @@ export default function Equipment() {
 
   const handleSubmit = () => {
     if (!newEquipment.name || !newEquipment.code || !newEquipment.category || !newEquipment.room) {
-      error({
-        title: 'Lỗi thêm thiết bị',
-        message: 'Vui lòng điền đầy đủ thông tin bắt buộc!'
-      });
+      toast.error({ title: 'Lỗi thêm thiết bị', message: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
 
     showConfirm({
       title: 'Xác nhận thêm thiết bị',
-      message: `Bạn có chắc chắn muốn thêm thiết bị "${newEquipment.name}" - Phòng ${newEquipment.room} không?`,
+      message: `Bạn có chắc muốn thêm "${newEquipment.name}" - Phòng ${newEquipment.room}?`,
+      type: 'info',
       onConfirm: () => {
-        console.log('Thêm thiết bị:', newEquipment);
+        const toCreate: Equipment = {
+          id: Date.now().toString(),
+          name: newEquipment.name,
+          code: newEquipment.code,
+          category: newEquipment.category as Equipment['category'],
+          room: newEquipment.room,
+          purchaseDate: newEquipment.purchaseDate,
+          purchasePrice: newEquipment.purchasePrice,
+          condition: newEquipment.condition as Equipment['condition'],
+          warranty: newEquipment.warranty || undefined,
+          notes: newEquipment.notes || undefined
+        };
+
+        setEquipments(prev => [toCreate, ...prev]);      // <- cập nhật UI
         setShowAddModal(false);
         resetForm();
-        success({
-          title: 'Thêm thiết bị thành công',
-          message: `Đã thêm thiết bị "${newEquipment.name}" - Phòng ${newEquipment.room}`
-        });
+        toast.success({ title: 'Thêm thiết bị thành công', message: `Đã thêm "${toCreate.name}"` });
       }
     });
   };
 
+
   const handleUpdate = () => {
-    if (!newEquipment.name || !newEquipment.code || !newEquipment.category || !newEquipment.room) {
-      error({
-        title: 'Lỗi cập nhật thiết bị',
-        message: 'Vui lòng điền đầy đủ thông tin bắt buộc!'
-      });
+    if (!editingEquipment || !newEquipment.name || !newEquipment.code || !newEquipment.category || !newEquipment.room) {
+      toast.error({ title: 'Lỗi cập nhật thiết bị', message: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
 
     showConfirm({
-      title: 'Xác nhận cập nhật thiết bị',
-      message: `Bạn có chắc chắn muốn lưu thay đổi cho thiết bị "${newEquipment.name}" không?`,
+      title: 'Xác nhận cập nhật',
+      message: `Lưu thay đổi cho "${newEquipment.name}"?`,
+      type: 'info',
       onConfirm: () => {
-        console.log('Cập nhật thiết bị:', editingEquipment?.id, newEquipment);
+        setEquipments(prev => prev.map(e =>
+          e.id === editingEquipment.id
+            ? {
+              ...e,
+              name: newEquipment.name,
+              code: newEquipment.code,
+              category: newEquipment.category as Equipment['category'],
+              room: newEquipment.room,
+              purchaseDate: newEquipment.purchaseDate,
+              purchasePrice: newEquipment.purchasePrice,
+              condition: newEquipment.condition as Equipment['condition'],
+              warranty: newEquipment.warranty || undefined,
+              notes: newEquipment.notes || undefined
+            }
+            : e
+        ));
         setShowEditModal(false);
         setEditingEquipment(null);
         resetForm();
-        success({
-          title: 'Cập nhật thiết bị thành công',
-          message: `Đã cập nhật thông tin thiết bị "${newEquipment.name}"`
-        });
+        toast.success({ title: 'Cập nhật thiết bị thành công', message: `Đã cập nhật "${newEquipment.name}"` });
       }
     });
   };
 
+
   const handleCreateMaintenance = () => {
     if (!maintenanceRequest.description || !maintenanceRequest.scheduledDate) {
-      error({
-        title: 'Lỗi tạo yêu cầu bảo trì',
-        message: 'Vui lòng điền đầy đủ mô tả và ngày thực hiện!'
-      });
+      toast.error({ title: 'Lỗi tạo yêu cầu bảo trì', message: 'Vui lòng nhập mô tả và ngày thực hiện!' });
       return;
     }
 
-    const typeText = maintenanceRequest.type === 'routine' ? 'bảo trì định kỳ' :
-                     maintenanceRequest.type === 'repair' ? 'sửa chữa' : 'thay thế';
+    const typeText =
+      maintenanceRequest.type === 'routine' ? 'bảo trì định kỳ' :
+        maintenanceRequest.type === 'repair' ? 'sửa chữa' : 'thay thế';
 
     showConfirm({
       title: 'Xác nhận tạo yêu cầu bảo trì',
-      message: `Bạn có chắc chắn muốn tạo yêu cầu ${typeText} cho thiết bị "${maintenanceEquipment?.name}" không?`,
+      message: `Tạo yêu cầu ${typeText} cho "${maintenanceEquipment?.name}" vào ${new Date(maintenanceRequest.scheduledDate).toLocaleDateString('vi-VN')}?`,
+      type: 'info',
       onConfirm: () => {
-        console.log('Tạo yêu cầu bảo trì:', {
-          equipmentId: maintenanceEquipment?.id,
-          ...maintenanceRequest
-        });
+        // Cập nhật UI: đặt lịch bảo trì tới ngày đã chọn
+        if (maintenanceEquipment) {
+          setEquipments(prev => prev.map(e =>
+            e.id === maintenanceEquipment.id
+              ? {
+                ...e,
+                nextMaintenance: maintenanceRequest.scheduledDate,
+                notes: maintenanceRequest.notes ? `${e.notes ? e.notes + ' | ' : ''}${maintenanceRequest.notes}` : e.notes
+              }
+              : e
+          ));
+        }
+
         setShowMaintenanceModal(false);
         setMaintenanceEquipment(null);
         setMaintenanceRequest({
@@ -393,85 +387,23 @@ export default function Equipment() {
           assignedTo: '',
           notes: ''
         });
-        success({
-          title: 'Tạo yêu cầu bảo trì thành công',
-          message: `Đã tạo yêu cầu ${typeText} cho thiết bị "${maintenanceEquipment?.name}"`
+
+        toast.success({
+          title: 'Đã tạo yêu cầu bảo trì',
+          message: `Đã ${typeText} cho "${maintenanceEquipment?.name}"`
         });
       }
     });
   };
 
-  const handleQuickStatusUpdate = (equipment: Equipment, newCondition: string) => {
-    const conditionText = getConditionText(newCondition);
-    
-    showConfirm({
-      title: 'Xác nhận cập nhật tình trạng',
-      message: `Bạn có chắc chắn muốn cập nhật tình trạng thiết bị "${equipment.name}" thành "${conditionText}" không?`,
-      onConfirm: () => {
-        console.log('Cập nhật tình trạng:', equipment.id, newCondition);
-        if (newCondition === 'damaged' || newCondition === 'poor') {
-          warning({
-            title: 'Cập nhật tình trạng thành công',
-            message: `Thiết bị "${equipment.name}" đã được cập nhật thành ${conditionText}. Cần kiểm tra và bảo trì!`
-          });
-        } else {
-          success({
-            title: 'Cập nhật tình trạng thành công',
-            message: `Đã cập nhật tình trạng thiết bị "${equipment.name}" thành ${conditionText}`
-          });
-        }
-      },
-      type: newCondition === 'damaged' ? 'warning' : 'info'
-    });
-  };
-
-  const handleBulkAction = (action: string, selectedIds: string[]) => {
-    if (selectedIds.length === 0) {
-      error({
-        title: 'Lỗi thao tác hàng loạt',
-        message: 'Vui lòng chọn ít nhất một thiết bị!'
-      });
-      return;
-    }
-
-    const actionText = action === 'delete' ? 'xóa' :
-                     action === 'maintenance' ? 'tạo yêu cầu bảo trì cho' :
-                     action === 'export' ? 'xuất báo cáo' : action;
-
-    showConfirm({
-      title: `Xác nhận ${actionText} hàng loạt`,
-      message: `Bạn có chắc chắn muốn ${actionText} ${selectedIds.length} thiết bị đã chọn không?`,
-      onConfirm: () => {
-        console.log(`${actionText} hàng loạt:`, selectedIds);
-        
-        if (action === 'delete') {
-          success({
-            title: 'Xóa hàng loạt thành công',
-            message: `Đã xóa ${selectedIds.length} thiết bị thành công`
-          });
-        } else if (action === 'maintenance') {
-          success({
-            title: 'Tạo yêu cầu bảo trì hàng loạt thành công',
-            message: `Đã tạo yêu cầu bảo trì cho ${selectedIds.length} thiết bị`
-          });
-        } else if (action === 'export') {
-          success({
-            title: 'Xuất báo cáo thành công',
-            message: `Đã xuất báo cáo cho ${selectedIds.length} thiết bị`
-          });
-        }
-      },
-      type: action === 'delete' ? 'danger' : 'info'
-    });
-  };
 
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(true)} />
-        
+
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
@@ -497,7 +429,7 @@ export default function Equipment() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Tổng thiết bị</p>
-                    <p className="text-2xl font-bold text-gray-900">{mockEquipment.length}</p>
+                    <p className="text-2xl font-bold text-gray-900">{equipments.length}</p>
                   </div>
                 </div>
               </div>
@@ -509,7 +441,7 @@ export default function Equipment() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Tình trạng tốt</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockEquipment.filter(e => e.condition === 'good').length}
+                      {equipments.filter(e => e.condition === 'good').length}
                     </p>
                   </div>
                 </div>
@@ -522,7 +454,7 @@ export default function Equipment() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Cần bảo trì</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockEquipment.filter(e => e.nextMaintenance && isMaintenanceDue(e.nextMaintenance)).length}
+                      {equipments.filter(e => e.nextMaintenance && isMaintenanceDue(e.nextMaintenance)).length}
                     </p>
                   </div>
                 </div>
@@ -535,7 +467,7 @@ export default function Equipment() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Hỏng/Kém</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockEquipment.filter(e => e.condition === 'damaged' || e.condition === 'poor').length}
+                      {equipments.filter(e => e.condition === 'damaged' || e.condition === 'poor').length}
                     </p>
                   </div>
                 </div>
@@ -783,19 +715,19 @@ export default function Equipment() {
               )}
 
               <div className="flex gap-3 mt-6 pt-6 border-t">
-                <button 
+                <button
                   onClick={() => handleEdit(selectedEquipment)}
                   className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap"
                 >
                   Chỉnh sửa
                 </button>
-                <button 
+                <button
                   onClick={() => handleMaintenance(selectedEquipment)}
                   className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 cursor-pointer whitespace-nowrap"
                 >
                   Tạo yêu cầu bảo trì
                 </button>
-                <button 
+                <button
                   onClick={() => handleDelete(selectedEquipment)}
                   className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 cursor-pointer whitespace-nowrap"
                 >
@@ -814,37 +746,37 @@ export default function Equipment() {
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowAddModal(false)}></div>
             <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Thêm thiết bị mới</h2>
-              
+
               <form className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tên thiết bị *</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={newEquipment.name}
-                      onChange={(e) => setNewEquipment({...newEquipment, name: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                      placeholder="Điều hòa Daikin" 
+                      onChange={(e) => setNewEquipment({ ...newEquipment, name: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      placeholder="Điều hòa Daikin"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Mã thiết bị *</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={newEquipment.code}
-                      onChange={(e) => setNewEquipment({...newEquipment, code: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                      placeholder="AC001" 
+                      onChange={(e) => setNewEquipment({ ...newEquipment, code: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      placeholder="AC001"
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục *</label>
-                    <select 
+                    <select
                       value={newEquipment.category}
-                      onChange={(e) => setNewEquipment({...newEquipment, category: e.target.value})}
+                      onChange={(e) => setNewEquipment({ ...newEquipment, category: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                     >
                       <option value="">Chọn danh mục</option>
@@ -857,9 +789,9 @@ export default function Equipment() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phòng *</label>
-                    <select 
+                    <select
                       value={newEquipment.room}
-                      onChange={(e) => setNewEquipment({...newEquipment, room: e.target.value})}
+                      onChange={(e) => setNewEquipment({ ...newEquipment, room: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                     >
                       <option value="">Chọn phòng</option>
@@ -878,21 +810,21 @@ export default function Equipment() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Ngày mua *</label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       value={newEquipment.purchaseDate}
-                      onChange={(e) => setNewEquipment({...newEquipment, purchaseDate: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      onChange={(e) => setNewEquipment({ ...newEquipment, purchaseDate: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Giá mua (VNĐ) *</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={newEquipment.purchasePrice}
-                      onChange={(e) => setNewEquipment({...newEquipment, purchasePrice: parseInt(e.target.value) || 0})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                      placeholder="8500000" 
+                      onChange={(e) => setNewEquipment({ ...newEquipment, purchasePrice: parseInt(e.target.value) || 0 })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      placeholder="8500000"
                     />
                   </div>
                 </div>
@@ -900,9 +832,9 @@ export default function Equipment() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tình trạng</label>
-                    <select 
+                    <select
                       value={newEquipment.condition}
-                      onChange={(e) => setNewEquipment({...newEquipment, condition: e.target.value})}
+                      onChange={(e) => setNewEquipment({ ...newEquipment, condition: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                     >
                       <option value="good">Tốt</option>
@@ -913,26 +845,26 @@ export default function Equipment() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Bảo hành đến</label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       value={newEquipment.warranty}
-                      onChange={(e) => setNewEquipment({...newEquipment, warranty: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      onChange={(e) => setNewEquipment({ ...newEquipment, warranty: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                  <textarea 
+                  <textarea
                     value={newEquipment.notes}
-                    onChange={(e) => setNewEquipment({...newEquipment, notes: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                    rows={3} 
+                    onChange={(e) => setNewEquipment({ ...newEquipment, notes: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    rows={3}
                     placeholder="Ghi chú về thiết bị..."
                   />
                 </div>
-                
+
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -965,37 +897,37 @@ export default function Equipment() {
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowEditModal(false)}></div>
             <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Chỉnh sửa thiết bị</h2>
-              
+
               <form className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tên thiết bị *</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={newEquipment.name}
-                      onChange={(e) => setNewEquipment({...newEquipment, name: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                      placeholder="Điều hòa Daikin" 
+                      onChange={(e) => setNewEquipment({ ...newEquipment, name: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      placeholder="Điều hòa Daikin"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Mã thiết bị *</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={newEquipment.code}
-                      onChange={(e) => setNewEquipment({...newEquipment, code: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                      placeholder="AC001" 
+                      onChange={(e) => setNewEquipment({ ...newEquipment, code: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      placeholder="AC001"
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục *</label>
-                    <select 
+                    <select
                       value={newEquipment.category}
-                      onChange={(e) => setNewEquipment({...newEquipment, category: e.target.value})}
+                      onChange={(e) => setNewEquipment({ ...newEquipment, category: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                     >
                       <option value="">Chọn danh mục</option>
@@ -1008,20 +940,17 @@ export default function Equipment() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phòng *</label>
-                    <select 
+                    <select
                       value={newEquipment.room}
-                      onChange={(e) => setNewEquipment({...newEquipment, room: e.target.value})}
+                      onChange={(e) => setNewEquipment({ ...newEquipment, room: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                     >
                       <option value="">Chọn phòng</option>
-                      <option value="P101">P101</option>
-                      <option value="P102">P102</option>
-                      <option value="P201">P201</option>
-                      <option value="P202">P202</option>
-                      <option value="P301">P301</option>
-                      <option value="Tầng 1">Tầng 1</option>
-                      <option value="Tầng 2">Tầng 2</option>
-                      <option value="Tầng 3">Tầng 3</option>
+                      <option value="A101">A101</option>
+                      <option value="A102">A102</option>
+                      <option value="A201">A201</option>
+                      <option value="A202">A202</option>
+                      <option value="A301">A301</option>
                     </select>
                   </div>
                 </div>
@@ -1029,21 +958,21 @@ export default function Equipment() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Ngày mua *</label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       value={newEquipment.purchaseDate}
-                      onChange={(e) => setNewEquipment({...newEquipment, purchaseDate: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      onChange={(e) => setNewEquipment({ ...newEquipment, purchaseDate: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Giá mua (VNĐ) *</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={newEquipment.purchasePrice}
-                      onChange={(e) => setNewEquipment({...newEquipment, purchasePrice: parseInt(e.target.value) || 0})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                      placeholder="8500000" 
+                      onChange={(e) => setNewEquipment({ ...newEquipment, purchasePrice: parseInt(e.target.value) || 0 })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      placeholder="8500000"
                     />
                   </div>
                 </div>
@@ -1051,9 +980,9 @@ export default function Equipment() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tình trạng</label>
-                    <select 
+                    <select
                       value={newEquipment.condition}
-                      onChange={(e) => setNewEquipment({...newEquipment, condition: e.target.value})}
+                      onChange={(e) => setNewEquipment({ ...newEquipment, condition: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                     >
                       <option value="good">Tốt</option>
@@ -1064,26 +993,26 @@ export default function Equipment() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Bảo hành đến</label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       value={newEquipment.warranty}
-                      onChange={(e) => setNewEquipment({...newEquipment, warranty: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      onChange={(e) => setNewEquipment({ ...newEquipment, warranty: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                  <textarea 
+                  <textarea
                     value={newEquipment.notes}
-                    onChange={(e) => setNewEquipment({...newEquipment, notes: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                    rows={3} 
+                    onChange={(e) => setNewEquipment({ ...newEquipment, notes: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    rows={3}
                     placeholder="Ghi chú về thiết bị..."
                   />
                 </div>
-                
+
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -1110,53 +1039,6 @@ export default function Equipment() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && deletingEquipment && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowDeleteModal(false)}></div>
-            <div className="relative bg-white rounded-lg max-w-md w-full p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 flex items-center justify-center bg-red-100 rounded-full mr-4">
-                  <i className="ri-error-warning-line text-red-600 text-xl"></i>
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">Xác nhận xóa thiết bị</h3>
-                  <p className="text-sm text-gray-500">Hành động này không thể hoàn tác</p>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <p className="text-gray-700">
-                  Bạn có chắc chắn muốn xóa thiết bị <strong>{deletingEquipment.name}</strong> (Mã: {deletingEquipment.code}) không?
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Tất cả dữ liệu liên quan đến thiết bị này sẽ bị xóa vĩnh viễn.
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setDeletingEquipment(null);
-                  }}
-                  className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 cursor-pointer whitespace-nowrap"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={() => confirmDelete(deletingEquipment)}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 cursor-pointer whitespace-nowrap"
-                >
-                  Xóa thiết bị
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Maintenance Request Modal */}
       {showMaintenanceModal && maintenanceEquipment && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -1164,7 +1046,7 @@ export default function Equipment() {
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowMaintenanceModal(false)}></div>
             <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Tạo yêu cầu bảo trì</h2>
-              
+
               {/* Equipment Info */}
               <div className="bg-blue-50 p-4 rounded-lg mb-6">
                 <h3 className="font-semibold text-gray-900 mb-2">Thông tin thiết bị</h3>
@@ -1194,9 +1076,9 @@ export default function Equipment() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Loại bảo trì *</label>
-                    <select 
+                    <select
                       value={maintenanceRequest.type}
-                      onChange={(e) => setMaintenanceRequest({...maintenanceRequest, type: e.target.value})}
+                      onChange={(e) => setMaintenanceRequest({ ...maintenanceRequest, type: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                     >
                       <option value="routine">Bảo trì định kỳ</option>
@@ -1206,9 +1088,9 @@ export default function Equipment() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Mức độ ưu tiên *</label>
-                    <select 
+                    <select
                       value={maintenanceRequest.priority}
-                      onChange={(e) => setMaintenanceRequest({...maintenanceRequest, priority: e.target.value})}
+                      onChange={(e) => setMaintenanceRequest({ ...maintenanceRequest, priority: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                     >
                       <option value="low">Thấp</option>
@@ -1221,11 +1103,11 @@ export default function Equipment() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết *</label>
-                  <textarea 
+                  <textarea
                     value={maintenanceRequest.description}
-                    onChange={(e) => setMaintenanceRequest({...maintenanceRequest, description: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                    rows={3} 
+                    onChange={(e) => setMaintenanceRequest({ ...maintenanceRequest, description: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    rows={3}
                     placeholder="Mô tả chi tiết vấn đề cần bảo trì hoặc sửa chữa..."
                   />
                 </div>
@@ -1233,47 +1115,47 @@ export default function Equipment() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Ngày dự kiến thực hiện *</label>
-                    <input 
-                      type="date" 
+                    <input
+                      type="date"
                       value={maintenanceRequest.scheduledDate}
-                      onChange={(e) => setMaintenanceRequest({...maintenanceRequest, scheduledDate: e.target.value})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      onChange={(e) => setMaintenanceRequest({ ...maintenanceRequest, scheduledDate: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Chi phí ước tính (VNĐ)</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={maintenanceRequest.estimatedCost}
-                      onChange={(e) => setMaintenanceRequest({...maintenanceRequest, estimatedCost: parseInt(e.target.value) || 0})}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                      placeholder="500000" 
+                      onChange={(e) => setMaintenanceRequest({ ...maintenanceRequest, estimatedCost: parseInt(e.target.value) || 0 })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      placeholder="500000"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Người phụ trách</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={maintenanceRequest.assignedTo}
-                    onChange={(e) => setMaintenanceRequest({...maintenanceRequest, assignedTo: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                    placeholder="Tên kỹ thuật viên hoặc đơn vị thực hiện" 
+                    onChange={(e) => setMaintenanceRequest({ ...maintenanceRequest, assignedTo: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder="Tên kỹ thuật viên hoặc đơn vị thực hiện"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú thêm</label>
-                  <textarea 
+                  <textarea
                     value={maintenanceRequest.notes}
-                    onChange={(e) => setMaintenanceRequest({...maintenanceRequest, notes: e.target.value})}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                    rows={2} 
+                    onChange={(e) => setMaintenanceRequest({ ...maintenanceRequest, notes: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    rows={2}
                     placeholder="Ghi chú thêm về yêu cầu bảo trì..."
                   />
                 </div>
-                
+
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -1305,7 +1187,7 @@ export default function Equipment() {
         title={confirmAction?.title || ''}
         message={confirmAction?.message || ''}
         onConfirm={handleConfirm}
-        onCancel={() => setShowConfirmDialog(false)}
+        onClose={() => setShowConfirmDialog(false)}
         type={confirmAction?.type}
       />
     </div>

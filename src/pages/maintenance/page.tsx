@@ -12,12 +12,11 @@ interface MaintenanceRequest {
   description: string;
   category: 'electrical' | 'plumbing' | 'appliance' | 'furniture' | 'other';
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   requestDate: string;
   assignedTo?: string;
   scheduledDate?: string;
   completedDate?: string;
-  cost?: number;
   notes?: string;
   images?: string[];
   progress?: number;
@@ -25,59 +24,126 @@ interface MaintenanceRequest {
 }
 
 const mockMaintenanceRequests: MaintenanceRequest[] = [
+  // 1) Đang xử lý (in_progress) — đã phân công, ngày phân công là hôm nay
   {
     id: '1',
-    tenantName: 'Nguyễn Văn A',
-    room: 'P101',
+    tenantName: 'Nguyễn Văn An',
+    room: 'A101',
     title: 'Điều hòa không lạnh',
     description: 'Điều hòa chạy nhưng không thổi khí lạnh, có thể do thiếu gas',
     category: 'appliance',
     priority: 'high',
     status: 'in_progress',
     requestDate: '2024-03-15',
-    assignedTo: 'Thợ điện Minh',
-    scheduledDate: '2024-03-16',
+    assignedTo: 'Tuấn',
+    scheduledDate: '2025-11-05', // ngày phân công hiển thị dưới tên
     notes: 'Đã kiểm tra, cần nạp gas'
   },
+
+  // 2) Chờ xử lý (pending) — chưa phân công
   {
     id: '2',
-    tenantName: 'Trần Thị B',
-    room: 'P202',
+    tenantName: 'Trần Thị Bé',
+    room: 'A202',
     title: 'Vòi nước bồn rửa bát bị rỉ',
     description: 'Vòi nước trong bếp bị rỉ nước liên tục',
     category: 'plumbing',
     priority: 'medium',
-    status: 'assigned',
-    requestDate: '2024-03-18',
-    assignedTo: 'Thợ nước Hùng',
-    scheduledDate: '2024-03-20'
+    status: 'pending',
+    requestDate: '2024-03-18'
   },
+
+  // 3) Chờ xử lý (pending) — khẩn cấp, chưa phân công
   {
     id: '3',
-    tenantName: 'Phạm Thị D',
-    room: 'P301',
+    tenantName: 'Phạm Thị Dung',
+    room: 'A301',
     title: 'Ổ cắm điện bị cháy',
     description: 'Ổ cắm điện gần giường bị cháy, có mùi khét',
     category: 'electrical',
     priority: 'urgent',
     status: 'pending',
-    requestDate: '2024-03-20'
+    requestDate: '2024-03-20',
+    notes: 'Ưu tiên kiểm tra trong ngày'
   },
+
+  // 4) Hoàn thành (completed) — có ngày hoàn thành
   {
     id: '4',
-    tenantName: 'Lê Văn C',
-    room: 'P105',
+    tenantName: 'Lê Văn Bảy',
+    room: 'A105',
     title: 'Cửa tủ quần áo bị lệch',
     description: 'Cửa tủ quần áo bị lệch, không đóng được',
     category: 'furniture',
     priority: 'low',
     status: 'completed',
     requestDate: '2024-03-10',
-    assignedTo: 'Thợ mộc Tùng',
-    scheduledDate: '2024-03-12',
+    assignedTo: 'My',
+    scheduledDate: '2024-03-12',   // ngày phân công trước đó
     completedDate: '2024-03-12',
-    cost: 150000,
-    notes: 'Đã sửa chữa bản lề cửa'
+    notes: 'Đã sửa chữa bản lề cửa',
+    images: ['completed_cabinet_1.jpg', 'completed_cabinet_2.jpg']
+  },
+
+  // 5) Đã hủy (cancelled) — hủy trước khi phân công (KHÔNG có assignedTo)
+  {
+    id: '5',
+    tenantName: 'Đỗ Minh Quân',
+    room: 'B207',
+    title: 'Quạt trần rung mạnh',
+    description: 'Quạt trần kêu và rung khi bật số cao',
+    category: 'appliance',
+    priority: 'medium',
+    status: 'cancelled',
+    requestDate: '2024-04-02',
+    notes: 'Khách tự xử lý, yêu cầu hủy'
+  },
+
+  // 6) Đang xử lý (in_progress) — danh mục other, high
+  {
+    id: '6',
+    tenantName: 'Võ Thị Hạnh',
+    room: 'B305',
+    title: 'Khe cửa ra vào kẹt',
+    description: 'Cửa ra vào bị kẹt, khó đóng mở',
+    category: 'other',
+    priority: 'high',
+    status: 'in_progress',
+    requestDate: '2024-04-05',
+    assignedTo: 'My',
+    scheduledDate: '2025-11-05',
+    notes: 'Đang chờ thay ron cửa'
+  },
+
+  // 7) Chờ xử lý (pending) — danh mục furniture, low
+  {
+    id: '7',
+    tenantName: 'Trịnh Nhật Tân',
+    room: 'C102',
+    title: 'Ghế phòng khách lung lay',
+    description: 'Một chân ghế bị lỏng ốc',
+    category: 'furniture',
+    priority: 'low',
+    status: 'pending',
+    requestDate: '2025-10-28'
+  },
+
+  // 8) Hoàn thành (completed) — có ảnh hoàn thành, ghi chú
+  {
+    id: '8',
+    tenantName: 'Phạm Hồng Ân',
+    room: 'C210',
+    title: 'Rò rỉ ống nước lavabo',
+    description: 'Nước rò rỉ nhẹ dưới lavabo, sàn ẩm ướt',
+    category: 'plumbing',
+    priority: 'medium',
+    status: 'completed',
+    requestDate: '2025-10-20',
+    assignedTo: 'Tuấn',
+    scheduledDate: '2025-10-21',
+    completedDate: '2025-10-21',
+    notes: 'Đã thay phớt, test 30 phút không rò',
+    images: ['lavabo_before.jpg', 'lavabo_after.jpg']
   }
 ];
 
@@ -87,12 +153,12 @@ export default function Maintenance() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [requests, setRequests] = useState<MaintenanceRequest[]>(mockMaintenanceRequests);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -102,7 +168,7 @@ export default function Maintenance() {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {}
+    onConfirm: () => { }
   });
 
   const [newRequest, setNewRequest] = useState<{
@@ -127,22 +193,12 @@ export default function Maintenance() {
 
   const [assignData, setAssignData] = useState({
     technician: '',
-    estimatedCost: 0,
-    notes: ''
-  });
-
-  const [scheduleData, setScheduleData] = useState({
-    scheduledDate: '',
-    scheduledTime: '',
-    estimatedDuration: 1,
     notes: ''
   });
 
   const [updateData, setUpdateData] = useState({
     status: '',
-    progress: 0,
     notes: '',
-    actualCost: 0,
     completionImages: [] as string[]
   });
 
@@ -162,6 +218,21 @@ export default function Maintenance() {
       title: 'Xác nhận tạo yêu cầu',
       message: `Bạn có chắc chắn muốn tạo yêu cầu bảo trì "${newRequest.title}" cho phòng ${newRequest.room} không?`,
       onConfirm: () => {
+        setRequests(prev => [
+          {
+            id: String(Date.now()),
+            tenantName: newRequest.reportedBy || 'Khách thuê',
+            room: newRequest.room,
+            title: newRequest.title,
+            description: newRequest.description,
+            category: newRequest.category as MaintenanceRequest['category'],
+            priority: newRequest.priority as MaintenanceRequest['priority'],
+            status: 'pending',
+            requestDate: new Date().toISOString(),
+            notes: ''
+          },
+          ...prev
+        ]);
         success({
           title: 'Tạo yêu cầu thành công',
           message: `Đã tạo yêu cầu bảo trì "${newRequest.title}" cho phòng ${newRequest.room}`
@@ -197,6 +268,27 @@ export default function Maintenance() {
       title: 'Xác nhận phân công',
       message: `Bạn có chắc chắn muốn phân công "${assignData.technician}" xử lý yêu cầu "${selectedRequest?.title}" không?`,
       onConfirm: () => {
+        if (selectedRequest) {
+          setRequests(prev =>
+            prev.map(r =>
+              r.id === selectedRequest.id
+                ? {
+                  ...r,
+                  assignedTo: assignData.technician,
+                  status: 'in_progress',
+                  scheduledDate: new Date().toISOString(), // <-- NGÀY PHÂN CÔNG (hiện tại)
+                }
+                : r
+            )
+          );
+        }
+        if (selectedRequest) {
+          setRequests(prev => prev.map(r =>
+            r.id === selectedRequest.id
+              ? { ...r, assignedTo: assignData.technician, status: 'in_progress' }
+              : r
+          ));
+        }
         success({
           title: 'Phân công thành công',
           message: `Đã phân công ${assignData.technician} xử lý yêu cầu "${selectedRequest?.title}"`
@@ -206,50 +298,6 @@ export default function Maintenance() {
         setSelectedRequest(null);
         setAssignData({
           technician: '',
-          estimatedCost: 0,
-          notes: ''
-        });
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
-      }
-    });
-  };
-
-  const handleScheduleMaintenance = () => {
-    if (!scheduleData.scheduledDate || !scheduleData.scheduledTime) {
-      error({
-        title: 'Lỗi lên lịch',
-        message: 'Vui lòng chọn ngày và giờ thực hiện!'
-      });
-      return;
-    }
-
-    const scheduledDateTime = new Date(`${scheduleData.scheduledDate}T${scheduleData.scheduledTime}`);
-    const now = new Date();
-
-    if (scheduledDateTime <= now) {
-      error({
-        title: 'Lỗi lên lịch',
-        message: 'Thời gian thực hiện phải sau thời điểm hiện tại!'
-      });
-      return;
-    }
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Xác nhận lên lịch',
-      message: `Bạn có chắc chắn muốn lên lịch bảo trì "${selectedRequest?.title}" vào ${scheduledDateTime.toLocaleString('vi-VN')} không?`,
-      onConfirm: () => {
-        success({
-          title: 'Lên lịch thành công',
-          message: `Đã lên lịch bảo trì "${selectedRequest?.title}" vào ${scheduledDateTime.toLocaleString('vi-VN')}`
-        });
-
-        setShowScheduleModal(false);
-        setSelectedRequest(null);
-        setScheduleData({
-          scheduledDate: '',
-          scheduledTime: '',
-          estimatedDuration: 1,
           notes: ''
         });
         setConfirmDialog({ ...confirmDialog, isOpen: false });
@@ -259,6 +307,15 @@ export default function Maintenance() {
 
   const handleUpdateStatus = () => {
     if (!updateData.status) {
+
+      // Cấm hủy nếu không phải pending
+      if (updateData.status === 'cancelled' && selectedRequest?.status !== 'pending') {
+        error({
+          title: 'Không thể hủy',
+          message: 'Chỉ được hủy khi yêu cầu đang ở trạng thái Chờ xử lý.'
+        });
+        return;
+      }
       error({
         title: 'Lỗi cập nhật',
         message: 'Vui lòng chọn trạng thái mới!'
@@ -267,22 +324,26 @@ export default function Maintenance() {
     }
 
     const statusText = updateData.status === 'in_progress' ? 'đang thực hiện' :
-                      updateData.status === 'completed' ? 'hoàn thành' :
-                      updateData.status === 'cancelled' ? 'đã hủy' :
-                      updateData.status === 'on_hold' ? 'tạm dừng' : updateData.status;
-
-    if (updateData.status === 'completed' && updateData.progress < 100) {
-      warning({
-        title: 'Cảnh báo',
-        message: 'Tiến độ chưa đạt 100% nhưng trạng thái là hoàn thành. Bạn có chắc chắn không?'
-      });
-    }
+      updateData.status === 'completed' ? 'hoàn thành' :
+        updateData.status === 'cancelled' ? 'đã hủy' :
+          updateData.status === 'on_hold' ? 'tạm dừng' : updateData.status;
 
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận cập nhật trạng thái',
       message: `Bạn có chắc chắn muốn cập nhật trạng thái yêu cầu "${selectedRequest?.title}" thành "${statusText}" không?`,
       onConfirm: () => {
+        if (selectedRequest) {
+          setRequests(prev => prev.map(r =>
+            r.id === selectedRequest.id
+              ? {
+                ...r,
+                status: updateData.status as MaintenanceRequest['status'],
+                completedDate: updateData.status === 'completed' ? new Date().toISOString() : r.completedDate
+              }
+              : r
+          ));
+        }
         if (updateData.status === 'completed') {
           success({
             title: 'Hoàn thành bảo trì',
@@ -304,9 +365,7 @@ export default function Maintenance() {
         setSelectedRequest(null);
         setUpdateData({
           status: '',
-          progress: 0,
           notes: '',
-          actualCost: 0,
           completionImages: []
         });
         setConfirmDialog({ ...confirmDialog, isOpen: false });
@@ -315,13 +374,14 @@ export default function Maintenance() {
   };
 
   const handleDeleteRequest = (requestId: string) => {
-    const request = mockMaintenanceRequests.find(r => r.id === requestId);
+    const request = requests.find(r => r.id === requestId);
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận xóa yêu cầu',
       message: `Bạn có chắc chắn muốn xóa yêu cầu bảo trì "${request?.title}" không? Hành động này không thể hoàn tác.`,
       onConfirm: () => {
-        success({
+        setRequests(prev => prev.filter(r => r.id !== requestId));
+        error({
           title: 'Xóa yêu cầu thành công',
           message: `Đã xóa yêu cầu bảo trì "${request?.title}" thành công`
         });
@@ -340,34 +400,47 @@ export default function Maintenance() {
     setShowAssignModal(true);
   };
 
-  const handleSchedule = (request: MaintenanceRequest) => {
-    setSelectedRequest(request);
-    setShowScheduleModal(true);
-  };
-
   const handleUpdate = (request: MaintenanceRequest) => {
     setSelectedRequest(request);
     setUpdateData({
       status: request.status,
-      progress: request.progress || 0,
       notes: '',
-      actualCost: request.actualCost || 0,
       completionImages: []
     });
     setShowUpdateModal(true);
   };
 
   const handleQuickStatusChange = (requestId: string, newStatus: string) => {
-    const request = mockMaintenanceRequests.find(r => r.id === requestId);
+    const request = requests.find(r => r.id === requestId);
     const statusText = newStatus === 'in_progress' ? 'đang thực hiện' :
-                      newStatus === 'completed' ? 'hoàn thành' :
-                      newStatus === 'cancelled' ? 'đã hủy' : newStatus;
+      newStatus === 'completed' ? 'hoàn thành' :
+        newStatus === 'cancelled' ? 'đã hủy' : newStatus;
 
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận thay đổi trạng thái',
       message: `Bạn có chắc chắn muốn thay đổi trạng thái yêu cầu "${request?.title}" thành "${statusText}" không?`,
       onConfirm: () => {
+        if (!request) return;
+
+        if (newStatus === 'cancelled' && request.status !== 'pending') {
+          error({
+            title: 'Không thể hủy',
+            message: 'Chỉ được hủy khi yêu cầu đang ở trạng thái Chờ xử lý.'
+          });
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+          return;
+        }
+
+        setRequests(prev => prev.map(r =>
+          r.id === requestId
+            ? {
+              ...r,
+              status: newStatus as MaintenanceRequest['status'],
+              completedDate: newStatus === 'completed' ? new Date().toISOString() : r.completedDate
+            }
+            : r
+        ));
         if (newStatus === 'completed') {
           success({
             title: 'Hoàn thành bảo trì',
@@ -399,8 +472,8 @@ export default function Maintenance() {
     }
 
     const actionText = action === 'assign' ? 'phân công' :
-                      action === 'complete' ? 'hoàn thành' :
-                      action === 'cancel' ? 'hủy' : action;
+      action === 'complete' ? 'hoàn thành' :
+        action === 'cancel' ? 'hủy' : action;
 
     setConfirmDialog({
       isOpen: true,
@@ -428,18 +501,10 @@ export default function Maintenance() {
     });
   };
 
-  const handleExportReport = (type: 'excel' | 'pdf') => {
-    const typeText = type === 'excel' ? 'Excel' : 'PDF';
-    success({
-      title: 'Xuất báo cáo thành công',
-      message: `Đã xuất báo cáo bảo trì dạng ${typeText}. File sẽ được tải xuống trong giây lát.`
-    });
-  };
-
   const handleSendNotification = (requestId: string, type: 'tenant' | 'technician') => {
     const request = mockMaintenanceRequests.find(r => r.id === requestId);
     const recipientText = type === 'tenant' ? 'khách thuê' : 'kỹ thuật viên';
-    
+
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận gửi thông báo',
@@ -499,7 +564,7 @@ export default function Maintenance() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'assigned': return 'bg-blue-100 text-blue-800';
+      case 'on_hold': return 'bg-blue-100 text-blue-800';
       case 'in_progress': return 'bg-purple-100 text-purple-800';
       case 'completed': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
@@ -510,7 +575,7 @@ export default function Maintenance() {
   const getStatusText = (status: string) => {
     switch (status) {
       case 'pending': return 'Chờ xử lý';
-      case 'assigned': return 'Đã phân công';
+      case 'on_hold': return 'Tạm dừng';
       case 'in_progress': return 'Đang xử lý';
       case 'completed': return 'Hoàn thành';
       case 'cancelled': return 'Đã hủy';
@@ -518,11 +583,11 @@ export default function Maintenance() {
     }
   };
 
-  const filteredRequests = mockMaintenanceRequests.filter(request => {
+  const filteredRequests = requests.filter(request => {
     const statusMatch = filterStatus === 'all' || request.status === filterStatus;
     const priorityMatch = filterPriority === 'all' || request.priority === filterPriority;
     const categoryMatch = filterCategory === 'all' || request.category === filterCategory;
-    const searchMatch = searchTerm === '' || 
+    const searchMatch = searchTerm === '' ||
       request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.room.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.tenantName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -532,10 +597,10 @@ export default function Maintenance() {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(true)} />
-        
+
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
@@ -544,20 +609,6 @@ export default function Maintenance() {
                 <p className="text-gray-600">Theo dõi và xử lý các yêu cầu bảo trì</p>
               </div>
               <div className="flex gap-3">
-                <button
-                  onClick={() => handleExportReport('excel')}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center whitespace-nowrap cursor-pointer"
-                >
-                  <i className="ri-file-excel-2-line mr-2"></i>
-                  Xuất Excel
-                </button>
-                <button
-                  onClick={() => handleExportReport('pdf')}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center whitespace-nowrap cursor-pointer"
-                >
-                  <i className="ri-file-pdf-line mr-2"></i>
-                  Xuất PDF
-                </button>
                 <button
                   onClick={() => setShowAddModal(true)}
                   className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center whitespace-nowrap cursor-pointer"
@@ -578,7 +629,7 @@ export default function Maintenance() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Chờ xử lý</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockMaintenanceRequests.filter(r => r.status === 'pending').length}
+                      {requests.filter(r => r.status === 'pending').length}
                     </p>
                   </div>
                 </div>
@@ -591,7 +642,7 @@ export default function Maintenance() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Đang xử lý</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockMaintenanceRequests.filter(r => r.status === 'in_progress' || r.status === 'assigned').length}
+                      {requests.filter(r => r.status === 'in_progress').length}
                     </p>
                   </div>
                 </div>
@@ -604,7 +655,7 @@ export default function Maintenance() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Hoàn thành</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockMaintenanceRequests.filter(r => r.status === 'completed').length}
+                      {requests.filter(r => r.status === 'completed').length}
                     </p>
                   </div>
                 </div>
@@ -617,7 +668,7 @@ export default function Maintenance() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Khẩn cấp</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {mockMaintenanceRequests.filter(r => r.priority === 'urgent').length}
+                      {requests.filter(r => r.priority === 'urgent').length}
                     </p>
                   </div>
                 </div>
@@ -634,7 +685,7 @@ export default function Maintenance() {
                 >
                   <option value="all">Tất cả trạng thái</option>
                   <option value="pending">Chờ xử lý</option>
-                  <option value="assigned">Đã phân công</option>
+                  <option value="on_hold">Tạm dừng</option>
                   <option value="in_progress">Đang xử lý</option>
                   <option value="completed">Hoàn thành</option>
                   <option value="cancelled">Đã hủy</option>
@@ -756,10 +807,17 @@ export default function Maintenance() {
                             >
                               <i className="ri-eye-line"></i>
                             </button>
-                            <button className="text-green-600 hover:text-green-900 cursor-pointer" title="Chỉnh sửa">
+                            <button
+                              onClick={() => handleUpdate(request)}
+                              className="text-green-600 hover:text-green-900 cursor-pointer"
+                              title="Chỉnh sửa"
+                            >
                               <i className="ri-edit-line"></i>
                             </button>
-                            <button className="text-red-600 hover:text-red-900 cursor-pointer" title="Xóa">
+                            <button onClick={() => handleDeleteRequest(request.id)}
+                              className="text-red-600 hover:text-red-900 cursor-pointer"
+                              title="Xóa"
+                            >
                               <i className="ri-delete-bin-line"></i>
                             </button>
                             {request.status === 'pending' && (
@@ -769,15 +827,6 @@ export default function Maintenance() {
                                 title="Phân công"
                               >
                                 <i className="ri-user-add-line"></i>
-                              </button>
-                            )}
-                            {request.status !== 'completed' && request.status !== 'cancelled' && (
-                              <button
-                                onClick={() => handleSchedule(request)}
-                                className="text-purple-600 hover:text-purple-900 cursor-pointer"
-                                title="Lên lịch"
-                              >
-                                <i className="ri-calendar-check-line"></i>
                               </button>
                             )}
                             <button
@@ -803,15 +852,15 @@ export default function Maintenance() {
                   <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowAddModal(false)}></div>
                   <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
                     <h2 className="text-xl font-bold text-gray-900 mb-6">Tạo yêu cầu bảo trì mới</h2>
-                    
+
                     <form className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Khách thuê</label>
                           <select className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
                             <option value="">Chọn khách thuê</option>
-                            <option value="1">Nguyễn Văn A - P101</option>
-                            <option value="2">Trần Thị B - P202</option>
+                            <option value="1">Nguyễn Văn An - P101</option>
+                            <option value="2">Trần Thị Bé - P202</option>
                           </select>
                         </div>
                         <div>
@@ -856,13 +905,12 @@ export default function Maintenance() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Phân công cho</label>
                         <select className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
-                          <option value="">Chọn thợ (tùy chọn)</option>
-                          <option value="1">Thợ điện Minh</option>
-                          <option value="2">Thợ nước Hùng</option>
-                          <option value="3">Thợ mộc Tùng</option>
+                          <option value="">Chọn nhân viên</option>
+                          <option value="1">Tuấn</option>
+                          <option value="2">My</option>
                         </select>
                       </div>
-                      
+
                       <div className="flex gap-3 pt-4">
                         <button
                           type="button"
@@ -892,41 +940,28 @@ export default function Maintenance() {
                 <div className="flex items-center justify-center min-h-screen px-4">
                   <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowAssignModal(false)}></div>
                   <div className="relative bg-white rounded-lg max-w-lg w-full p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6">Phân công kỹ thuật viên</h2>
-                    
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">Phân công nhân viên</h2>
+
                     <form className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Chọn kỹ thuật viên *</label>
-                        <select 
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Chọn nhân viên *</label>
+                        <select
                           value={assignData.technician}
-                          onChange={(e) => setAssignData({...assignData, technician: e.target.value})}
+                          onChange={(e) => setAssignData({ ...assignData, technician: e.target.value })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                         >
-                          <option value="">Chọn kỹ thuật viên</option>
-                          <option value="Thợ điện Minh">Thợ điện Minh</option>
-                          <option value="Thợ nước Hùng">Thợ nước Hùng</option>
-                          <option value="Thợ mộc Tùng">Thợ mộc Tùng</option>
-                          <option value="Thợ điện lạnh Nam">Thợ điện lạnh Nam</option>
+                          <option value="">Chọn nhân viên</option>
+                          <option value="Tuấn">Tuấn</option>
+                          <option value="My">My</option>
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Chi phí ước tính (VNĐ)</label>
-                        <input 
-                          type="number"
-                          value={assignData.estimatedCost}
-                          onChange={(e) => setAssignData({...assignData, estimatedCost: Number(e.target.value)})}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                          placeholder="0"
-                        />
-                      </div>
-
-                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                        <textarea 
+                        <textarea
                           value={assignData.notes}
-                          onChange={(e) => setAssignData({...assignData, notes: e.target.value})}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                          onChange={(e) => setAssignData({ ...assignData, notes: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           rows={3}
                           placeholder="Ghi chú thêm về công việc..."
                         />
@@ -953,80 +988,6 @@ export default function Maintenance() {
               </div>
             )}
 
-            {/* Schedule Modal */}
-            {showScheduleModal && (
-              <div className="fixed inset-0 z-50 overflow-y-auto">
-                <div className="flex items-center justify-center min-h-screen px-4">
-                  <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowScheduleModal(false)}></div>
-                  <div className="relative bg-white rounded-lg max-w-lg w-full p-6">
-                    <h2 className="text-xl font-bold text-gray-900 mb-6">Lên lịch bảo trì</h2>
-                    
-                    <form className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Ngày thực hiện *</label>
-                          <input 
-                            type="date"
-                            value={scheduleData.scheduledDate}
-                            onChange={(e) => setScheduleData({...scheduleData, scheduledDate: e.target.value})}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Giờ thực hiện *</label>
-                          <input 
-                            type="time"
-                            value={scheduleData.scheduledTime}
-                            onChange={(e) => setScheduleData({...scheduleData, scheduledTime: e.target.value})}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian ước tính (giờ)</label>
-                        <input 
-                          type="number"
-                          value={scheduleData.estimatedDuration}
-                          onChange={(e) => setScheduleData({...scheduleData, estimatedDuration: Number(e.target.value)})}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                          min="0.5"
-                          step="0.5"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                        <textarea 
-                          value={scheduleData.notes}
-                          onChange={(e) => setScheduleData({...scheduleData, notes: e.target.value})}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                          rows={3}
-                          placeholder="Ghi chú về lịch trình..."
-                        />
-                      </div>
-                    </form>
-
-                    <div className="flex gap-3 mt-6 pt-6 border-t">
-                      <button
-                        onClick={() => setShowScheduleModal(false)}
-                        className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 cursor-pointer whitespace-nowrap"
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        onClick={handleScheduleMaintenance}
-                        className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 cursor-pointer whitespace-nowrap"
-                      >
-                        <i className="ri-calendar-check-line mr-2"></i>
-                        Lên lịch
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Update Status Modal */}
             {showUpdateModal && (
               <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -1034,17 +995,16 @@ export default function Maintenance() {
                   <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowUpdateModal(false)}></div>
                   <div className="relative bg-white rounded-lg max-w-lg w-full p-6">
                     <h2 className="text-xl font-bold text-gray-900 mb-6">Cập nhật trạng thái</h2>
-                    
+
                     <form className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái mới *</label>
-                        <select 
+                        <select
                           value={updateData.status}
-                          onChange={(e) => setUpdateData({...updateData, status: e.target.value})}
+                          onChange={(e) => setUpdateData({ ...updateData, status: e.target.value })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                         >
                           <option value="">Chọn trạng thái</option>
-                          <option value="assigned">Đã phân công</option>
                           <option value="in_progress">Đang thực hiện</option>
                           <option value="on_hold">Tạm dừng</option>
                           <option value="completed">Hoàn thành</option>
@@ -1053,39 +1013,11 @@ export default function Maintenance() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Tiến độ (%)</label>
-                        <input 
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={updateData.progress}
-                          onChange={(e) => setUpdateData({...updateData, progress: Number(e.target.value)})}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-sm text-gray-500 mt-1">
-                          <span>0%</span>
-                          <span className="font-medium">{updateData.progress}%</span>
-                          <span>100%</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Chi phí thực tế (VNĐ)</label>
-                        <input 
-                          type="number"
-                          value={updateData.actualCost}
-                          onChange={(e) => setUpdateData({...updateData, actualCost: Number(e.target.value)})}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                          placeholder="0"
-                        />
-                      </div>
-
-                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú cập nhật</label>
-                        <textarea 
+                        <textarea
                           value={updateData.notes}
-                          onChange={(e) => setUpdateData({...updateData, notes: e.target.value})}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                          onChange={(e) => setUpdateData({ ...updateData, notes: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           rows={3}
                           placeholder="Ghi chú về tiến độ, vấn đề gặp phải..."
                         />
@@ -1094,7 +1026,7 @@ export default function Maintenance() {
                       {updateData.status === 'completed' && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh hoàn thành</label>
-                          <input 
+                          <input
                             type="file"
                             multiple
                             accept="image/*"
@@ -1199,7 +1131,7 @@ export default function Maintenance() {
                           </div>
                           {selectedRequest.scheduledDate && (
                             <div>
-                              <span className="text-gray-600">Ngày hẹn:</span>
+                              <span className="text-gray-600">Ngày phân công:</span>
                               <span className="font-medium ml-2">{new Date(selectedRequest.scheduledDate).toLocaleDateString('vi-VN')}</span>
                             </div>
                           )}
@@ -1212,12 +1144,6 @@ export default function Maintenance() {
                             <span className="text-gray-600">Ngày hoàn thành:</span>
                             <span className="font-medium ml-2">{new Date(selectedRequest.completedDate).toLocaleDateString('vi-VN')}</span>
                           </div>
-                          {selectedRequest.cost && (
-                            <div>
-                              <span className="text-gray-600">Chi phí:</span>
-                              <span className="font-medium text-green-600 ml-2">{selectedRequest.cost.toLocaleString('vi-VN')}đ</span>
-                            </div>
-                          )}
                         </div>
                       )}
 
@@ -1232,17 +1158,17 @@ export default function Maintenance() {
                     <div className="flex gap-3 mt-6 pt-6 border-t">
                       {selectedRequest.status === 'pending' && (
                         <>
-                          <button 
+                          <button
                             onClick={() => {
                               setShowDetailModal(false);
-                              handleQuickStatusChange(selectedRequest.id, 'assigned');
+                              handleAssign(selectedRequest);
                             }}
                             className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 cursor-pointer whitespace-nowrap flex items-center justify-center"
                           >
                             <i className="ri-check-line mr-2"></i>
                             Xác nhận
                           </button>
-                          <button 
+                          <button
                             onClick={() => {
                               setShowDetailModal(false);
                               handleAssign(selectedRequest);
@@ -1255,7 +1181,7 @@ export default function Maintenance() {
                         </>
                       )}
                       {selectedRequest.status === 'in_progress' && (
-                        <button 
+                        <button
                           onClick={() => {
                             setShowDetailModal(false);
                             handleQuickStatusChange(selectedRequest.id, 'completed');
@@ -1266,7 +1192,7 @@ export default function Maintenance() {
                           Hoàn thành
                         </button>
                       )}
-                      <button 
+                      <button
                         onClick={() => {
                           setShowDetailModal(false);
                           handleUpdate(selectedRequest);
@@ -1276,7 +1202,7 @@ export default function Maintenance() {
                         <i className="ri-edit-line mr-2"></i>
                         Chỉnh sửa
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           setShowDetailModal(false);
                           handleDeleteRequest(selectedRequest.id);
@@ -1297,7 +1223,7 @@ export default function Maintenance() {
               title={confirmDialog.title}
               message={confirmDialog.message}
               onConfirm={confirmDialog.onConfirm}
-              onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+              onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
             />
 
           </div>

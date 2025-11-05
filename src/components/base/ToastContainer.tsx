@@ -1,6 +1,6 @@
 
 import { useState, useCallback } from 'react';
-import Toast, { ToastProps } from './Toast';
+import Toast, { type ToastProps } from './Toast';
 
 export interface ToastData {
   type: 'success' | 'error' | 'warning' | 'info';
@@ -21,7 +21,7 @@ export default function ToastContainer() {
       ...toastData,
       onClose: removeToast,
     };
-    
+
     setToasts(prev => [...prev, newToast]);
   }, []);
 

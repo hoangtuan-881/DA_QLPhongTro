@@ -1,5 +1,6 @@
 
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
+
 
 export interface ConfirmDialogProps {
   isOpen: boolean;
@@ -61,7 +62,7 @@ export default function ConfirmDialog({
             </div>
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           </div>
-          
+
           <div className="mb-6">
             {typeof message === 'string' ? (
               <p className="text-gray-600">{message}</p>

@@ -10,7 +10,6 @@ interface RoomType {
   description: string;
   basePrice: number;
   area: number;
-  capacity: number;
   amenities: string[];
   totalRooms: number;
   availableRooms: number;
@@ -21,55 +20,75 @@ interface RoomType {
 const mockRoomTypes: RoomType[] = [
   {
     id: '1',
-    name: 'Phòng đơn',
-    description: 'Phòng dành cho 1 người, đầy đủ tiện nghi cơ bản',
-    basePrice: 3500000,
-    area: 20,
-    capacity: 1,
-    amenities: ['Điều hòa', 'Tủ lạnh', 'Giường đơn', 'Tủ quần áo', 'Bàn học'],
-    totalRooms: 15,
-    availableRooms: 3,
-    occupiedRooms: 10,
-    maintenanceRooms: 2
+    name: 'Phòng thường',
+    description: 'Phòng tiêu chuẩn dành cho sinh viên hoặc người đi làm, có gác lửng tiện lợi.',
+    basePrice: 2600000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'],
+    totalRooms: 30,
+    availableRooms: 0,
+    occupiedRooms: 30,
+    maintenanceRooms: 0
   },
   {
     id: '2',
-    name: 'Phòng đôi',
-    description: 'Phòng rộng rãi dành cho 2 người, tiện nghi đầy đủ',
-    basePrice: 5000000,
-    area: 30,
-    capacity: 2,
-    amenities: ['Điều hòa', 'Tủ lạnh', '2 Giường đơn', 'Tủ quần áo', 'Bàn học', 'Kệ sách'],
-    totalRooms: 12,
-    availableRooms: 2,
-    occupiedRooms: 8,
-    maintenanceRooms: 2
+    name: 'Phòng kiot',
+    description: 'Phòng dạng kiot phù hợp cho hộ gia đình nhỏ hoặc kinh doanh tại nhà.',
+    basePrice: 2700000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'],
+    totalRooms: 2,
+    availableRooms: 0,
+    occupiedRooms: 2,
+    maintenanceRooms: 0
   },
   {
     id: '3',
-    name: 'Phòng VIP',
-    description: 'Phòng cao cấp với ban công riêng và nội thất hiện đại',
-    basePrice: 7000000,
-    area: 40,
-    capacity: 2,
-    amenities: ['Điều hòa', 'Tủ lạnh', 'Giường đôi', 'Tủ quần áo', 'Bàn làm việc', 'Ban công', 'Tủ bếp', 'Máy giặt'],
-    totalRooms: 8,
+    name: 'Phòng ban công',
+    description: 'Phòng có ban công rộng rãi, đón ánh sáng tự nhiên và gió trời.',
+    basePrice: 2600000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'],
+    totalRooms: 6,
     availableRooms: 1,
-    occupiedRooms: 6,
-    maintenanceRooms: 1
+    occupiedRooms: 5,
+    maintenanceRooms: 0
   },
   {
     id: '4',
-    name: 'Studio',
-    description: 'Phòng studio hiện đại với không gian mở và góc bếp',
-    basePrice: 6500000,
-    area: 35,
-    capacity: 2,
-    amenities: ['Điều hòa', 'Tủ lạnh', 'Giường đôi', 'Tủ quần áo', 'Góc bếp', 'Bàn ăn', 'Sofa'],
+    name: 'Phòng góc',
+    description: 'Phòng nằm ở góc tòa nhà, tạo cảm giác riêng tư, yên tĩnh quanh năm.',
+    basePrice: 2600000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'],
     totalRooms: 6,
     availableRooms: 0,
-    occupiedRooms: 5,
-    maintenanceRooms: 1
+    occupiedRooms: 6,
+    maintenanceRooms: 0
+  },
+  {
+    id: '5',
+    name: 'Phòng trệt',
+    description: 'Phòng ở tầng trệt thuận tiện di chuyển, phù hợp với người lớn tuổi hoặc gia đình có trẻ nhỏ.',
+    basePrice: 2600000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'],
+    totalRooms: 4,
+    availableRooms: 0,
+    occupiedRooms: 4,
+    maintenanceRooms: 0
+  },
+  {
+    id: '6',
+    name: 'Phòng tầng thượng',
+    description: 'Phòng nằm ở tầng cao nhất, yên tĩnh, thoáng gió, có thể tận hưởng không khí mát mẻ vào buổi tối.',
+    basePrice: 2500000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'],
+    totalRooms: 6,
+    availableRooms: 0,
+    occupiedRooms: 6,
+    maintenanceRooms: 0
   }
 ];
 
@@ -84,7 +103,7 @@ export default function RoomTypes() {
     title: '',
     message: '',
     type: 'info' as 'danger' | 'warning' | 'info',
-    onConfirm: () => {},
+    onConfirm: () => { },
     loading: false
   });
 
@@ -94,14 +113,13 @@ export default function RoomTypes() {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const amenitiesText = formData.get('amenities') as string;
-    
+
     const newRoomType: RoomType = {
       id: Date.now().toString(),
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       basePrice: parseInt(formData.get('basePrice') as string),
       area: parseInt(formData.get('area') as string),
-      capacity: parseInt(formData.get('capacity') as string),
       amenities: amenitiesText.split(',').map(item => item.trim()).filter(item => item),
       totalRooms: 0,
       availableRooms: 0,
@@ -109,16 +127,27 @@ export default function RoomTypes() {
       maintenanceRooms: 0
     };
 
-    setRoomTypes([...roomTypes, newRoomType]);
-    setShowAddModal(false);
-    toast.success({
-      title: 'Thêm thành công',
-      message: `Đã thêm loại phòng "${newRoomType.name}" vào hệ thống`
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Xác nhận thêm loại phòng',
+      message: `Bạn có chắc chắn muốn thêm loại phòng "${newRoomType.name}" không?`,
+      type: 'info',
+      loading: false,
+      onConfirm: () => {
+        setRoomTypes([...roomTypes, newRoomType]);
+        setShowAddModal(false);
+        toast.success({
+          title: 'Thêm thành công',
+          message: `Đã thêm loại phòng "${newRoomType.name}" vào hệ thống`
+        });
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+      }
     });
   };
 
   const handleEditRoomType = (roomType: RoomType) => {
-    setEditingRoomType({...roomType});
+    setEditingRoomType({ ...roomType });
     setShowEditModal(true);
   };
 
@@ -128,23 +157,34 @@ export default function RoomTypes() {
 
     const formData = new FormData(e.target as HTMLFormElement);
     const amenitiesText = formData.get('amenities') as string;
-    
+
     const updatedRoomType: RoomType = {
       ...editingRoomType,
       name: formData.get('name') as string,
       description: formData.get('description') as string,
       basePrice: parseInt(formData.get('basePrice') as string),
       area: parseInt(formData.get('area') as string),
-      capacity: parseInt(formData.get('capacity') as string),
       amenities: amenitiesText.split(',').map(item => item.trim()).filter(item => item)
     };
 
-    setRoomTypes(roomTypes.map(rt => rt.id === editingRoomType.id ? updatedRoomType : rt));
-    setShowEditModal(false);
-    setEditingRoomType(null);
-    toast.success({
-      title: 'Cập nhật thành công',
-      message: `Đã cập nhật thông tin loại phòng "${updatedRoomType.name}"`
+
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Xác nhận cập nhật thông tin loại phòng',
+      message: `Bạn có chắc chắn muốn cập nhật thông tin loại phòng "${editingRoomType.name}" không?`,
+      type: 'info',
+      loading: false,
+      onConfirm: () => {
+        setRoomTypes(roomTypes.map(rt => rt.id === editingRoomType.id ? updatedRoomType : rt));
+        setShowEditModal(false);
+        setEditingRoomType(null);
+        toast.success({
+          title: 'Cập nhật thành công',
+          message: `Đã cập nhật thông tin loại phòng "${updatedRoomType.name}"`
+        });
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+      }
     });
   };
 
@@ -162,9 +202,10 @@ export default function RoomTypes() {
       title: 'Xác nhận xóa loại phòng',
       message: `Bạn có chắc chắn muốn xóa loại phòng "${roomType.name}" không? Hành động này không thể hoàn tác.`,
       type: 'danger',
+      loading: false,
       onConfirm: () => {
         setRoomTypes(roomTypes.filter(rt => rt.id !== roomType.id));
-        toast.success({
+        toast.error({
           title: 'Xóa thành công',
           message: `Đã xóa loại phòng "${roomType.name}" khỏi hệ thống`
         });
@@ -184,10 +225,10 @@ export default function RoomTypes() {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(true)} />
-        
+
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
@@ -251,7 +292,7 @@ export default function RoomTypes() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Giá trung bình</p>
                     <p className="text-2xl font-semibold text-gray-900">
-                      {roomTypes.length > 0 
+                      {roomTypes.length > 0
                         ? (roomTypes.reduce((sum, rt) => sum + rt.basePrice, 0) / roomTypes.length / 1000000).toFixed(1)
                         : 0}M
                     </p>
@@ -299,10 +340,6 @@ export default function RoomTypes() {
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Diện tích:</span>
                           <span className="text-sm font-medium">{roomType.area}m²</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Sức chứa:</span>
-                          <span className="text-sm font-medium">{roomType.capacity} người</span>
                         </div>
                       </div>
 
@@ -386,21 +423,21 @@ export default function RoomTypes() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tên loại phòng *</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="name"
                       required
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       placeholder="VD: Phòng đơn"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Giá cơ bản (VNĐ) *</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       name="basePrice"
                       required
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       placeholder="3500000"
                     />
                   </div>
@@ -409,32 +446,21 @@ export default function RoomTypes() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Diện tích (m²) *</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       name="area"
                       required
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       placeholder="20"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Sức chứa (người) *</label>
-                    <input 
-                      type="number" 
-                      name="capacity"
-                      required
-                      min="1"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                      placeholder="1"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
-                  <textarea 
+                  <textarea
                     name="description"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     rows={3}
                     placeholder="Mô tả chi tiết về loại phòng..."
                   ></textarea>
@@ -442,15 +468,15 @@ export default function RoomTypes() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tiện nghi</label>
-                  <textarea 
+                  <textarea
                     name="amenities"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     rows={3}
                     placeholder="Điều hòa, Tủ lạnh, Giường, Tủ quần áo, Bàn học..."
                   ></textarea>
                   <p className="text-xs text-gray-500 mt-1">Phân cách bằng dấu phẩy</p>
                 </div>
-                
+
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -492,22 +518,22 @@ export default function RoomTypes() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tên loại phòng *</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="name"
                       required
                       defaultValue={editingRoomType.name}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Giá cơ bản (VNĐ) *</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       name="basePrice"
                       required
                       defaultValue={editingRoomType.basePrice}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
                 </div>
@@ -515,48 +541,37 @@ export default function RoomTypes() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Diện tích (m²) *</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       name="area"
                       required
                       defaultValue={editingRoomType.area}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Sức chứa (người) *</label>
-                    <input 
-                      type="number" 
-                      name="capacity"
-                      required
-                      min="1"
-                      defaultValue={editingRoomType.capacity}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
-                  <textarea 
+                  <textarea
                     name="description"
                     defaultValue={editingRoomType.description}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     rows={3}
                   ></textarea>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tiện nghi</label>
-                  <textarea 
+                  <textarea
                     name="amenities"
                     defaultValue={editingRoomType.amenities.join(', ')}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2" 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     rows={3}
                   ></textarea>
                   <p className="text-xs text-gray-500 mt-1">Phân cách bằng dấu phẩy</p>
                 </div>
-                
+
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"

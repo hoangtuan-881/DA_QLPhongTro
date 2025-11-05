@@ -32,28 +32,108 @@ interface Tenant {
 interface Room {
   id: string;
   number: string;
-  floor: number;
   monthlyRent: number;
   deposit: number;
-  electricityRate: number;
-  waterRate: number;
-  serviceRate: number;
   status: 'available' | 'occupied' | 'maintenance';
   area: number;
   type: string;
 }
 
+interface Service {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  unit: string;
+  category: 'services' | 'utilities' | 'other';
+  isActive: boolean;
+  usageCount: number;
+}
+
 // Mock data
+const mockServices: Service[] = [
+  {
+    id: '1',
+    name: 'Điện',
+    description: 'Dịch vụ điện theo số',
+    price: 3500,
+    unit: 'kWh',
+    category: 'utilities',
+    isActive: true,
+    usageCount: 45
+  },
+  {
+    id: '2',
+    name: 'Nước',
+    description: 'Dịch vụ nước theo người',
+    price: 60000,
+    unit: 'Người/Tháng',
+    category: 'utilities',
+    isActive: true,
+    usageCount: 32
+  },
+  {
+    id: '3',
+    name: 'Internet 1',
+    description: 'Dịch vụ internet chung cơ bản',
+    price: 50000,
+    unit: 'Phòng/Tháng',
+    category: 'services',
+    isActive: true,
+    usageCount: 28
+  },
+  {
+    id: '4',
+    name: 'Internet 2',
+    description: 'Dịch vụ internet riêng tốc độ cao',
+    price: 100000,
+    unit: 'Phòng/Tháng',
+    category: 'services',
+    isActive: true,
+    usageCount: 15
+  },
+  {
+    id: '5',
+    name: 'Rác',
+    description: 'Dịch vụ thu gom rác',
+    price: 40000,
+    unit: 'Phòng/Tháng',
+    category: 'services',
+    isActive: true,
+    usageCount: 8
+  },
+  {
+    id: '6',
+    name: 'Gửi xe',
+    description: 'Dịch vụ giữ xe, xếp xe',
+    price: 100000,
+    unit: 'Phòng/Tháng',
+    category: 'services',
+    isActive: true,
+    usageCount: 8
+  },
+  {
+    id: '7',
+    name: 'Giặt sấy',
+    description: 'Dịch vụ giặt sấy quần áo',
+    price: 7500,
+    unit: 'Kg',
+    category: 'other',
+    isActive: false,
+    usageCount: 8
+  }
+];
+
 const mockBookings: Booking[] = [
   {
     id: '1',
-    customerName: 'Hoàng Văn E',
+    customerName: 'Hoàng Minh Tuấn',
     phone: '0913456789',
-    email: 'hoangvane@email.com',
-    room: 'P103',
+    email: 'hoangminhtuan@email.com',
+    room: 'A106',
     checkInDate: '2024-04-01',
     duration: 12,
-    deposit: 7000000,
+    deposit: 2600000,
     totalAmount: 42000000,
     status: 'pending',
     bookingDate: '2024-03-15',
@@ -61,39 +141,39 @@ const mockBookings: Booking[] = [
   },
   {
     id: '2',
-    customerName: 'Nguyễn Thị F',
+    customerName: 'Nguyễn Thị Thanh Hải',
     phone: '0987654321',
-    email: 'nguyenthif@email.com',
-    room: 'P205',
+    email: 'nguyenthithanhhai@email.com',
+    room: 'A207',
     checkInDate: '2024-03-25',
     duration: 6,
-    deposit: 9000000,
+    deposit: 2600000,
     totalAmount: 30000000,
     status: 'confirmed',
     bookingDate: '2024-03-10',
   },
   {
     id: '3',
-    customerName: 'Trần Văn G',
+    customerName: 'Nguyễn Trọng Yến Linh',
     phone: '0901122334',
-    email: 'tranvang@email.com',
-    room: 'P302',
+    email: 'nguyentrongyenlinh@email.com',
+    room: 'A301',
     checkInDate: '2024-03-20',
     duration: 3,
-    deposit: 8000000,
+    deposit: 2600000,
     totalAmount: 15000000,
     status: 'completed',
     bookingDate: '2024-03-05',
   },
   {
     id: '4',
-    customerName: 'Lê Thị H',
+    customerName: 'Đặng Huỳnh Đức',
     phone: '0934567890',
-    email: 'lethih@email.com',
-    room: 'P104',
+    email: 'dhduc@email.com',
+    room: 'A406',
     checkInDate: '2024-04-15',
     duration: 12,
-    deposit: 7200000,
+    deposit: 2500000,
     totalAmount: 43200000,
     status: 'cancelled',
     bookingDate: '2024-03-18',
@@ -104,90 +184,92 @@ const mockBookings: Booking[] = [
 const mockTenants: Tenant[] = [
   {
     id: '1',
-    name: 'Hoàng Văn E',
+    name: 'Hoàng Minh Tuấn',
     phone: '0913456789',
-    email: 'hoangvane@email.com',
-    idCard: '123456789',
-    status: 'available'
+    email: 'hoangminhtuan@email.com',
+    idCard: '',
+    status: 'available',
   },
   {
     id: '2',
-    name: 'Nguyễn Thị F',
+    name: 'Nguyễn Thị Thanh Hải',
     phone: '0987654321',
-    email: 'nguyenthif@email.com',
-    idCard: '987654321',
-    status: 'available'
+    email: 'nguyenthithanhhai@email.com',
+    idCard: '',
+    status: 'available',
   },
   {
     id: '3',
-    name: 'Trần Văn G',
+    name: 'Nguyễn Trọng Yến Linh',
     phone: '0901122334',
-    email: 'tranvang@email.com',
-    idCard: '456789123',
-    status: 'available'
+    email: 'nguyentrongyenlinh@email.com',
+    idCard: '',
+    status: 'available',
   },
   {
     id: '4',
-    name: 'Lê Thị H',
+    name: 'Đặng Huỳnh Đức',
     phone: '0934567890',
-    email: 'lethih@email.com',
-    idCard: '789123456',
-    status: 'available'
-  }
+    email: 'dhduc@email.com',
+    idCard: '',
+    status: 'available',
+  },
 ];
 
 const mockRooms: Room[] = [
   {
     id: '1',
-    number: 'P103',
-    floor: 1,
-    monthlyRent: 4200000,
-    deposit: 8400000,
-    electricityRate: 3500,
-    waterRate: 25000,
-    serviceRate: 200000,
+    number: 'A106',
+    monthlyRent: 2600000,
+    deposit: 2600000,
     status: 'available',
-    area: 32,
-    type: 'Phòng đôi'
+    area: 25,
+    type: 'Phòng thường'
   },
   {
     id: '2',
-    number: 'P205',
-    floor: 2,
-    monthlyRent: 3900000,
-    deposit: 7800000,
-    electricityRate: 3500,
-    waterRate: 25000,
-    serviceRate: 150000,
+    number: 'Kiot B',
+    monthlyRent: 2700000,
+    deposit: 2700000,
     status: 'available',
-    area: 29,
-    type: 'Phòng đơn có ban công'
+    area: 25,
+    type: 'Phòng kiot'
   },
   {
     id: '3',
-    number: 'P302',
-    floor: 3,
-    monthlyRent: 4800000,
-    deposit: 9600000,
-    electricityRate: 3500,
-    waterRate: 25000,
-    serviceRate: 250000,
+    number: 'A301',
+    monthlyRent: 2600000,
+    deposit: 2600000,
     status: 'available',
-    area: 35,
-    type: 'Phòng VIP'
+    area: 25,
+    type: 'Phòng ban công'
   },
   {
     id: '4',
-    number: 'P104',
-    floor: 1,
-    monthlyRent: 3600000,
-    deposit: 7200000,
-    electricityRate: 3500,
-    waterRate: 25000,
-    serviceRate: 150000,
+    number: 'A207',
+    monthlyRent: 2600000,
+    deposit: 2600000,
     status: 'available',
     area: 26,
-    type: 'Phòng đơn'
+    type: 'Phòng góc'
+  },
+  {
+    id: '5',
+    number: 'A1',
+    monthlyRent: 2600000,
+    deposit: 2600000,
+    status: 'available',
+    area: 26,
+    type: 'Phòng trệt'
+  },
+  {
+    id: '6',
+    number: 'A406',
+    monthlyRent: 2500000,
+    deposit: 2500000,
+    status: 'available',
+    area: 26,
+    type: 'Phòng tầng thượng'
   }
 ];
 
@@ -199,22 +281,25 @@ export default function Bookings() {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [bookings, setBookings] = useState<Booking[]>(mockBookings);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [newBooking, setNewBooking] = useState({
     customerName: '',
     phone: '',
     email: '',
     room: '',
     checkInDate: '',
-    duration: 1,
+    duration: 6,
     deposit: 0,
     notes: ''
   });
-  
+  const selectedRoomForNewBooking = mockRooms.find(r => r.number === newBooking.room) || null;
+
   // Contract creation states
   const [contractBooking, setContractBooking] = useState<Booking | null>(null);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [tenantSearch, setTenantSearch] = useState('');
+  const [tenants, setTenants] = useState<Tenant[]>(mockTenants);
   const [showTenantDropdown, setShowTenantDropdown] = useState(false);
   const [showRoomDropdown, setShowRoomDropdown] = useState(false);
   const [newContract, setNewContract] = useState({
@@ -232,7 +317,7 @@ export default function Bookings() {
   const [refundAmount, setRefundAmount] = useState(0);
   const [refundReason, setRefundReason] = useState('');
   const [refundNotes, setRefundNotes] = useState('');
-  
+
   const [confirmDialog, setConfirmDialog] = useState<{
     show: boolean;
     title: string;
@@ -244,7 +329,7 @@ export default function Bookings() {
     title: '',
     message: '',
     type: 'info',
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
 
   const { success, error, warning, info } = useToast();
@@ -316,16 +401,29 @@ export default function Bookings() {
     }
   };
 
+  const getDefaultServiceIds = () => {
+    const byName = (n: string) => mockServices.find(s => s.name.toLowerCase() === n.toLowerCase() && s.isActive)?.id;
+    const ids = [
+      byName('Điện'),
+      byName('Nước'),
+      byName('Rác'),
+      byName('Internet 1'), // chọn gói mặc định
+      byName('Gửi xe'),
+    ].filter(Boolean) as string[];
+    return ids;
+  };
+
   const filteredBookings =
     filterStatus === 'all'
       ? bookings
       : bookings.filter((booking) => booking.status === filterStatus);
 
-  const filteredTenants = mockTenants.filter(tenant => 
+  const filteredTenants = tenants.filter(tenant =>
     tenant.name.toLowerCase().includes(tenantSearch.toLowerCase()) ||
     tenant.phone.includes(tenantSearch) ||
     (tenant.idCard && tenant.idCard.includes(tenantSearch))
   );
+
 
   const availableRooms = mockRooms.filter(room => room.status === 'available');
 
@@ -377,8 +475,8 @@ export default function Bookings() {
           status: 'pending',
           bookingDate: new Date().toISOString().split('T')[0]
         };
-        
-        setBookings([...bookings, booking]);
+
+        setBookings(prev => [booking, ...prev]);
         setShowAddModal(false);
         setNewBooking({
           customerName: '',
@@ -389,6 +487,23 @@ export default function Bookings() {
           duration: 1,
           deposit: 0,
           notes: ''
+        });
+        setTenants(prev => {
+          const exists = prev.some(t =>
+            (booking.phone && t.phone === booking.phone) ||
+            (booking.email && t.email === booking.email)
+          );
+          if (exists) return prev;
+          return [
+            ...prev,
+            {
+              id: `t_${booking.id}`,
+              name: booking.customerName,
+              phone: booking.phone,
+              email: booking.email,
+              status: 'pending',
+            },
+          ];
         });
         success({ title: 'Tạo đặt phòng thành công!' });
       },
@@ -403,7 +518,7 @@ export default function Bookings() {
       message: `Bạn có chắc chắn muốn xác nhận đặt phòng của "${booking?.customerName}" không?`,
       type: 'info',
       onConfirm: () => {
-        setBookings(bookings.map(b => 
+        setBookings(bookings.map(b =>
           b.id === bookingId ? { ...b, status: 'confirmed' } : b
         ));
         success({ title: `Xác nhận đặt phòng của ${booking?.customerName} thành công!` });
@@ -419,7 +534,7 @@ export default function Bookings() {
       message: `Bạn có chắc chắn muốn từ chối đặt phòng của "${booking?.customerName}" không? Hành động này không thể hoàn tác.`,
       type: 'danger',
       onConfirm: () => {
-        setBookings(bookings.map(b => 
+        setBookings(bookings.map(b =>
           b.id === bookingId ? { ...b, status: 'cancelled' } : b
         ));
         error({ title: `Đã từ chối đặt phòng của ${booking?.customerName}` });
@@ -435,7 +550,7 @@ export default function Bookings() {
       message: `Bạn có chắc chắn muốn hủy đặt phòng của "${booking?.customerName}" không? Hành động này không thể hoàn tác.`,
       type: 'danger',
       onConfirm: () => {
-        setBookings(bookings.map(b => 
+        setBookings(bookings.map(b =>
           b.id === bookingId ? { ...b, status: 'cancelled' } : b
         ));
         error({ title: `Đã hủy đặt phòng của ${booking?.customerName}` });
@@ -445,16 +560,33 @@ export default function Bookings() {
 
   const handleCreateContract = (booking: Booking) => {
     setContractBooking(booking);
-    
+
     // Pre-fill contract data from booking
-    const tenant = mockTenants.find(t => t.name === booking.customerName);
+    const tenant =
+      tenants.find(t =>
+        (booking.phone && t.phone === booking.phone) ||
+        (booking.email && t.email === booking.email) ||
+        t.name === booking.customerName
+      );
+
     const room = mockRooms.find(r => r.number === booking.room);
-    
+
     if (tenant) {
       setSelectedTenant(tenant);
       setTenantSearch(tenant.name);
+    } else {
+      // Prefill tenant tạm từ booking để hiển thị ngay
+      const tempTenant: Tenant = {
+        id: `temp_${booking.id}`,
+        name: booking.customerName,
+        phone: booking.phone,
+        email: booking.email,
+        status: 'pending',
+      };
+      setSelectedTenant(tempTenant);
+      setTenantSearch(tempTenant.name);
     }
-    
+
     if (room) {
       setSelectedRoom(room);
       setNewContract({
@@ -466,7 +598,7 @@ export default function Bookings() {
         notes: `Hợp đồng được tạo từ đặt phòng #${booking.id}`
       });
     }
-    
+    setSelectedServiceIds(getDefaultServiceIds());
     setShowContractModal(true);
   };
 
@@ -491,7 +623,7 @@ export default function Bookings() {
 
         // Update booking status to completed
         if (contractBooking) {
-          setBookings(bookings.map(b => 
+          setBookings(bookings.map(b =>
             b.id === contractBooking.id ? { ...b, status: 'completed' } : b
           ));
         }
@@ -512,10 +644,10 @@ export default function Bookings() {
       message: `Bạn có chắc chắn muốn hoàn cọc nhanh ${booking.deposit.toLocaleString('vi-VN')}đ cho "${booking.customerName}" không?`,
       type: 'warning',
       onConfirm: () => {
-        setBookings(bookings.map(b => 
+        setBookings(bookings.map(b =>
           b.id === booking.id ? { ...b, status: 'cancelled' } : b
         ));
-        success({ 
+        success({
           title: `Hoàn cọc thành công!`,
           message: `Đã hoàn ${booking.deposit.toLocaleString('vi-VN')}đ cho ${booking.customerName}`
         });
@@ -544,14 +676,14 @@ export default function Bookings() {
       message: `Bạn có chắc chắn muốn hoàn ${refundAmount.toLocaleString('vi-VN')}đ cho "${refundBooking.customerName}" không?`,
       type: 'warning',
       onConfirm: () => {
-        setBookings(bookings.map(b => 
+        setBookings(bookings.map(b =>
           b.id === refundBooking.id ? { ...b, status: 'cancelled' } : b
         ));
-        
+
         setShowRefundModal(false);
         setRefundBooking(null);
-        
-        success({ 
+
+        success({
           title: `Hoàn tiền thành công!`,
           message: `Đã hoàn ${refundAmount.toLocaleString('vi-VN')}đ cho ${refundBooking.customerName}`
         });
@@ -769,7 +901,7 @@ export default function Bookings() {
                                   className="text-orange-600 hover:text-orange-900 cursor-pointer"
                                   title="Hoàn cọc nhanh"
                                 >
-                                  <i className="ri-refund-line"></i>
+                                  <i className="ri-flashlight-line"></i>
                                 </button>
                                 <button
                                   onClick={() => handleFullRefund(booking)}
@@ -780,14 +912,14 @@ export default function Bookings() {
                                 </button>
                               </>
                             )}
-                            {(booking.status === 'pending' || booking.status === 'confirmed') && booking.deposit > 0 && (
+                            {booking.status === 'pending' && booking.deposit > 0 && (
                               <div className="flex space-x-1">
                                 <button
                                   onClick={() => handleQuickRefund(booking)}
                                   className="text-orange-600 hover:text-orange-900 cursor-pointer"
                                   title="Hoàn cọc nhanh"
                                 >
-                                  <i className="ri-refund-line"></i>
+                                  <i className="ri-flashlight-line"></i>
                                 </button>
                                 <button
                                   onClick={() => handleFullRefund(booking)}
@@ -985,7 +1117,7 @@ export default function Bookings() {
                       <input
                         type="text"
                         value={newBooking.customerName}
-                        onChange={(e) => setNewBooking({...newBooking, customerName: e.target.value})}
+                        onChange={(e) => setNewBooking({ ...newBooking, customerName: e.target.value })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         placeholder="Nhập họ tên khách hàng"
                       />
@@ -997,7 +1129,7 @@ export default function Bookings() {
                       <input
                         type="tel"
                         value={newBooking.phone}
-                        onChange={(e) => setNewBooking({...newBooking, phone: e.target.value})}
+                        onChange={(e) => setNewBooking({ ...newBooking, phone: e.target.value })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         placeholder="Nhập số điện thoại"
                       />
@@ -1009,7 +1141,7 @@ export default function Bookings() {
                       <input
                         type="email"
                         value={newBooking.email}
-                        onChange={(e) => setNewBooking({...newBooking, email: e.target.value})}
+                        onChange={(e) => setNewBooking({ ...newBooking, email: e.target.value })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         placeholder="Nhập email (tùy chọn)"
                       />
@@ -1027,20 +1159,39 @@ export default function Bookings() {
                       </label>
                       <select
                         value={newBooking.room}
-                        onChange={(e) => setNewBooking({...newBooking, room: e.target.value})}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const room = mockRooms.find(r => r.number === value);
+                          setNewBooking(prev => ({
+                            ...prev,
+                            room: value,
+                            // auto fill tiền cọc theo phòng
+                            deposit: room ? room.deposit : prev.deposit,
+                          }));
+                        }}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
                       >
                         <option value="">Chọn phòng</option>
-                        <option value="P101">P101 - Tầng 1</option>
-                        <option value="P102">P102 - Tầng 1</option>
-                        <option value="P103">P103 - Tầng 1</option>
-                        <option value="P201">P201 - Tầng 2</option>
-                        <option value="P202">P202 - Tầng 2</option>
-                        <option value="P203">P203 - Tầng 2</option>
-                        <option value="P301">P301 - Tầng 3</option>
-                        <option value="P302">P302 - Tầng 3</option>
+                        {mockRooms
+                          .filter(r => r.status === 'available')
+                          .map(r => (
+                            <option key={r.id} value={r.number}>
+                              {r.number}
+                            </option>
+                          ))}
                       </select>
+
+                      {/* Hint thông tin phòng đã chọn */}
+                      {selectedRoomForNewBooking && (
+                        <div className="mt-2 text-xs text-gray-600 space-y-1">
+                          <div>Loại phòng: <span className="font-medium">{selectedRoomForNewBooking.type}</span></div>
+                          <div>Diện tích: <span className="font-medium">{selectedRoomForNewBooking.area} m²</span></div>
+                          <div>Tiền thuê: <span className="font-medium">{selectedRoomForNewBooking.monthlyRent.toLocaleString('vi-VN')}đ/tháng</span></div>
+                          <div>Tiền cọc: <span className="font-medium">{selectedRoomForNewBooking.deposit.toLocaleString('vi-VN')}đ</span></div>
+                        </div>
+                      )}
                     </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Ngày nhận phòng <span className="text-red-500">*</span>
@@ -1048,11 +1199,12 @@ export default function Bookings() {
                       <input
                         type="date"
                         value={newBooking.checkInDate}
-                        onChange={(e) => setNewBooking({...newBooking, checkInDate: e.target.value})}
+                        onChange={(e) => setNewBooking({ ...newBooking, checkInDate: e.target.value })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         min={new Date().toISOString().split('T')[0]}
                       />
                     </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Thời hạn thuê (tháng)
@@ -1060,12 +1212,13 @@ export default function Bookings() {
                       <input
                         type="number"
                         value={newBooking.duration}
-                        onChange={(e) => setNewBooking({...newBooking, duration: parseInt(e.target.value) || 1})}
+                        onChange={(e) => setNewBooking({ ...newBooking, duration: parseInt(e.target.value) || 1 })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         min="1"
                         max="24"
                       />
                     </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Tiền cọc (VNĐ)
@@ -1073,12 +1226,13 @@ export default function Bookings() {
                       <input
                         type="number"
                         value={newBooking.deposit}
-                        onChange={(e) => setNewBooking({...newBooking, deposit: parseInt(e.target.value) || 0})}
+                        onChange={(e) => setNewBooking({ ...newBooking, deposit: parseInt(e.target.value) || 0 })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         min="0"
                         step="100000"
                         placeholder="0"
                       />
+                      {/* Gợi ý: sẽ tự điền khi chọn phòng, vẫn có thể sửa tay nếu cần */}
                     </div>
                   </div>
                 </div>
@@ -1090,7 +1244,7 @@ export default function Bookings() {
                   </label>
                   <textarea
                     value={newBooking.notes}
-                    onChange={(e) => setNewBooking({...newBooking, notes: e.target.value})}
+                    onChange={(e) => setNewBooking({ ...newBooking, notes: e.target.value })}
                     rows={3}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="Nhập ghi chú (tùy chọn)"
@@ -1127,7 +1281,7 @@ export default function Bookings() {
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowContractModal(false)}></div>
             <div className="relative bg-white rounded-lg max-w-4xl w-full p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Tạo hợp đồng từ đặt phòng</h2>
-              
+
               {/* Booking Info */}
               <div className="bg-blue-50 p-4 rounded-lg mb-6">
                 <h3 className="font-semibold text-gray-900 mb-2">Thông tin đặt phòng</h3>
@@ -1150,12 +1304,12 @@ export default function Bookings() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-6">
                 {/* Left Column - Tenant & Room Selection */}
                 <div className="space-y-4">
                   <h3 className="font-semibold text-gray-900">Thông tin khách thuê & phòng</h3>
-                  
+
                   {/* Tenant Selection */}
                   <div className="relative">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Khách thuê *</label>
@@ -1211,7 +1365,7 @@ export default function Bookings() {
                           >
                             <div className="font-medium">{room.number} - {room.type}</div>
                             <div className="text-sm text-gray-500">
-                              Tầng {room.floor} • {room.area}m² • {room.monthlyRent.toLocaleString('vi-VN')}đ/tháng
+                              {room.area}m² • {room.monthlyRent.toLocaleString('vi-VN')}đ/tháng
                             </div>
                             <div className="flex items-center mt-1">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoomStatusColor(room.status)}`}>
@@ -1237,29 +1391,59 @@ export default function Bookings() {
                           <span>Tiền cọc:</span>
                           <span className="font-medium">{selectedRoom.deposit.toLocaleString('vi-VN')}đ</span>
                         </div>
+
+                        {/* Thay thế phần này: dùng mockServices thay vì room.electricityRate/waterRate */}
                         <div className="flex justify-between">
-                          <span>Giá điện:</span>
-                          <span className="font-medium">{selectedRoom.electricityRate.toLocaleString('vi-VN')}đ/kWh</span>
+                          <span>Điện:</span>
+                          <span className="font-medium">
+                            {mockServices.find(s => s.name === 'Điện')?.price.toLocaleString('vi-VN')}đ/kWh
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Giá nước:</span>
-                          <span className="font-medium">{selectedRoom.waterRate.toLocaleString('vi-VN')}đ/m³</span>
+                          <span>Nước:</span>
+                          <span className="font-medium">
+                            {mockServices.find(s => s.name === 'Nước')?.price.toLocaleString('vi-VN')}đ/Người/Tháng
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between">
+                          <span>Internet:</span>
+                          <span className="font-medium">
+                            {(() => {
+                              const internet = mockServices.find(s => selectedServiceIds.includes(s.id) && s.name.toLowerCase().startsWith('internet'));
+                              return internet ? `${internet.price.toLocaleString('vi-VN')}đ/${internet.unit}` : '—';
+                            })()}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between">
+                          <span>Rác:</span>
+                          <span className="font-medium">
+                            {mockServices.find(s => s.name === 'Rác')?.price.toLocaleString('vi-VN')}đ/Phòng/Tháng
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Gửi xe:</span>
+                          <span className="font-medium">
+                            {mockServices.find(s => s.name === 'Gửi xe')?.price.toLocaleString('vi-VN')}đ/Phòng/Tháng
+                          </span>
                         </div>
                       </div>
                     </div>
                   )}
+
                 </div>
 
                 {/* Right Column - Contract Details */}
                 <div className="space-y-4">
                   <h3 className="font-semibold text-gray-900">Chi tiết hợp đồng</h3>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Số hợp đồng *</label>
                     <input
                       type="text"
                       value={newContract.contractNumber}
-                      onChange={(e) => setNewContract({...newContract, contractNumber: e.target.value})}
+                      onChange={(e) => setNewContract({ ...newContract, contractNumber: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       placeholder="HD001"
                     />
@@ -1270,7 +1454,7 @@ export default function Bookings() {
                     <input
                       type="date"
                       value={newContract.signedDate}
-                      onChange={(e) => setNewContract({...newContract, signedDate: e.target.value})}
+                      onChange={(e) => setNewContract({ ...newContract, signedDate: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
@@ -1281,7 +1465,7 @@ export default function Bookings() {
                       <input
                         type="date"
                         value={newContract.startDate}
-                        onChange={(e) => setNewContract({...newContract, startDate: e.target.value})}
+                        onChange={(e) => setNewContract({ ...newContract, startDate: e.target.value })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       />
                     </div>
@@ -1290,7 +1474,7 @@ export default function Bookings() {
                       <input
                         type="date"
                         value={newContract.endDate}
-                        onChange={(e) => setNewContract({...newContract, endDate: e.target.value})}
+                        onChange={(e) => setNewContract({ ...newContract, endDate: e.target.value })}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       />
                     </div>
@@ -1301,17 +1485,102 @@ export default function Bookings() {
                     <input
                       type="number"
                       value={newContract.customDeposit}
-                      onChange={(e) => setNewContract({...newContract, customDeposit: parseInt(e.target.value) || 0})}
+                      onChange={(e) => setNewContract({ ...newContract, customDeposit: parseInt(e.target.value) || 0 })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       placeholder="Để trống sẽ dùng giá mặc định"
                     />
                   </div>
+                  <div>
+                    <h4 className="block text-sm font-medium text-gray-700 mb-2">Dịch vụ áp dụng</h4>
 
+                    <div className="space-y-2">
+                      {/* 1) Utilities: Điện, Nước */}
+                      {mockServices
+                        .filter(s => s.isActive && (s.name === 'Điện' || s.name === 'Nước'))
+                        .map(s => (
+                          <label key={s.id} className="flex items-start gap-3 p-2 rounded border border-gray-200 hover:bg-gray-50">
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={selectedServiceIds.includes(s.id)}
+                              onChange={(e) => {
+                                setSelectedServiceIds(prev => e.target.checked
+                                  ? [...prev, s.id]
+                                  : prev.filter(id => id !== s.id)
+                                );
+                              }}
+                            />
+                            <div className="text-sm">
+                              <div className="font-medium">{s.name} <span className="text-gray-500">• {s.price.toLocaleString('vi-VN')}đ/{s.unit}</span></div>
+                              {s.description && <div className="text-gray-500">{s.description}</div>}
+                            </div>
+                          </label>
+                        ))
+                      }
+
+                      {/* 2) Internet: chọn 1 trong 2 (radio group) */}
+                      <div className="p-2 rounded border border-gray-200">
+                        <div className="font-medium text-sm mb-1">Internet (chọn 1)</div>
+                        {mockServices
+                          .filter(s => s.isActive && s.name.toLowerCase().startsWith('internet'))
+                          .map(s => (
+                            <label key={s.id} className="flex items-start gap-3 py-1">
+                              <input
+                                type="radio"
+                                name="internet-plan"
+                                checked={selectedServiceIds.includes(s.id)}
+                                onChange={() => {
+                                  // bỏ hết Internet X trước khi set cái mới
+                                  const internetIds = mockServices
+                                    .filter(x => x.name.toLowerCase().startsWith('internet'))
+                                    .map(x => x.id);
+                                  setSelectedServiceIds(prev => [...prev.filter(id => !internetIds.includes(id)), s.id]);
+                                }}
+                              />
+                              <div className="text-sm">
+                                <div className="font-medium">{s.name} <span className="text-gray-500">• {s.price.toLocaleString('vi-VN')}đ/{s.unit}</span></div>
+                                {s.description && <div className="text-gray-500">{s.description}</div>}
+                              </div>
+                            </label>
+                          ))
+                        }
+                      </div>
+
+                      {/* 3) Services khác: Rác, Gửi xe, ... */}
+                      {mockServices
+                        .filter(s =>
+                          s.isActive &&
+                          s.name !== 'Điện' &&
+                          s.name !== 'Nước' &&
+                          !s.name.toLowerCase().startsWith('internet')
+                        )
+                        .map(s => (
+                          <label key={s.id} className="flex items-start gap-3 p-2 rounded border border-gray-200 hover:bg-gray-50">
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={selectedServiceIds.includes(s.id)}
+                              onChange={(e) => {
+                                setSelectedServiceIds(prev => e.target.checked
+                                  ? [...prev, s.id]
+                                  : prev.filter(id => id !== s.id)
+                                );
+                              }}
+                            />
+                            <div className="text-sm">
+                              <div className="font-medium">{s.name} <span className="text-gray-500">• {s.price.toLocaleString('vi-VN')}đ/{s.unit}</span></div>
+                              {s.description && <div className="text-gray-500">{s.description}</div>}
+                            </div>
+                          </label>
+                        ))
+                      }
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
                     <textarea
                       value={newContract.notes}
-                      onChange={(e) => setNewContract({...newContract, notes: e.target.value})}
+                      onChange={(e) => setNewContract({ ...newContract, notes: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       rows={3}
                       placeholder="Ghi chú thêm về hợp đồng..."

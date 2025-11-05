@@ -1,13 +1,12 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import Sidebar from '../dashboard/components/Sidebar';
+import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
 
 interface User {
   id: number;
-  username: string;
   fullName: string;
   email: string;
   phone: string;
@@ -23,7 +22,6 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([
     {
       id: 1,
-      username: 'admin',
       fullName: 'Nguyễn Văn Admin',
       email: 'admin@tro.com',
       phone: '0901234567',
@@ -34,7 +32,6 @@ export default function UserManagement() {
     },
     {
       id: 2,
-      username: 'manager1',
       fullName: 'Trần Thị Quản Lý',
       email: 'manager@tro.com',
       phone: '0912345678',
@@ -45,7 +42,6 @@ export default function UserManagement() {
     },
     {
       id: 3,
-      username: 'customer1',
       fullName: 'Lê Văn Khách',
       email: 'khach@email.com',
       phone: '0923456789',
@@ -56,7 +52,6 @@ export default function UserManagement() {
     },
     {
       id: 4,
-      username: 'staff1',
       fullName: 'Phạm Thị Nhân Viên',
       email: 'staff@tro.com',
       phone: '0934567890',
@@ -77,21 +72,22 @@ export default function UserManagement() {
     title: '',
     message: '',
     type: 'danger' as 'danger' | 'warning' | 'info',
-    onConfirm: () => {}
+    onConfirm: () => { }
   });
 
   const roles = ['Admin', 'Quản lý', 'Nhân viên', 'Khách hàng'];
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch =
+      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.phone.includes(searchTerm);
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
   const handleCreateUser = (formData: any) => {
-    if (!formData.username || !formData.email || !formData.fullName || !formData.phone || !formData.password) {
+    if (!formData.email || !formData.fullName || !formData.phone || !formData.password) {
       error({ title: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
@@ -104,7 +100,10 @@ export default function UserManagement() {
       onConfirm: () => {
         const user: User = {
           id: Date.now(),
-          ...formData,
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          role: formData.role,
           status: 'active',
           createdAt: new Date().toISOString().split('T')[0],
           lastLogin: ''
@@ -117,7 +116,7 @@ export default function UserManagement() {
   };
 
   const handleUpdateUser = (formData: any) => {
-    if (!selectedUser || !formData.username || !formData.email || !formData.fullName || !formData.phone) {
+    if (!selectedUser || !formData.email || !formData.fullName || !formData.phone) {
       error({ title: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
@@ -128,8 +127,10 @@ export default function UserManagement() {
       message: `Bạn có chắc chắn muốn lưu thay đổi thông tin của "${selectedUser.fullName}" không?`,
       type: 'info',
       onConfirm: () => {
-        setUsers(users.map(user => 
-          user.id === selectedUser.id ? { ...user, ...formData } : user
+        setUsers(users.map(u =>
+          u.id === selectedUser.id
+            ? { ...u, fullName: formData.fullName, email: formData.email, phone: formData.phone, role: formData.role, status: formData.status }
+            : u
         ));
         setShowEditModal(false);
         setSelectedUser(null);
@@ -159,14 +160,14 @@ export default function UserManagement() {
     if (!user) return;
 
     const statusText = newStatus === 'active' ? 'kích hoạt' : 'vô hiệu hóa';
-    
+
     setConfirmDialog({
       isOpen: true,
       title: `${statusText.charAt(0).toUpperCase() + statusText.slice(1)} tài khoản`,
       message: `Bạn có chắc chắn muốn ${statusText} tài khoản của "${user.fullName}" không?`,
       type: newStatus === 'active' ? 'info' : 'warning',
       onConfirm: () => {
-        setUsers(users.map(user => 
+        setUsers(users.map(user =>
           user.id === userId ? { ...user, status: newStatus } : user
         ));
         if (newStatus === 'active') {
@@ -197,21 +198,13 @@ export default function UserManagement() {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden p-2 text-gray-400 hover:text-gray-600"
-                >
-                  <i className="ri-menu-line text-xl"></i>
-                </button>
-                <h1 className="text-xl font-semibold text-gray-900">Quản lý tài khoản</h1>
-              </div>
+        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-xl font-semibold text-gray-900">Quản lý tài khoản</h1>
               <button
                 onClick={() => setShowAddModal(true)}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-200 whitespace-nowrap"
@@ -220,11 +213,6 @@ export default function UserManagement() {
                 Thêm tài khoản
               </button>
             </div>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Filters */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -278,9 +266,6 @@ export default function UserManagement() {
                         Tài khoản
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Thông tin liên hệ
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Vai trò
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -298,38 +283,23 @@ export default function UserManagement() {
                     {filteredUsers.map((user) => (
                       <tr key={user.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                              <span className="text-indigo-600 font-medium text-sm">
-                                {user.fullName.charAt(0)}
-                              </span>
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
-                              <div className="text-sm text-gray-500">@{user.username}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{user.email}</div>
                           <div className="text-sm text-gray-500">{user.phone}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            user.role === 'Admin' ? 'bg-red-100 text-red-800' :
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'Admin' ? 'bg-red-100 text-red-800' :
                             user.role === 'Quản lý' ? 'bg-blue-100 text-blue-800' :
-                            user.role === 'Nhân viên' ? 'bg-green-100 text-green-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                              user.role === 'Nhân viên' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                            }`}>
                             {user.role}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <button
                             onClick={() => handleStatusChange(user.id, user.status === 'active' ? 'inactive' : 'active')}
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-pointer hover:opacity-80 ${
-                              user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-pointer hover:opacity-80 ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}
                           >
                             {user.status === 'active' ? 'Hoạt động' : 'Tạm khóa'}
                           </button>
@@ -425,7 +395,6 @@ interface UserModalProps {
 
 function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
   const [formData, setFormData] = useState({
-    username: user?.username || '',
     fullName: user?.fullName || '',
     email: user?.email || '',
     phone: user?.phone || '',
@@ -456,27 +425,13 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tên đăng nhập *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.username}
-                onChange={(e) => setFormData({...formData, username: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                placeholder="Nhập tên đăng nhập"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Họ và tên *
               </label>
               <input
                 type="text"
                 required
                 value={formData.fullName}
-                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 placeholder="Nhập họ và tên"
               />
@@ -490,7 +445,7 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
                 type="email"
                 required
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 placeholder="Nhập email"
               />
@@ -504,7 +459,7 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
                 type="tel"
                 required
                 value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 placeholder="Nhập số điện thoại"
               />
@@ -517,7 +472,7 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
               <select
                 required
                 value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-8"
               >
                 {roles.map(role => (
@@ -532,7 +487,7 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
               </label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({...formData, status: e.target.value as 'active' | 'inactive'})}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-8"
               >
                 <option value="active">Hoạt động</option>
@@ -549,7 +504,7 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
                   type="password"
                   required
                   value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                   placeholder="Nhập mật khẩu"
                 />

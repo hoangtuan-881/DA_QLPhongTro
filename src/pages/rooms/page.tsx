@@ -5,7 +5,39 @@ import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
 
-interface Room {
+
+export interface Building {
+  id: string;
+  name: string;
+  address: string;
+  description?: string;
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  unit: string;
+  category: 'services' | 'utilities' | 'other';
+  isActive: boolean;
+  usageCount: number;
+}
+
+export interface RoomType {
+  id: string;
+  name: string;
+  description: string;
+  basePrice: number;
+  area: number;
+  amenities: string[]; // Tiện nghi cơ bản của loại phòng này
+  totalRooms: number;
+  availableRooms: number;
+  occupiedRooms: number;
+  maintenanceRooms: number;
+}
+
+export interface Room {
   id: string;
   number: string;
   building: string;
@@ -29,15 +61,7 @@ interface Room {
     contractStart: string;
     contractEnd: string;
   };
-  members?: {
-    name: string;
-    birthDate: string;
-    gender: string;
-    idCard: string;
-    address: string;
-    phone: string;
-    vehicleNumber?: string;
-  }[];
+  members?: Member[];
   services: {
     electricity: boolean;
     water: boolean;
@@ -45,33 +69,199 @@ interface Room {
     parking: boolean;
     laundry: boolean;
     cleaning: boolean;
+    garbage: boolean;
   };
   facilities: string[];
   contractUrl?: string;
 }
-
-interface Building {
-  id: string;
+export interface Member {
   name: string;
+  birthDate: string;
+  birthPlace: string;
+  gender: string;
+  idCard: string;
+  idCardDate: string;
+  idCardPlace: string;
   address: string;
-  description?: string;
+  phone: string;
+  phone2?: string;
+  email: string;
+  vehicleNumber?: string;
+  notes?: string;
 }
-
-const mockBuildings: Building[] = [
-  { id: '1', name: 'Dãy A', address: '17/2A Nguyễn Hữu Tiến, Tây Thạnh', description: '' },
-  { id: '2', name: 'Dãy B', address: '17/2B Nguyễn Hữu Tiến, Tây Thạnh', description: '' },
-  { id: '3', name: 'Dãy C', address: '17/2C Nguyễn Hữu Tiến, Tây Thạnh', description: '' },
-  { id: '4', name: 'Dãy D', address: '17/2D Nguyễn Hữu Tiến, Tây Thạnh', description: '' }
+export const mockBuildings: Building[] = [
+  { id: '1', name: 'Dãy A', address: '17/2A Nguyễn Hữu Tiến, Tây Thạnh', description: '17/2A Nguyễn Hữu Tiến, Tây Thạnh' },
+  { id: '2', name: 'Dãy B', address: '17/2B Nguyễn Hữu Tiến, Tây Thạnh', description: 'Dãy phòng VIP' },
+  { id: '3', name: 'Dãy C', address: '17/2C Nguyễn Hữu Tiến, Tây Thạnh', description: 'Dãy phòng mới' },
+  { id: '4', name: 'Dãy D', address: '17/2C Nguyễn Hữu Tiến, Tây Thạnh', description: 'Dãy phòng cao cấp' }
 ];
 
-const mockRooms: Room[] = [
+export const mockServices: Service[] = [
+  {
+    id: '1',
+    name: 'Điện',
+    description: 'Dịch vụ điện theo số',
+    price: 3500,
+    unit: 'kWh',
+    category: 'utilities',
+    isActive: true,
+    usageCount: 45
+  },
+  {
+    id: '2',
+    name: 'Nước',
+    description: 'Dịch vụ nước theo người',
+    price: 60000,
+    unit: 'Người/Tháng',
+    category: 'utilities',
+    isActive: true,
+    usageCount: 32
+  },
+  {
+    id: '3',
+    name: 'Internet 1',
+    description: 'Dịch vụ internet chung cơ bản',
+    price: 50000,
+    unit: 'Phòng/Tháng',
+    category: 'services',
+    isActive: true,
+    usageCount: 28
+  },
+  {
+    id: '4',
+    name: 'Internet 2',
+    description: 'Dịch vụ internet riêng tốc độ cao',
+    price: 100000,
+    unit: 'Phòng/Tháng',
+    category: 'services',
+    isActive: true,
+    usageCount: 15
+  },
+  {
+    id: '5',
+    name: 'Rác',
+    description: 'Dịch vụ thu gom rác',
+    price: 40000,
+    unit: 'Phòng/Tháng',
+    category: 'services',
+    isActive: true,
+    usageCount: 8
+  },
+  {
+    id: '6',
+    name: 'Gửi xe',
+    description: 'Dịch vụ giữ xe, xếp xe',
+    price: 100000,
+    unit: 'Phòng/Tháng',
+    category: 'services',
+    isActive: true,
+    usageCount: 8
+  },
+  {
+    id: '7',
+    name: 'Giặt sấy',
+    description: 'Dịch vụ giặt sấy quần áo',
+    price: 7500,
+    unit: 'Kg',
+    category: 'other',
+    isActive: true, // <-- ĐÃ SỬA (từ false)
+    usageCount: 8
+  },
+  {
+    id: '8', // <-- ĐÃ THÊM
+    name: 'Dọn phòng',
+    description: 'Dịch vụ dọn vệ sinh phòng',
+    price: 150000,
+    unit: 'Lần',
+    category: 'services',
+    isActive: true,
+    usageCount: 10
+  }
+];
+
+export const mockRoomTypes: RoomType[] = [
+  {
+    id: '1',
+    name: 'Phòng thường',
+    description: 'Phòng tiêu chuẩn dành cho sinh viên hoặc người đi làm, có gác lửng tiện lợi.',
+    basePrice: 2600000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'], // Tiện nghi cơ bản
+    totalRooms: 3,
+    availableRooms: 1,
+    occupiedRooms: 2,
+    maintenanceRooms: 0
+  },
+  {
+    id: '2',
+    name: 'Phòng kiot',
+    description: 'Phòng dạng kiot phù hợp cho hộ gia đình nhỏ hoặc kinh doanh tại nhà.',
+    basePrice: 2700000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'],
+    totalRooms: 0,
+    availableRooms: 0,
+    occupiedRooms: 0,
+    maintenanceRooms: 0
+  },
+  {
+    id: '3',
+    name: 'Phòng ban công',
+    description: 'Phòng có ban công rộng rãi, đón ánh sáng tự nhiên và gió trời.',
+    basePrice: 2600000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát', 'Ban công'], // Thêm ban công
+    totalRooms: 2,
+    availableRooms: 0,
+    occupiedRooms: 1,
+    maintenanceRooms: 1
+  },
+  {
+    id: '4',
+    name: 'Phòng góc',
+    description: 'Phòng nằm ở góc tòa nhà, tạo cảm giác riêng tư, yên tĩnh quanh năm.',
+    basePrice: 2600000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'],
+    totalRooms: 1,
+    availableRooms: 1,
+    occupiedRooms: 0,
+    maintenanceRooms: 0
+  },
+  {
+    id: '5',
+    name: 'Phòng trệt',
+    description: 'Phòng ở tầng trệt thuận tiện di chuyển, phù hợp với người lớn tuổi hoặc gia đình có trẻ nhỏ.',
+    basePrice: 2600000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'],
+    totalRooms: 1,
+    availableRooms: 1,
+    occupiedRooms: 0,
+    maintenanceRooms: 0
+  },
+  {
+    id: '6',
+    name: 'Phòng tầng thượng',
+    description: 'Phòng nằm ở tầng cao nhất, yên tĩnh, thoáng gió, có thể tận hưởng không khí mát mẻ vào buổi tối.',
+    basePrice: 2500000,
+    area: 25,
+    amenities: ['Gác', 'Kệ chén bát'],
+    totalRooms: 1,
+    availableRooms: 0,
+    occupiedRooms: 1,
+    maintenanceRooms: 0
+  }
+];
+
+export const mockRooms: Room[] = [
   {
     id: '1',
     number: 'A101',
     building: 'Dãy A',
-    type: 'Phòng đơn',
-    area: 20,
-    price: 3500000,
+    type: 'Phòng thường',
+    area: 25,
+    price: 2600000,
     status: 'occupied',
     tenant: {
       name: 'Nguyễn Văn A',
@@ -93,11 +283,17 @@ const mockRooms: Room[] = [
       {
         name: 'Nguyễn Văn A',
         birthDate: '1995-05-20',
+        birthPlace: 'Hà Nội', // <-- CẬP NHẬT
         gender: 'Nam',
         idCard: '123456789',
+        idCardDate: '2020-01-15', // <-- CẬP NHẬT
+        idCardPlace: 'CA Hà Nội', // <-- CẬP NHẬT
         address: '123 Đường ABC, Quận 1, TP.HCM',
         phone: '0901234567',
-        vehicleNumber: '29A1-12345'
+        phone2: '0987654321', // <-- CẬP NHẬT
+        email: 'nguyenvana@email.com', // <-- CẬP NHẬT
+        vehicleNumber: '29A1-12345',
+        notes: 'Khách hàng thân thiết' // <-- CẬP NHẬT
       }
     ],
     services: {
@@ -106,18 +302,19 @@ const mockRooms: Room[] = [
       internet: true,
       parking: false,
       laundry: true,
-      cleaning: false
+      cleaning: false,
+      garbage: true
     },
-    facilities: ['Điều hòa', 'Tủ lạnh', 'Giường', 'Tủ quần áo'],
+    facilities: ['Gác', 'Kệ chén bát', 'Điều hòa', 'Tủ lạnh', 'Giường', 'Tủ quần áo'],
     contractUrl: '/contracts/contract-a101.pdf'
   },
   {
     id: '2',
     number: 'A102',
     building: 'Dãy A',
-    type: 'Phòng đôi',
-    area: 30,
-    price: 5000000,
+    type: 'Phòng trệt',
+    area: 25,
+    price: 2600000,
     status: 'available',
     services: {
       electricity: false,
@@ -125,17 +322,18 @@ const mockRooms: Room[] = [
       internet: false,
       parking: false,
       laundry: false,
-      cleaning: false
+      cleaning: false,
+      garbage: false
     },
-    facilities: ['Điều hòa', 'Tủ lạnh', '2 Giường', 'Tủ quần áo', 'Bàn học']
+    facilities: ['Gác', 'Kệ chén bát', 'Điều hòa', 'Tủ lạnh', '2 Giường', 'Tủ quần áo', 'Bàn học']
   },
   {
     id: '3',
     number: 'B201',
     building: 'Dãy B',
-    type: 'Phòng VIP',
-    area: 35,
-    price: 6500000,
+    type: 'Phòng ban công',
+    area: 25,
+    price: 2600000,
     status: 'maintenance',
     services: {
       electricity: false,
@@ -143,17 +341,18 @@ const mockRooms: Room[] = [
       internet: false,
       parking: false,
       laundry: false,
-      cleaning: false
+      cleaning: false,
+      garbage: false
     },
-    facilities: ['Điều hòa', 'Tủ lạnh', 'Giường đôi', 'Tủ quần áo', 'Bàn học', 'Ban công']
+    facilities: ['Gác', 'Kệ chén bát', 'Ban công', 'Điều hòa', 'Tủ lạnh', 'Giường đôi', 'Tủ quần áo', 'Bàn học']
   },
   {
     id: '4',
     number: 'B202',
     building: 'Dãy B',
-    type: 'Phòng đơn',
-    area: 22,
-    price: 3800000,
+    type: 'Phòng thường',
+    area: 25,
+    price: 2600000,
     status: 'occupied',
     tenant: {
       name: 'Trần Thị B',
@@ -175,20 +374,32 @@ const mockRooms: Room[] = [
       {
         name: 'Trần Thị B',
         birthDate: '1992-12-10',
+        birthPlace: 'TP.HCM', // <-- CẬP NHẬT
         gender: 'Nữ',
         idCard: '987654321',
+        idCardDate: '2019-08-10', // <-- CẬP NHẬT
+        idCardPlace: 'CA TP.HCM', // <-- CẬP NHẬT
         address: '456 Đường XYZ, Quận 3, TP.HCM',
         phone: '0912345678',
-        vehicleNumber: '51F1-67890'
+        phone2: '0976543210', // <-- CẬP NHẬT
+        email: 'tranthib@email.com', // <-- CẬP NHẬT
+        vehicleNumber: '51F1-67890',
+        notes: 'Có thú cưng' // <-- CẬP NHẬT
       },
       {
         name: 'Nguyễn Văn C',
         birthDate: '1993-03-15',
+        birthPlace: '', // <-- CẬP NHẬT
         gender: 'Nam',
         idCard: '456789123',
+        idCardDate: '', // <-- CẬP NHẬT
+        idCardPlace: '', // <-- CẬP NHẬT
         address: '789 Đường DEF, Quận 5, TP.HCM',
         phone: '0923456789',
-        vehicleNumber: '51G1-11111'
+        phone2: '', // <-- CẬP NHẬT
+        email: '', // <-- CẬP NHẬT
+        vehicleNumber: '51G1-11111',
+        notes: '' // <-- CẬP NHẬT
       }
     ],
     services: {
@@ -197,18 +408,19 @@ const mockRooms: Room[] = [
       internet: true,
       parking: true,
       laundry: false,
-      cleaning: true
+      cleaning: true,
+      garbage: true
     },
-    facilities: ['Điều hòa', 'Tủ lạnh', 'Giường', 'Tủ quần áo'],
+    facilities: ['Gác', 'Kệ chén bát', 'Điều hòa', 'Tủ lạnh', 'Giường', 'Tủ quần áo'],
     contractUrl: '/contracts/contract-b202.pdf'
   },
   {
     id: '5',
     number: 'C301',
     building: 'Dãy C',
-    type: 'Phòng đôi',
-    area: 28,
-    price: 4800000,
+    type: 'Phòng góc',
+    area: 25,
+    price: 2600000,
     status: 'available',
     services: {
       electricity: false,
@@ -216,17 +428,18 @@ const mockRooms: Room[] = [
       internet: false,
       parking: false,
       laundry: false,
-      cleaning: false
+      cleaning: false,
+      garbage: false
     },
-    facilities: ['Điều hòa', 'Tủ lạnh', '2 Giường', 'Tủ quần áo']
+    facilities: ['Gác', 'Kệ chén bát', 'Điều hòa', 'Tủ lạnh', '2 Giường', 'Tủ quần áo']
   },
   {
     id: '6',
     number: 'C302',
     building: 'Dãy C',
-    type: 'Phòng VIP',
-    area: 40,
-    price: 7000000,
+    type: 'Phòng tầng thượng',
+    area: 25,
+    price: 2500000,
     status: 'occupied',
     tenant: {
       name: 'Lê Văn D',
@@ -248,29 +461,47 @@ const mockRooms: Room[] = [
       {
         name: 'Lê Văn D',
         birthDate: '1988-07-25',
+        birthPlace: 'Đà Nẵng', // <-- CẬP NHẬT
         gender: 'Nam',
         idCard: '456789123',
+        idCardDate: '2021-03-20', // <-- CẬP NHẬT
+        idCardPlace: 'CA Đà Nẵng', // <-- CẬP NHẬT
         address: '321 Đường GHI, Quận 7, TP.HCM',
         phone: '0934567890',
-        vehicleNumber: '43A1-22222'
+        phone2: '0965432109', // <-- CẬP NHẬT
+        email: 'levand@email.com', // <-- CẬP NHẬT
+        vehicleNumber: '43A1-22222',
+        notes: 'Gia đình có trẻ nhỏ' // <-- CẬP NHẬT
       },
       {
         name: 'Phạm Thị E',
         birthDate: '1990-11-12',
+        birthPlace: '', // <-- CẬP NHẬT
         gender: 'Nữ',
         idCard: '789123456',
+        idCardDate: '', // <-- CẬP NHẬT
+        idCardPlace: '', // <-- CẬP NHẬT
         address: '321 Đường GHI, Quận 7, TP.HCM',
         phone: '0945678901',
-        vehicleNumber: '43B1-33333'
+        phone2: '', // <-- CẬP NHẬT
+        email: '', // <-- CẬP NHẬT
+        vehicleNumber: '43B1-33333',
+        notes: '' // <-- CẬP NHẬT
       },
       {
         name: 'Lê Văn F',
         birthDate: '2015-06-08',
+        birthPlace: '', // <-- CẬP NHẬT
         gender: 'Nam',
         idCard: '',
+        idCardDate: '', // <-- CẬP NHẬT
+        idCardPlace: '', // <-- CẬP NHẬT
         address: '321 Đường GHI, Quận 7, TP.HCM',
         phone: '',
-        vehicleNumber: ''
+        phone2: '', // <-- CẬP NHẬT
+        email: '', // <-- CẬP NHẬT
+        vehicleNumber: '',
+        notes: '' // <-- CẬP NHẬT
       }
     ],
     services: {
@@ -279,18 +510,19 @@ const mockRooms: Room[] = [
       internet: true,
       parking: true,
       laundry: true,
-      cleaning: true
+      cleaning: true,
+      garbage: true
     },
-    facilities: ['Điều hòa', 'Tủ lạnh', 'Giường đôi', 'Tủ quần áo', 'Bàn học', 'Ban công', 'Tủ bếp'],
+    facilities: ['Gác', 'Kệ chén bát', 'Điều hòa', 'Tủ lạnh', 'Giường đôi', 'Tủ quần áo', 'Bàn học', 'Ban công', 'Tủ bếp'],
     contractUrl: '/contracts/contract-c302.pdf'
   },
   {
     id: '7',
     number: 'D401',
     building: 'Dãy D',
-    type: 'Phòng đơn',
+    type: 'Phòng thường',
     area: 25,
-    price: 3700000,
+    price: 2600000,
     status: 'available',
     services: {
       electricity: false,
@@ -298,17 +530,18 @@ const mockRooms: Room[] = [
       internet: false,
       parking: false,
       laundry: false,
-      cleaning: false
+      cleaning: false,
+      garbage: false
     },
-    facilities: ['Điều hòa', 'Tủ lạnh', 'Giường', 'Tủ quần áo', 'Bàn học']
+    facilities: ['Gác', 'Kệ chén bát', 'Điều hòa', 'Tủ lạnh', 'Giường', 'Tủ quần áo', 'Bàn học']
   },
   {
     id: '8',
     number: 'D402',
     building: 'Dãy D',
-    type: 'Phòng VIP',
-    area: 45,
-    price: 7500000,
+    type: 'Phòng ban công',
+    area: 25,
+    price: 2600000,
     status: 'occupied',
     tenant: {
       name: 'Hoàng Thị E',
@@ -330,11 +563,17 @@ const mockRooms: Room[] = [
       {
         name: 'Hoàng Thị E',
         birthDate: '1985-09-18',
+        birthPlace: 'Hải Phòng', // <-- CẬP NHẬT
         gender: 'Nữ',
         idCard: '789123456',
+        idCardDate: '2020-12-05', // <-- CẬP NHẬT
+        idCardPlace: 'CA Hải Phòng', // <-- CẬP NHẬT
         address: '654 Đường JKL, Quận 10, TP.HCM',
         phone: '0967890123',
-        vehicleNumber: '15A1-44444'
+        phone2: '0954321098', // <-- CẬP NHẬT
+        email: 'hoangthie@email.com', // <-- CẬP NHẬT
+        vehicleNumber: '15A1-44444',
+        notes: 'Làm việc ca đêm' // <-- CẬP NHẬT
       }
     ],
     services: {
@@ -343,14 +582,16 @@ const mockRooms: Room[] = [
       internet: true,
       parking: true,
       laundry: true,
-      cleaning: true
+      cleaning: true,
+      garbage: true
     },
-    facilities: ['Điều hòa', 'Tủ lạnh', 'Giường đôi', 'Tủ quần áo', 'Bàn học', 'Ban công', 'Tủ bếp', 'Máy giặt'],
+    facilities: ['Gác', 'Kệ chén bát', 'Ban công', 'Điều hòa', 'Tủ lạnh', 'Giường đôi', 'Tủ quần áo', 'Bàn học', 'Tủ bếp', 'Máy giặt'],
     contractUrl: '/contracts/contract-d402.pdf'
   }
 ];
 
 export default function Rooms() {
+  // ====== STATE ======
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [rooms, setRooms] = useState<Room[]>(mockRooms);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -368,7 +609,7 @@ export default function Rooms() {
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [editingBuilding, setEditingBuilding] = useState<Building | null>(null);
   const [selectedBuilding, setSelectedBuilding] = useState<string>('');
-  const [changeRoomData, setChangeRoomData] = useState<{ fromRoom: Room | null, toRoom: string }>({ fromRoom: null, toRoom: '' });
+  const [changeRoomData, setChangeRoomData] = useState<{ fromRoom: Room | null; toRoom: string }>({ fromRoom: null, toRoom: '' });
 
   // New states for grid/list view and bulk operations
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -384,39 +625,77 @@ export default function Rooms() {
   });
 
   const toast = useToast();
+  // State cho danh sách dãy nhà (thay thế mockBuildings)
+  const [buildingList, setBuildingList] = useState<Building[]>(mockBuildings);
 
+  // State cho form "Thêm Dãy Mới"
+  const [newBuilding, setNewBuilding] = useState({
+    name: '',
+    address: '',
+    description: ''
+  });
+
+  // State cho form "Thêm Phòng Mới"
+  const [newRoomData, setNewRoomData] = useState({
+    number: '',
+    building: '',
+    type: mockRoomTypes[0]?.name || 'Phòng thường' // Lấy loại phòng đầu tiên làm mặc định
+  });
+  // ====== HELPERS ======
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'available': return 'bg-green-100 text-green-800';
-      case 'occupied': return 'bg-blue-100 text-blue-800';
-      case 'maintenance': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'available':
+        return 'bg-green-100 text-green-800';
+      case 'occupied':
+        return 'bg-blue-100 text-blue-800';
+      case 'maintenance':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'available': return 'Trống';
-      case 'occupied': return 'Đã thuê';
-      case 'maintenance': return 'Bảo trì';
-      default: return status;
+      case 'available':
+        return 'Trống';
+      case 'occupied':
+        return 'Đã thuê';
+      case 'maintenance':
+        return 'Bảo trì';
+      default:
+        return status;
     }
   };
 
-  const buildings = ['all', ...Array.from(new Set(rooms.map(room => room.building)))];
-  const roomTypes = ['all', ...Array.from(new Set(rooms.map(room => room.type)))];
+  // Lấy meta theo RoomType name để đồng bộ area/price nhanh
+  const findRoomTypeMeta = (typeName: string) => mockRoomTypes.find(rt => rt.name === typeName);
 
+  // ====== FILTER SOURCES ======
+  // Đọc từ state "buildingList" thay vì "mockBuildings"
+  const buildings = ['all', ...buildingList.map(b => b.name)];
+
+  // Loại phòng cố định theo mockRoomTypes (6 loại)
+  const roomTypes = ['all', ...mockRoomTypes.map(rt => rt.name)];
+
+  // Lọc phòng
   const filteredRooms = rooms.filter(room => {
     const matchesBuilding = activeTab === 'all' || room.building === activeTab;
     const matchesStatus = filterStatus === 'all' || room.status === filterStatus;
     const matchesType = filterType === 'all' || room.type === filterType;
-    const matchesSearch = room.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (room.tenant?.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const term = searchTerm.trim().toLowerCase();
+    const matchesSearch =
+      term === '' ||
+      room.number.toLowerCase().includes(term) ||
+      (room.tenant?.name || '').toLowerCase().includes(term) ||
+      room.building.toLowerCase().includes(term) ||
+      room.type.toLowerCase().includes(term);
 
     return matchesBuilding && matchesStatus && matchesType && matchesSearch;
   });
 
-  // Bulk selection handlers
+  // ====== BULK SELECTION ======
   const handleSelectAll = () => {
     if (selectedRooms.length === filteredRooms.length) {
       setSelectedRooms([]);
@@ -426,18 +705,12 @@ export default function Rooms() {
   };
 
   const handleSelectRoom = (roomId: string) => {
-    setSelectedRooms(prev =>
-      prev.includes(roomId)
-        ? prev.filter(id => id !== roomId)
-        : [...prev, roomId]
-    );
+    setSelectedRooms(prev => (prev.includes(roomId) ? prev.filter(id => id !== roomId) : [...prev, roomId]));
   };
 
-  // Bulk operations
+  // ====== BULK OPS ======
   const handleBulkStatusChange = (newStatus: 'available' | 'occupied' | 'maintenance') => {
-    const statusText = newStatus === 'available' ? 'trống' :
-      newStatus === 'occupied' ? 'đã thuê' :
-        newStatus === 'maintenance' ? 'bảo trì' : newStatus;
+    const statusText = newStatus === 'available' ? 'trống' : newStatus === 'occupied' ? 'đã thuê' : 'bảo trì';
 
     setConfirmDialog({
       isOpen: true,
@@ -446,24 +719,22 @@ export default function Rooms() {
       type: 'warning',
       loading: false,
       onConfirm: () => {
-        setRooms(prev => prev.map(room =>
-          selectedRooms.includes(room.id) ? { ...room, status: newStatus } : room
-        ));
+        setRooms(prev =>
+          prev.map(room => (selectedRooms.includes(room.id) ? { ...room, status: newStatus } : room))
+        );
         toast.success({
           title: 'Cập nhật thành công',
           message: `Đã chuyển ${selectedRooms.length} phòng sang trạng thái "${statusText}"`
         });
         setSelectedRooms([]);
         setShowBulkActions(false);
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
       }
     });
   };
 
   const handleBulkDelete = () => {
-    const occupiedRooms = rooms.filter(room =>
-      selectedRooms.includes(room.id) && room.status === 'occupied'
-    );
+    const occupiedRooms = rooms.filter(room => selectedRooms.includes(room.id) && room.status === 'occupied');
 
     if (occupiedRooms.length > 0) {
       toast.error({
@@ -487,12 +758,12 @@ export default function Rooms() {
         });
         setSelectedRooms([]);
         setShowBulkActions(false);
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
       }
     });
   };
 
-  // Single room operations
+  // ====== SINGLE ROOM OPS ======
   const handleDeleteRoom = (room: Room) => {
     if (room.status === 'occupied') {
       toast.error({
@@ -515,7 +786,7 @@ export default function Rooms() {
           message: `Đã xóa phòng ${room.number} khỏi hệ thống`
         });
         setSelectedRoom(null);
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
       }
     });
   };
@@ -535,12 +806,18 @@ export default function Rooms() {
   };
 
   const handleEditRoom = (room: Room) => {
-    setEditingRoom({ ...room });
+    // Đồng bộ area/price theo RoomType ngay lúc mở modal cho thống nhất UI
+    const meta = findRoomTypeMeta(room.type);
+    const synced: Room = meta
+      ? { ...room, area: meta.area, price: meta.basePrice }
+      : room;
+
+    setEditingRoom({ ...synced });
     setShowEditModal(true);
   };
 
   const handleEditBuilding = (buildingName: string) => {
-    const building = mockBuildings.find(b => b.name === buildingName);
+    const building = buildingList.find(b => b.name === buildingName);
     if (building) {
       setEditingBuilding({ ...building });
       setShowEditBuildingModal(true);
@@ -548,47 +825,124 @@ export default function Rooms() {
   };
 
   const handleDeleteBuilding = (buildingName: string) => {
+    // Kiểm tra xem dãy có phòng nào không
+    const roomsInBuilding = rooms.filter(room => room.building === buildingName);
+    if (roomsInBuilding.length > 0) {
+      toast.error({
+        title: 'Không thể xóa',
+        message: `Dãy "${buildingName}" vẫn còn ${roomsInBuilding.length} phòng. Không thể xóa.`
+      });
+      return;
+    }
+
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận xóa dãy phòng',
-      message: `Bạn có chắc chắn muốn xóa ${buildingName}? Tất cả phòng trong dãy này cũng sẽ bị xóa.`,
+      message: `Bạn có chắc chắn muốn xóa ${buildingName} không? Dãy này hiện không có phòng.`,
       type: 'danger',
       loading: false,
       onConfirm: () => {
-        setRooms(prev => prev.filter(room => room.building !== buildingName));
+        // Cập nhật state "buildingList"
+        setBuildingList(prev => prev.filter(b => b.name !== buildingName));
+
         toast.success({
           title: 'Xóa thành công',
-          message: `Đã xóa ${buildingName} và tất cả phòng trong dãy`
+          message: `Đã xóa ${buildingName} khỏi hệ thống`
         });
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        // Nếu đang ở tab dãy vừa xóa thì chuyển về "Tất cả"
+        setActiveTab('all');
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
       }
     });
   };
 
   const handleAddRoomToBuilding = (buildingName: string) => {
-    setSelectedBuilding(buildingName);
+    // Cập nhật state cho form "Thêm Phòng"
+    setNewRoomData({
+      number: '',
+      building: buildingName,
+      type: mockRoomTypes[0]?.name || 'Phòng thường'
+    });
     setShowAddModal(true);
+    // Không cần setSelectedBuilding nữa
   };
 
+  // Chuyển phòng: chuyển tenant/members/dịch vụ từ phòng A → phòng B (phòng B phải available)
   const handleConfirmChangeRoom = () => {
+    const from = changeRoomData.fromRoom;
+    const toNumber = changeRoomData.toRoom;
+    if (!from || !toNumber) return;
+
+    setRooms(prev => {
+      const toIdx = prev.findIndex(r => r.number === toNumber);
+      if (toIdx === -1) return prev;
+
+      const fromIdx = prev.findIndex(r => r.id === from.id);
+      if (fromIdx === -1) return prev;
+
+      const toRoom = prev[toIdx];
+      if (toRoom.status !== 'available') {
+        toast.error({ title: 'Không thể đổi', message: 'Phòng đích không ở trạng thái trống.' });
+        return prev;
+      }
+
+      const updated = [...prev];
+
+      // Move tenant/members/services status
+      updated[toIdx] = {
+        ...toRoom,
+        tenant: from.tenant,
+        members: from.members,
+        services: { ...from.services },
+        status: 'occupied'
+      };
+
+      updated[fromIdx] = {
+        ...from,
+        tenant: undefined,
+        members: undefined,
+        status: 'available'
+      };
+
+      return updated;
+    });
+
     toast.success({
       title: 'Chuyển phòng thành công',
-      message: `Đã chuyển khách từ phòng ${changeRoomData.fromRoom?.number} sang phòng ${changeRoomData.toRoom}`
+      message: `Đã chuyển khách từ phòng ${from.number} sang phòng ${toNumber}`
     });
     setShowChangeRoomModal(false);
     setChangeRoomData({ fromRoom: null, toRoom: '' });
   };
 
+  // Trả phòng: clear tenant/members, set available
   const handleConfirmCheckOut = () => {
+    if (!selectedRoom) return;
+
+    setRooms(prev =>
+      prev.map(r =>
+        r.id === selectedRoom.id
+          ? { ...r, tenant: undefined, members: undefined, status: 'available' }
+          : r
+      )
+    );
+
     toast.success({
       title: 'Trả phòng thành công',
-      message: `Đã xác nhận trả phòng ${selectedRoom?.number}. Phòng sẽ chuyển về trạng thái trống.`
+      message: `Đã xác nhận trả phòng ${selectedRoom.number}. Phòng sẽ chuyển về trạng thái trống.`
     });
     setShowCheckOutModal(false);
     setSelectedRoom(null);
   };
 
+  // Lưu phòng: ghi lại thay đổi từ editingRoom vào rooms (đồng bộ area/price theo type hiện chọn)
   const handleSaveRoom = () => {
+    if (!editingRoom) return;
+
+    const payload: Room = editingRoom;
+
+    setRooms(prev => prev.map(r => (r.id === payload.id ? payload : r)));
+
     toast.success({
       title: 'Cập nhật thành công',
       message: 'Đã lưu thông tin phòng thành công!'
@@ -598,41 +952,131 @@ export default function Rooms() {
   };
 
   const handleSaveBuilding = () => {
+    if (!editingBuilding) return;
+
+    // Cập nhật state "buildingList"
+    setBuildingList(prev =>
+      prev.map(b => (b.id === editingBuilding.id ? editingBuilding : b))
+    );
+
+    // Cập nhật tên dãy trong tất cả các phòng liên quan
+    setRooms(prevRooms =>
+      prevRooms.map(room =>
+        room.building === editingBuilding.name // Giả sử tên cũ
+          ? { ...room, building: editingBuilding.name } // Cập nhật tên mới
+          : room
+      )
+    );
+
     toast.success({
       title: 'Cập nhật thành công',
-      message: 'Đã lưu thông tin dãy phòng thành công!'
+      message: `Đã lưu thông tin dãy ${editingBuilding.name}!`
     });
     setShowEditBuildingModal(false);
     setEditingBuilding(null);
   };
 
   const handleAddBuilding = () => {
+    if (!newBuilding.name.trim() || !newBuilding.address.trim()) {
+      toast.error({ title: 'Lỗi', message: 'Tên dãy và địa chỉ không được để trống.' });
+      return;
+    }
+    if (buildingList.some(b => b.name === newBuilding.name.trim())) {
+      toast.error({ title: 'Lỗi', message: 'Tên dãy này đã tồn tại.' });
+      return;
+    }
+
+    const buildingToAdd: Building = {
+      ...newBuilding,
+      id: (buildingList.length + 1).toString(), // ID đơn giản
+      name: newBuilding.name.trim(),
+      address: newBuilding.address.trim(),
+    };
+
+    // Cập nhật state "buildingList"
+    setBuildingList([...buildingList, buildingToAdd]);
+
     toast.success({
       title: 'Thêm thành công',
-      message: 'Đã thêm dãy phòng mới thành công!'
+      message: `Đã thêm dãy ${buildingToAdd.name} thành công!`
     });
+
     setShowAddBuildingModal(false);
+    setNewBuilding({ name: '', address: '', description: '' }); // Reset form
   };
 
+  // Thêm phòng mới (từ modal): auto set area/price theo RoomType đã chọn trong form (đọc từ DOM hoặc state nội bộ modal nếu có)
+  // Ở đây giữ hàm hiển thị toast + đóng modal; khi bạn nối form controlled, chỉ cần tạo Room mới và setRooms([...rooms, newRoom])
   const handleAddRoom = () => {
+    if (!newRoomData.number.trim() || !newRoomData.building || !newRoomData.type) {
+      toast.error({ title: 'Lỗi', message: 'Vui lòng điền đủ Số phòng, Dãy, và Loại phòng.' });
+      return;
+    }
+    if (rooms.some(r => r.number.toLowerCase() === newRoomData.number.trim().toLowerCase())) {
+      toast.error({ title: 'Lỗi', message: `Số phòng "${newRoomData.number}" đã tồn tại.` });
+      return;
+    }
+
+    // Tìm thông tin từ loại phòng
+    const meta = findRoomTypeMeta(newRoomData.type);
+    if (!meta) {
+      toast.error({ title: 'Lỗi', message: 'Không tìm thấy loại phòng.' });
+      return;
+    }
+
+    const roomToAdd: Room = {
+      id: (rooms.length + 10).toString(), // ID đơn giản, tạm thời
+      number: newRoomData.number.trim(),
+      building: newRoomData.building,
+      type: newRoomData.type,
+      area: meta.area,
+      price: meta.basePrice,
+      status: 'available',
+      services: { // Mặc định tắt hết
+        electricity: false,
+        water: false,
+        internet: false,
+        parking: false,
+        laundry: false,
+        cleaning: false,
+        garbage: false
+      },
+      facilities: [...meta.amenities] // Lấy tiện nghi cơ bản từ loại phòng
+      // tenant và members sẽ là undefined
+    };
+
+    // Cập nhật state "rooms"
+    setRooms([...rooms, roomToAdd]);
+
     toast.success({
       title: 'Thêm thành công',
-      message: 'Đã thêm phòng mới thành công!'
+      message: `Đã thêm phòng ${roomToAdd.number} vào ${roomToAdd.building}!`
     });
+
     setShowAddModal(false);
-    setSelectedBuilding('');
+    // Reset form
+    setNewRoomData({
+      number: '',
+      building: '',
+      type: mockRoomTypes[0]?.name || 'Phòng thường'
+    });
   };
 
+  // ====== TABS COUNT ======
   const tabButtons = [
     { id: 'all', label: 'Tất cả', count: rooms.length },
-    ...buildings.filter(b => b !== 'all').map(building => ({
-      id: building,
-      label: building,
-      count: rooms.filter(r => r.building === building).length
-    }))
+    ...buildings
+      .filter(b => b !== 'all')
+      .map(building => ({
+        id: building,
+        label: building,
+        count: rooms.filter(r => r.building === building).length
+      }))
   ];
 
+  // Danh sách phòng trống dùng cho "Đổi phòng"
   const availableRooms = rooms.filter(room => room.status === 'available');
+
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -680,8 +1124,10 @@ export default function Rooms() {
                           }`}
                       >
                         {tab.label}
-                        <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${activeTab === tab.id ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-900'
-                          }`}>
+                        <span
+                          className={`ml-2 py-0.5 px-2 rounded-full text-xs ${activeTab === tab.id ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-900'
+                            }`}
+                        >
                           {tab.count}
                         </span>
                       </button>
@@ -726,9 +1172,7 @@ export default function Rooms() {
                   <div className="flex items-center gap-4">
                     {selectedRooms.length > 0 && (
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">
-                          Đã chọn {selectedRooms.length} phòng
-                        </span>
+                        <span className="text-sm text-gray-600">Đã chọn {selectedRooms.length} phòng</span>
                         <button
                           onClick={() => setShowBulkActions(!showBulkActions)}
                           className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg text-sm hover:bg-indigo-200 cursor-pointer whitespace-nowrap"
@@ -742,9 +1186,7 @@ export default function Rooms() {
                     <div className="flex bg-gray-100 rounded-lg p-1">
                       <button
                         onClick={() => setViewMode('grid')}
-                        className={`px-3 py-1 rounded-md text-sm cursor-pointer ${viewMode === 'grid'
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
+                        className={`px-3 py-1 rounded-md text-sm cursor-pointer ${viewMode === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                           }`}
                       >
                         <i className="ri-grid-line mr-1"></i>
@@ -752,9 +1194,7 @@ export default function Rooms() {
                       </button>
                       <button
                         onClick={() => setViewMode('list')}
-                        className={`px-3 py-1 rounded-md text-sm cursor-pointer ${viewMode === 'list'
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
+                        className={`px-3 py-1 rounded-md text-sm cursor-pointer ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                           }`}
                       >
                         <i className="ri-list-unordered mr-1"></i>
@@ -821,9 +1261,13 @@ export default function Rooms() {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm"
                     >
                       <option value="all">Tất cả loại</option>
-                      {roomTypes.filter(t => t !== 'all').map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
+                      {roomTypes
+                        .filter((t) => t !== 'all')
+                        .map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
                     </select>
                   </div>
                   <div>
@@ -866,9 +1310,7 @@ export default function Rooms() {
                     onChange={handleSelectAll}
                     className="mr-3 h-4 w-4 text-indigo-600 rounded"
                   />
-                  <span className="text-sm font-medium text-gray-700">
-                    Chọn tất cả ({filteredRooms.length} phòng)
-                  </span>
+                  <span className="text-sm font-medium text-gray-700">Chọn tất cả ({filteredRooms.length} phòng)</span>
                 </label>
               </div>
             )}
@@ -986,30 +1428,14 @@ export default function Rooms() {
                             className="h-4 w-4 text-indigo-600 rounded"
                           />
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Phòng
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Dãy/Tầng
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Loại
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Diện tích
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Giá thuê
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Khách thuê
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Trạng thái
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Thao tác
-                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phòng</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dãy</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Diện tích</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá thuê</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách thuê</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -1036,14 +1462,10 @@ export default function Rooms() {
                             <div className="text-sm text-gray-900">{room.area}m²</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-green-600">
-                              {room.price.toLocaleString('vi-VN')}đ
-                            </div>
+                            <div className="text-sm font-medium text-green-600">{room.price.toLocaleString('vi-VN')}đ</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {room.tenant?.name || '-'}
-                            </div>
+                            <div className="text-sm text-gray-900">{room.tenant?.name || '-'}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(room.status)}`}>
@@ -1112,10 +1534,7 @@ export default function Rooms() {
             <div className="relative bg-white rounded-lg max-w-5xl w-full p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Chi tiết phòng {selectedRoom.number}</h2>
-                <button
-                  onClick={() => setSelectedRoom(null)}
-                  className="text-gray-400 hover:text-gray-600 cursor-pointer"
-                >
+                <button onClick={() => setSelectedRoom(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
                   <i className="ri-close-line text-xl"></i>
                 </button>
               </div>
@@ -1231,7 +1650,9 @@ export default function Rooms() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Ngày sinh:</span>
-                          <span className="font-medium">{new Date(selectedRoom.tenant.birthDate).toLocaleDateString('vi-VN')}</span>
+                          <span className="font-medium">
+                            {new Date(selectedRoom.tenant.birthDate).toLocaleDateString('vi-VN')}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Nơi sinh:</span>
@@ -1243,7 +1664,9 @@ export default function Rooms() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Ngày cấp:</span>
-                          <span className="font-medium">{new Date(selectedRoom.tenant.idCardDate).toLocaleDateString('vi-VN')}</span>
+                          <span className="font-medium">
+                            {new Date(selectedRoom.tenant.idCardDate).toLocaleDateString('vi-VN')}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Nơi cấp:</span>
@@ -1278,7 +1701,8 @@ export default function Rooms() {
                         <div className="flex justify-between">
                           <span className="text-gray-600">Hợp đồng:</span>
                           <span className="font-medium">
-                            {new Date(selectedRoom.tenant.contractStart).toLocaleDateString('vi-VN')} - {new Date(selectedRoom.tenant.contractEnd).toLocaleDateString('vi-VN')}
+                            {new Date(selectedRoom.tenant.contractStart).toLocaleDateString('vi-VN')} -{' '}
+                            {new Date(selectedRoom.tenant.contractEnd).toLocaleDateString('vi-VN')}
                           </span>
                         </div>
                         {selectedRoom.tenant.notes && (
@@ -1298,94 +1722,133 @@ export default function Rooms() {
                     <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
                       <div className="grid grid-cols-2 gap-3">
                         <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedRoom.services.electricity}
-                            readOnly
-                            className="mr-3 h-4 w-4 text-indigo-600 rounded"
-                          />
+                          <input type="checkbox" checked={selectedRoom.services.electricity} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
                           <span className="text-sm">Điện</span>
                         </label>
                         <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedRoom.services.water}
-                            readOnly
-                            className="mr-3 h-4 w-4 text-indigo-600 rounded"
-                          />
+                          <input type="checkbox" checked={selectedRoom.services.water} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
                           <span className="text-sm">Nước</span>
                         </label>
                         <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedRoom.services.internet}
-                            readOnly
-                            className="mr-3 h-4 w-4 text-indigo-600 rounded"
-                          />
-                          <span className="text-sm">Internet</span>
+                          <input type="checkbox" checked={selectedRoom.services.internet} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
+                          <span className="text-sm">Internet 1</span>
                         </label>
                         <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedRoom.services.parking}
-                            readOnly
-                            className="mr-3 h-4 w-4 text-indigo-600 rounded"
-                          />
+                          <input type="checkbox" checked={selectedRoom.services.parking} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
+                          <span className="text-sm">Internet 2</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input type="checkbox" checked={selectedRoom.services.laundry} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
                           <span className="text-sm">Gửi xe</span>
                         </label>
                         <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedRoom.services.laundry}
-                            readOnly
-                            className="mr-3 h-4 w-4 text-indigo-600 rounded"
-                          />
-                          <span className="text-sm">Giặt sấy</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedRoom.services.cleaning}
-                            readOnly
-                            className="mr-3 h-4 w-4 text-indigo-600 rounded"
-                          />
-                          <span className="text-sm">Dọn phòng</span>
+                          <input type="checkbox" checked={selectedRoom.services.garbage} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
+                          <span className="text-sm">Rác</span>
                         </label>
                       </div>
                     </div>
                   </div>
                 )}
 
+                {/* Thay thế bắt đầu từ đây */}
                 {detailActiveTab === 'members' && selectedRoom.members && (
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-4">Thành viên trong phòng</h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Họ tên</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày sinh</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Giới tính</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">CMND/CCCD</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Địa chỉ</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Điện thoại</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Số xe</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {selectedRoom.members.map((member, index) => (
-                            <tr key={index}>
-                              <td className="px-4 py-3 text-sm font-medium text-gray-900">{member.name}</td>
-                              <td className="px-4 py-3 text-sm text-gray-500">{new Date(member.birthDate).toLocaleDateString('vi-VN')}</td>
-                              <td className="px-4 py-3 text-sm text-gray-500">{member.gender}</td>
-                              <td className="px-4 py-3 text-sm text-gray-500">{member.idCard || '-'}</td>
-                              <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{member.address}</td>
-                              <td className="px-4 py-3 text-sm text-gray-500">{member.phone || '-'}</td>
-                              <td className="px-4 py-3 text-sm text-gray-500">{member.vehicleNumber || '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <h3 className="font-semibold text-gray-900 mb-4">
+                      Thành viên trong phòng ({selectedRoom.members.length})
+                    </h3>
+                    <div className="space-y-4">
+                      {' '}
+                      {/* Container cho các thẻ thành viên */}
+                      {selectedRoom.members.map((member, index) => (
+                        <div
+                          key={index}
+                          className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                        >
+                          <h4 className="font-semibold text-gray-800 mb-3">
+                            {member.name}
+                          </h4>
+                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-2">
+                            {/* Cột 1: Thông tin cá nhân */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Ngày sinh:</span>
+                                <span className="font-medium">
+                                  {member.birthDate
+                                    ? new Date(member.birthDate).toLocaleDateString('vi-VN')
+                                    : '-'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Nơi sinh:</span>
+                                <span className="font-medium">{member.birthPlace || '-'}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Giới tính:</span>
+                                <span className="font-medium">{member.gender || '-'}</span>
+                              </div>
+                            </div>
+                            {/* Cột 2: Thông tin định danh */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">CMND/CCCD:</span>
+                                <span className="font-medium">{member.idCard || '-'}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Ngày cấp:</span>
+                                <span className="font-medium">
+                                  {member.idCardDate
+                                    ? new Date(member.idCardDate).toLocaleDateString('vi-VN')
+                                    : '-'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Nơi cấp:</span>
+                                <span className="font-medium">
+                                  {member.idCardPlace || '-'}
+                                </span>
+                              </div>
+                            </div>
+                            {/* Cột 3: Thông tin liên hệ */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Điện thoại 1:</span>
+                                <span className="font-medium">{member.phone || '-'}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Điện thoại 2:</span>
+                                <span className="font-medium">{member.phone2 || '-'}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Email:</span>
+                                <span className="font-medium">{member.email || '-'}</span>
+                              </div>
+                            </div>
+                            {/* Hàng đầy đủ: Địa chỉ, xe, ghi chú */}
+                            <div className="lg:col-span-3 space-y-2 mt-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Số xe:</span>
+                                <span className="font-medium">
+                                  {member.vehicleNumber || '-'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Địa chỉ:</span>
+                                <span className="font-medium text-right max-w-md truncate">
+                                  {member.address || '-'}
+                                </span>
+                              </div>
+                              {member.notes && (
+                                <div className="text-sm">
+                                  <span className="text-gray-600">Ghi chú:</span>
+                                  <p className="font-medium mt-1 text-gray-800">
+                                    {member.notes}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -1428,7 +1891,13 @@ export default function Rooms() {
             <div className="relative bg-white rounded-lg max-w-md w-full p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Chỉnh sửa dãy phòng</h2>
 
-              <form className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSaveBuilding();
+                }}
+              >
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tên dãy phòng</label>
                   <input
@@ -1467,8 +1936,7 @@ export default function Rooms() {
                     Hủy
                   </button>
                   <button
-                    type="button"
-                    onClick={handleSaveBuilding}
+                    type="submit"
                     className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer whitespace-nowrap"
                   >
                     Lưu thay đổi
@@ -1488,10 +1956,23 @@ export default function Rooms() {
             <div className="relative bg-white rounded-lg max-w-md w-full p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Thêm dãy phòng mới</h2>
 
-              <form className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAddBuilding();
+                }}
+              >
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tên dãy phòng</label>
-                  <input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Dãy E" />
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder="Dãy E"
+                    value={newBuilding.name}
+                    onChange={(e) => setNewBuilding({ ...newBuilding, name: e.target.value })}
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
@@ -1499,11 +1980,20 @@ export default function Rooms() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     rows={3}
                     placeholder="Nhập địa chỉ của dãy nhà..."
+                    value={newBuilding.address}
+                    onChange={(e) => setNewBuilding({ ...newBuilding, address: e.target.value })}
+                    required
                   ></textarea>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
-                  <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={3} placeholder="Mô tả về dãy phòng..."></textarea>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    rows={3}
+                    placeholder="Mô tả về dãy phòng..."
+                    value={newBuilding.description}
+                    onChange={(e) => setNewBuilding({ ...newBuilding, description: e.target.value })}
+                  ></textarea>
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -1515,8 +2005,7 @@ export default function Rooms() {
                     Hủy
                   </button>
                   <button
-                    type="button"
-                    onClick={handleAddBuilding}
+                    type="submit"
                     className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 cursor-pointer whitespace-nowrap"
                   >
                     Thêm dãy phòng
@@ -1532,43 +2021,77 @@ export default function Rooms() {
       {showAddModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowAddModal(false)}></div>
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50"
+              onClick={() => setShowAddModal(false)}
+            ></div>
             <div className="relative bg-white rounded-lg max-w-md w-full p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">
                 Thêm phòng mới {selectedBuilding && `- ${selectedBuilding}`}
               </h2>
 
-              <form className="space-y-4">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAddRoom();
+                }}
+              >
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số phòng</label>
-                  <input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="A101" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Số phòng
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder="A101"
+                    value={newRoomData.number}
+                    onChange={(e) => setNewRoomData({ ...newRoomData, number: e.target.value })}
+                    required
+                  />
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Dãy phòng</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Dãy phòng
+                  </label>
                   <select
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
-                    defaultValue={selectedBuilding}
+                    value={newRoomData.building}
+                    onChange={(e) => setNewRoomData({ ...newRoomData, building: e.target.value })}
+                    required
                   >
-                    {buildings.filter(b => b !== 'all').map(building => (
-                      <option key={building} value={building}>{building}</option>
-                    ))}
+                    <option value="" disabled>-- Chọn dãy --</option>
+                    {buildingList // Đọc từ state
+                      .map((building) => (
+                        <option key={building.id} value={building.name}>
+                          {building.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Loại phòng</label>
-                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
-                    <option value="Phòng đơn">Phòng đơn</option>
-                    <option value="Phòng đôi">Phòng đôi</option>
-                    <option value="Phòng VIP">Phòng VIP</option>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Loại phòng
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
+                    value={newRoomData.type}
+                    onChange={(e) => setNewRoomData({ ...newRoomData, type: e.target.value })}
+                    required
+                  >
+                    {roomTypes
+                      .filter((t) => t !== 'all')
+                      .map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
                   </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Diện tích (m²)</label>
-                  <input type="number" className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="20" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Giá thuê (VNĐ)</label>
-                  <input type="number" className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="3500000" />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Diện tích & giá sẽ tự lấy từ loại phòng khi lưu.
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -1576,7 +2099,7 @@ export default function Rooms() {
                     type="button"
                     onClick={() => {
                       setShowAddModal(false);
-                      setSelectedBuilding('');
+                      // Không cần reset selectedBuilding
                     }}
                     className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 cursor-pointer whitespace-nowrap"
                   >
@@ -1594,6 +2117,7 @@ export default function Rooms() {
           </div>
         </div>
       )}
+
 
       {/* Edit Room Modal */}
       {showEditModal && editingRoom && (
@@ -1656,7 +2180,17 @@ export default function Rooms() {
                         <input
                           type="text"
                           value={editingRoom.number}
-                          onChange={(e) => setEditingRoom({ ...editingRoom, number: e.target.value })}
+                          onChange={(e) => {
+                            const newType = e.target.value;
+                            const meta = findRoomTypeMeta(newType);
+                            setEditingRoom({
+                              ...editingRoom,
+                              type: newType,
+                              // Tự động cập nhật giá và diện tích theo loại phòng mới
+                              area: meta ? meta.area : editingRoom.area,
+                              price: meta ? meta.basePrice : editingRoom.price,
+                            });
+                          }}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
                         />
                       </div>
@@ -1667,9 +2201,13 @@ export default function Rooms() {
                           onChange={(e) => setEditingRoom({ ...editingRoom, building: e.target.value })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                         >
-                          {buildings.filter(b => b !== 'all').map(building => (
-                            <option key={building} value={building}>{building}</option>
-                          ))}
+                          {buildings
+                            .filter((b) => b !== 'all')
+                            .map((building) => (
+                              <option key={building} value={building}>
+                                {building}
+                              </option>
+                            ))}
                         </select>
                       </div>
                       <div>
@@ -1679,18 +2217,23 @@ export default function Rooms() {
                           onChange={(e) => setEditingRoom({ ...editingRoom, type: e.target.value })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                         >
-                          <option value="Phòng đơn">Phòng đơn</option>
-                          <option value="Phòng đôi">Phòng đôi</option>
-                          <option value="Phòng VIP">Phòng VIP</option>
+                          {roomTypes
+                            .filter((t) => t !== 'all')
+                            .map((t) => (
+                              <option key={t} value={t}>
+                                {t}
+                              </option>
+                            ))}
                         </select>
+                        <p className="text-xs text-gray-500 mt-1">Diện tích & giá sẽ khớp theo loại phòng khi lưu.</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Diện tích (m²)</label>
                         <input
                           type="number"
                           value={editingRoom.area}
-                          onChange={(e) => setEditingRoom({ ...editingRoom, area: parseInt(e.target.value) })}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          readOnly
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 text-gray-600"
                         />
                       </div>
                       <div>
@@ -1698,15 +2241,17 @@ export default function Rooms() {
                         <input
                           type="number"
                           value={editingRoom.price}
-                          onChange={(e) => setEditingRoom({ ...editingRoom, price: parseInt(e.target.value) })}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          readOnly
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 text-gray-600"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
                         <select
                           value={editingRoom.status}
-                          onChange={(e) => setEditingRoom({ ...editingRoom, status: e.target.value as 'available' | 'occupied' | 'maintenance' })}
+                          onChange={(e) =>
+                            setEditingRoom({ ...editingRoom, status: e.target.value as 'available' | 'occupied' | 'maintenance' })
+                          }
                           className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                         >
                           <option value="available">Trống</option>
@@ -1721,10 +2266,12 @@ export default function Rooms() {
                       <div>
                         <textarea
                           value={editingRoom.facilities.join(', ')}
-                          onChange={(e) => setEditingRoom({
-                            ...editingRoom,
-                            facilities: e.target.value.split(', ').filter(f => f.trim())
-                          })}
+                          onChange={(e) =>
+                            setEditingRoom({
+                              ...editingRoom,
+                              facilities: e.target.value.split(', ').filter((f) => f.trim()),
+                            })
+                          }
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           rows={8}
                           placeholder="Điều hòa, Tủ lạnh, Giường..."
@@ -1745,10 +2292,12 @@ export default function Rooms() {
                           <input
                             type="text"
                             value={editingRoom.tenant?.name || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), name: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), name: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           />
                         </div>
@@ -1757,10 +2306,12 @@ export default function Rooms() {
                           <input
                             type="date"
                             value={editingRoom.tenant?.birthDate || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), birthDate: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), birthDate: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           />
                         </div>
@@ -1769,10 +2320,12 @@ export default function Rooms() {
                           <input
                             type="text"
                             value={editingRoom.tenant?.birthPlace || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), birthPlace: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), birthPlace: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           />
                         </div>
@@ -1781,10 +2334,12 @@ export default function Rooms() {
                           <input
                             type="text"
                             value={editingRoom.tenant?.idCard || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), idCard: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), idCard: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           />
                         </div>
@@ -1793,10 +2348,12 @@ export default function Rooms() {
                           <input
                             type="date"
                             value={editingRoom.tenant?.idCardDate || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), idCardDate: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), idCardDate: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           />
                         </div>
@@ -1805,10 +2362,12 @@ export default function Rooms() {
                           <input
                             type="text"
                             value={editingRoom.tenant?.idCardPlace || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), idCardPlace: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), idCardPlace: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           />
                         </div>
@@ -1820,10 +2379,12 @@ export default function Rooms() {
                           <input
                             type="text"
                             value={editingRoom.tenant?.phone || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), phone: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), phone: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           />
                         </div>
@@ -1832,10 +2393,12 @@ export default function Rooms() {
                           <input
                             type="text"
                             value={editingRoom.tenant?.phone2 || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), phone2: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), phone2: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           />
                         </div>
@@ -1844,23 +2407,26 @@ export default function Rooms() {
                           <input
                             type="email"
                             value={editingRoom.tenant?.email || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), email: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), email: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ thường trú</label>
-                          <textarea
+                          <input
                             value={editingRoom.tenant?.address || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), address: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), address: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                            rows={2}
                           />
                         </div>
                         <div>
@@ -1868,22 +2434,25 @@ export default function Rooms() {
                           <input
                             type="text"
                             value={editingRoom.tenant?.vehicleNumber || ''}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              tenant: { ...(editingRoom.tenant || {} as any), vehicleNumber: e.target.value }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({
+                                ...editingRoom,
+                                tenant: { ...(editingRoom.tenant || ({} as any)), vehicleNumber: e.target.value },
+                              })
+                            }
                             className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           />
                         </div>
                         <div className="block text-sm font-medium text-gray-700 mb-1">Ghi chú khác</div>
-                        <textarea
+                        <input
                           value={editingRoom.tenant?.notes || ''}
-                          onChange={(e) => setEditingRoom({
-                            ...editingRoom,
-                            tenant: { ...(editingRoom.tenant || {} as any), notes: e.target.value }
-                          })}
+                          onChange={(e) =>
+                            setEditingRoom({
+                              ...editingRoom,
+                              tenant: { ...(editingRoom.tenant || ({} as any)), notes: e.target.value },
+                            })
+                          }
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                          rows={2}
                         />
                       </div>
                     </div>
@@ -1899,10 +2468,9 @@ export default function Rooms() {
                           <input
                             type="checkbox"
                             checked={editingRoom.services.electricity}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              services: { ...editingRoom.services, electricity: e.target.checked }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({ ...editingRoom, services: { ...editingRoom.services, electricity: e.target.checked } })
+                            }
                             className="mr-3 h-4 w-4 text-indigo-600 rounded"
                           />
                           <span className="text-sm">Điện</span>
@@ -1911,10 +2479,7 @@ export default function Rooms() {
                           <input
                             type="checkbox"
                             checked={editingRoom.services.water}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              services: { ...editingRoom.services, water: e.target.checked }
-                            })}
+                            onChange={(e) => setEditingRoom({ ...editingRoom, services: { ...editingRoom.services, water: e.target.checked } })}
                             className="mr-3 h-4 w-4 text-indigo-600 rounded"
                           />
                           <span className="text-sm">Nước</span>
@@ -1923,10 +2488,9 @@ export default function Rooms() {
                           <input
                             type="checkbox"
                             checked={editingRoom.services.internet}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              services: { ...editingRoom.services, internet: e.target.checked }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({ ...editingRoom, services: { ...editingRoom.services, internet: e.target.checked } })
+                            }
                             className="mr-3 h-4 w-4 text-indigo-600 rounded"
                           />
                           <span className="text-sm">Internet</span>
@@ -1935,10 +2499,9 @@ export default function Rooms() {
                           <input
                             type="checkbox"
                             checked={editingRoom.services.parking}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              services: { ...editingRoom.services, parking: e.target.checked }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({ ...editingRoom, services: { ...editingRoom.services, parking: e.target.checked } })
+                            }
                             className="mr-3 h-4 w-4 text-indigo-600 rounded"
                           />
                           <span className="text-sm">Gửi xe</span>
@@ -1947,10 +2510,9 @@ export default function Rooms() {
                           <input
                             type="checkbox"
                             checked={editingRoom.services.laundry}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              services: { ...editingRoom.services, laundry: e.target.checked }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({ ...editingRoom, services: { ...editingRoom.services, laundry: e.target.checked } })
+                            }
                             className="mr-3 h-4 w-4 text-indigo-600 rounded"
                           />
                           <span className="text-sm">Giặt sấy</span>
@@ -1959,10 +2521,9 @@ export default function Rooms() {
                           <input
                             type="checkbox"
                             checked={editingRoom.services.cleaning}
-                            onChange={(e) => setEditingRoom({
-                              ...editingRoom,
-                              services: { ...editingRoom.services, cleaning: e.target.checked }
-                            })}
+                            onChange={(e) =>
+                              setEditingRoom({ ...editingRoom, services: { ...editingRoom.services, cleaning: e.target.checked } })
+                            }
                             className="mr-3 h-4 w-4 text-indigo-600 rounded"
                           />
                           <span className="text-sm">Dọn phòng</span>
@@ -1978,9 +2539,12 @@ export default function Rooms() {
                     <div className="space-y-4">
                       {editingRoom.members?.map((member, index) => (
                         <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {/* --- HÀNG 1: THÔNG TIN CÁ NHÂN --- */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Họ tên</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Họ tên
+                              </label>
                               <input
                                 type="text"
                                 value={member.name}
@@ -1993,7 +2557,9 @@ export default function Rooms() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Ngày sinh
+                              </label>
                               <input
                                 type="date"
                                 value={member.birthDate}
@@ -2006,7 +2572,9 @@ export default function Rooms() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Giới tính
+                              </label>
                               <select
                                 value={member.gender}
                                 onChange={(e) => {
@@ -2020,8 +2588,29 @@ export default function Rooms() {
                                 <option value="Nữ">Nữ</option>
                               </select>
                             </div>
+                            <div className="md:col-span-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Nơi sinh
+                              </label>
+                              <input
+                                type="text"
+                                value={member.birthPlace || ''}
+                                onChange={(e) => {
+                                  const newMembers = [...(editingRoom.members || [])];
+                                  newMembers[index] = { ...member, birthPlace: e.target.value };
+                                  setEditingRoom({ ...editingRoom, members: newMembers });
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                              />
+                            </div>
+                          </div>
+
+                          {/* --- HÀNG 2: CMND/CCCD --- */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">CMND/CCCD</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                CMND/CCCD
+                              </label>
                               <input
                                 type="text"
                                 value={member.idCard}
@@ -2034,7 +2623,43 @@ export default function Rooms() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Điện thoại</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Ngày cấp
+                              </label>
+                              <input
+                                type="date"
+                                value={member.idCardDate || ''}
+                                onChange={(e) => {
+                                  const newMembers = [...(editingRoom.members || [])];
+                                  newMembers[index] = { ...member, idCardDate: e.target.value };
+                                  setEditingRoom({ ...editingRoom, members: newMembers });
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Nơi cấp
+                              </label>
+                              <input
+                                type="text"
+                                value={member.idCardPlace || ''}
+                                onChange={(e) => {
+                                  const newMembers = [...(editingRoom.members || [])];
+                                  newMembers[index] = { ...member, idCardPlace: e.target.value };
+                                  setEditingRoom({ ...editingRoom, members: newMembers });
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                              />
+                            </div>
+                          </div>
+
+                          {/* --- HÀNG 3: LIÊN HỆ & XE --- */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Điện thoại 1
+                              </label>
                               <input
                                 type="text"
                                 value={member.phone}
@@ -2047,7 +2672,39 @@ export default function Rooms() {
                               />
                             </div>
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Số xe</label>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Điện thoại 2
+                              </label>
+                              <input
+                                type="text"
+                                value={member.phone2 || ''}
+                                onChange={(e) => {
+                                  const newMembers = [...(editingRoom.members || [])];
+                                  newMembers[index] = { ...member, phone2: e.target.value };
+                                  setEditingRoom({ ...editingRoom, members: newMembers });
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Email
+                              </label>
+                              <input
+                                type="email"
+                                value={member.email || ''}
+                                onChange={(e) => {
+                                  const newMembers = [...(editingRoom.members || [])];
+                                  newMembers[index] = { ...member, email: e.target.value };
+                                  setEditingRoom({ ...editingRoom, members: newMembers });
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="md:col-span-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Số xe
+                              </label>
                               <input
                                 type="text"
                                 value={member.vehicleNumber || ''}
@@ -2059,8 +2716,14 @@ export default function Rooms() {
                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                               />
                             </div>
-                            <div className="md:col-span-2 lg:col-span-3">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
+                          </div>
+
+                          {/* --- HÀNG 4: ĐỊA CHỈ & GHI CHÚ --- */}
+                          <div className="grid grid-cols-1 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Địa chỉ
+                              </label>
                               <input
                                 type="text"
                                 value={member.address}
@@ -2072,11 +2735,29 @@ export default function Rooms() {
                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                               />
                             </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Ghi chú
+                              </label>
+                              <textarea
+                                value={member.notes || ''}
+                                onChange={(e) => {
+                                  const newMembers = [...(editingRoom.members || [])];
+                                  newMembers[index] = { ...member, notes: e.target.value };
+                                  setEditingRoom({ ...editingRoom, members: newMembers });
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                rows={2}
+                              ></textarea>
+                            </div>
                           </div>
+
+                          {/* Nút Xóa */}
                           <div className="flex justify-end mt-3">
                             <button
                               onClick={() => {
-                                const newMembers = editingRoom.members?.filter((_, i) => i !== index) || [];
+                                const newMembers =
+                                  editingRoom.members?.filter((_, i) => i !== index) || [];
                                 setEditingRoom({ ...editingRoom, members: newMembers });
                               }}
                               className="text-red-600 hover:text-red-800 text-sm cursor-pointer"
@@ -2090,15 +2771,23 @@ export default function Rooms() {
 
                       <button
                         onClick={() => {
-                          const newMember = {
+                          // Khởi tạo một thành viên mới với ĐẦY ĐỦ các trường
+                          const newMember: Member = {
                             name: '',
                             birthDate: '',
+                            birthPlace: '', // <-- THÊM
                             gender: 'Nam',
                             idCard: '',
+                            idCardDate: '', // <-- THÊM
+                            idCardPlace: '', // <-- THÊM
                             address: '',
                             phone: '',
-                            vehicleNumber: ''
+                            phone2: '', // <-- THÊM
+                            email: '', // <-- THÊM
+                            vehicleNumber: '',
+                            notes: '', // <-- THÊM
                           };
+
                           const newMembers = [...(editingRoom.members || []), newMember];
                           setEditingRoom({ ...editingRoom, members: newMembers });
                         }}
@@ -2144,8 +2833,12 @@ export default function Rooms() {
               <div className="space-y-4">
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h3 className="font-medium text-gray-900 mb-2">Thông tin hiện tại</h3>
-                  <p className="text-sm text-gray-600">Phòng: <span className="font-medium">{changeRoomData.fromRoom.number}</span></p>
-                  <p className="text-sm text-gray-600">Khách thuê: <span className="font-medium">{changeRoomData.fromRoom.tenant?.name}</span></p>
+                  <p className="text-sm text-gray-600">
+                    Phòng: <span className="font-medium">{changeRoomData.fromRoom.number}</span>
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Khách thuê: <span className="font-medium">{changeRoomData.fromRoom.tenant?.name}</span>
+                  </p>
                 </div>
 
                 <div>
@@ -2156,9 +2849,9 @@ export default function Rooms() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                   >
                     <option value="">-- Chọn phòng trống --</option>
-                    {availableRooms.map(room => (
+                    {availableRooms.map((room) => (
                       <option key={room.id} value={room.number}>
-                        {room.number} - {room.type} - {room.price.toLocaleString()}đ/tháng
+                        {room.number} - {room.type} - {room.price.toLocaleString('vi-VN')}đ/tháng
                       </option>
                     ))}
                   </select>
@@ -2166,19 +2859,12 @@ export default function Rooms() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Lý do đổi phòng</label>
-                  <textarea
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    rows={3}
-                    placeholder="Nhập lý do đổi phòng..."
-                  ></textarea>
+                  <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={3} placeholder="Nhập lý do đổi phòng..."></textarea>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Ngày chuyển</label>
-                  <input
-                    type="date"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  />
+                  <input type="date" className="w-full border border-gray-300 rounded-lg px-3 py-2" />
                 </div>
               </div>
 
@@ -2213,43 +2899,41 @@ export default function Rooms() {
               <div className="space-y-4">
                 <div className="bg-red-50 p-4 rounded-lg">
                   <h3 className="font-medium text-gray-900 mb-2">Thông tin phòng</h3>
-                  <p className="text-sm text-gray-600">Phòng: <span className="font-medium">{selectedRoom.number}</span></p>
-                  <p className="text-sm text-gray-600">Khách thuê: <span className="font-medium">{selectedRoom.tenant?.name}</span></p>
-                  <p className="text-sm text-gray-600">Hợp đồng đến: <span className="font-medium">{selectedRoom.tenant?.contractEnd}</span></p>
+                  <p className="text-sm text-gray-600">
+                    Phòng: <span className="font-medium">{selectedRoom.number}</span>
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Khách thuê: <span className="font-medium">{selectedRoom.tenant?.name}</span>
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Hợp đồng đến:{' '}
+                    <span className="font-medium">
+                      {selectedRoom.tenant?.contractEnd
+                        ? new Date(selectedRoom.tenant.contractEnd).toLocaleDateString('vi-VN')
+                        : '-'}
+                    </span>
+                  </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Ngày trả phòng</label>
-                  <input
-                    type="date"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  />
+                  <input type="date" className="w-full border border-gray-300 rounded-lg px-3 py-2" />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tiền cọc hoàn trả</label>
-                  <input
-                    type="number"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    placeholder="5000000"
-                  />
+                  <input type="number" className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="5000000" />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú</label>
-                  <textarea
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    rows={3}
-                    placeholder="Tình trạng phòng, thiết bị..."
-                  ></textarea>
+                  <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={3} placeholder="Tình trạng phòng, thiết bị..."></textarea>
                 </div>
 
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <div className="flex items-start">
                     <i className="ri-warning-line text-yellow-600 mr-2 mt-0.5"></i>
-                    <p className="text-sm text-yellow-800">
-                      Sau khi xác nhận, phòng sẽ chuyển về trạng thái trống và có thể cho thuê lại.
-                    </p>
+                    <p className="text-sm text-yellow-800">Sau khi xác nhận, phòng sẽ chuyển về trạng thái trống và có thể cho thuê lại.</p>
                   </div>
                 </div>
               </div>
@@ -2285,4 +2969,5 @@ export default function Rooms() {
       />
     </div>
   );
+
 }

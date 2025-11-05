@@ -1,6 +1,6 @@
 
 import { lazy } from 'react';
-import { RouteObject } from 'react-router-dom';
+import { type RouteObject } from "react-router-dom"
 
 // Lazy load components
 const Home = lazy(() => import('../pages/home/page'));
@@ -12,16 +12,13 @@ const RoomTypes = lazy(() => import('../pages/room-types/page'));
 const Rooms = lazy(() => import('../pages/rooms/page'));
 const Tenants = lazy(() => import('../pages/tenants/page'));
 const Bookings = lazy(() => import('../pages/bookings/page'));
-const BookingDeposits = lazy(() => import('../pages/booking-deposits/page'));
 const Contracts = lazy(() => import('../pages/contracts/page'));
 const Payments = lazy(() => import('../pages/payments/page'));
 const Services = lazy(() => import('../pages/services/page'));
 const Maintenance = lazy(() => import('../pages/maintenance/page'));
 const Equipment = lazy(() => import('../pages/equipment/page'));
 const Reports = lazy(() => import('../pages/reports/page'));
-const Analytics = lazy(() => import('../pages/analytics/page'));
 const Rules = lazy(() => import('../pages/rules/page'));
-const RulesViolations = lazy(() => import('../pages/rules-violations/page'));
 const Notifications = lazy(() => import('../pages/notifications/page'));
 const UserManagement = lazy(() => import('../pages/user-management/page'));
 const Settings = lazy(() => import('../pages/settings/page'));
@@ -72,10 +69,6 @@ const routes: RouteObject[] = [
     element: <Bookings />
   },
   {
-    path: '/booking-deposits',
-    element: <BookingDeposits />
-  },
-  {
     path: '/contracts',
     element: <Contracts />
   },
@@ -100,16 +93,8 @@ const routes: RouteObject[] = [
     element: <Reports />
   },
   {
-    path: '/analytics',
-    element: <Analytics />
-  },
-  {
     path: '/rules',
     element: <Rules />
-  },
-  {
-    path: '/rules-violations',
-    element: <RulesViolations />
   },
   {
     path: '/notifications',

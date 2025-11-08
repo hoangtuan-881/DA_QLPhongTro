@@ -5,7 +5,6 @@ import CustomerSidebar from './components/CustomerSidebar';
 import CustomerHeader from './components/CustomerHeader';
 import RoomStatus from './components/RoomStatus';
 import ContractInfo from './components/ContractInfo';
-import ServiceUsage from './components/ServiceUsage';
 
 export default function CustomerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -27,18 +26,13 @@ export default function CustomerDashboard() {
         return (
           <div className="space-y-6">
             <RoomStatus />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ContractInfo />
-              <ServiceUsage />
-            </div>
+            <ContractInfo />
           </div>
         );
       case 'room':
         return <RoomStatus />;
       case 'contract':
         return <ContractInfo />;
-      case 'services':
-        return <ServiceUsage />;
       default:
         return <RoomStatus />;
     }
@@ -46,16 +40,16 @@ export default function CustomerDashboard() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <CustomerSidebar 
-        isOpen={sidebarOpen} 
+      <CustomerSidebar
+        isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <CustomerHeader onMenuClick={() => setSidebarOpen(true)} />
-        
+
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
           <div className="max-w-7xl mx-auto">
             <div className="mb-8">

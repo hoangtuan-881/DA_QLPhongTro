@@ -43,7 +43,7 @@ const menuItems = [
     path: '/payments'
   },
   {
-    icon: 'ri-customer-service-line',
+    icon: 'ri-service-line',
     label: 'Dịch vụ',
     path: '/services'
   },

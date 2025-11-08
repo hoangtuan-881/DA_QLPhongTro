@@ -1,16 +1,41 @@
-
-import { useState } from 'react';
+import { useState } from 'react'; // Bỏ newRequest
 import CustomerHeader from '../customer-dashboard/components/CustomerHeader';
 import CustomerSidebar from '../customer-dashboard/components/CustomerSidebar';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
 import { useToast } from '../../hooks/useToast';
+
+// --- (THÊM MỚI) ---
+// Định nghĩa một interface để thống nhất cấu trúc dữ liệu, 
+// giải quyết lỗi TS2322.
+// Các trường có dấu ? là optional (không bắt buộc).
+interface MaintenanceRequest {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  priority: 'Cao' | 'Trung bình' | 'Thấp';
+  status: 'Chờ xử lý' | 'Đang xử lý' | 'Hoàn thành' | 'Đã hủy';
+  createdDate: string;
+  // expectedDate?: string; // (Đã xóa theo yêu cầu)
+  estimatedCost?: string;
+  images: string[];
+  notes?: string;
+  technician?: string;
+  completedDate?: string;
+  actualCost?: string;
+}
+// --- (KẾT THÚC THÊM MỚI) ---
 
 export default function MaintenanceRequestPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+
+  // --- (SỬA) ---
+  // Áp dụng interface MaintenanceRequest
+  const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
+
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -21,12 +46,14 @@ export default function MaintenanceRequestPage() {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {}
+    onConfirm: () => { }
   });
 
   const { success, error, warning } = useToast();
 
-  const [requests, setRequests] = useState([
+  // --- (SỬA) ---
+  // Áp dụng interface MaintenanceRequest[] và xóa expectedDate
+  const [requests, setRequests] = useState<MaintenanceRequest[]>([
     {
       id: 1,
       title: 'Điều hòa không hoạt động',
@@ -35,7 +62,7 @@ export default function MaintenanceRequestPage() {
       priority: 'Cao',
       status: 'Chờ xử lý',
       createdDate: '2024-12-10',
-      expectedDate: '2024-12-12',
+      // expectedDate: '2024-12-12', // (Đã xóa)
       estimatedCost: '500,000',
       images: ['image1.jpg', 'image2.jpg'],
       notes: 'Cần xử lý gấp vì trời nóng'
@@ -48,7 +75,7 @@ export default function MaintenanceRequestPage() {
       priority: 'Trung bình',
       status: 'Đang xử lý',
       createdDate: '2024-12-08',
-      expectedDate: '2024-12-11',
+      // expectedDate: '2024-12-11', // (Đã xóa)
       estimatedCost: '200,000',
       images: ['image3.jpg'],
       technician: 'Nguyễn Văn Tú',
@@ -70,24 +97,22 @@ export default function MaintenanceRequestPage() {
     }
   ]);
 
-  const [newRequest, setNewRequest] = useState({
-    title: '',
-    description: '',
-    category: '',
-    priority: '',
-    expectedDate: '',
-    notes: ''
-  });
+  // --- (XÓA) ---
+  // Xóa state 'newRequest' (lỗi TS6133 - không được sử dụng)
+  /*
+  const [newRequest, setNewRequest] = useState({ ... });
+  */
 
   const handleCreateRequest = (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
-    
+
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
     const category = formData.get('category') as string;
-    const priority = formData.get('priority') as string;
+    // Ép kiểu priority để khớp interface
+    const priority = formData.get('priority') as 'Cao' | 'Trung bình' | 'Thấp';
 
     if (!title || !description || !category || !priority) {
       error({ title: 'Vui lòng điền đầy đủ thông tin bắt buộc' });
@@ -100,7 +125,9 @@ export default function MaintenanceRequestPage() {
       message: `Bạn có chắc chắn muốn gửi yêu cầu sửa chữa "${title}" không?`,
       type: 'info',
       onConfirm: () => {
-        const request = {
+        // --- (SỬA LỖI TS2322) ---
+        // Tạo đối tượng request mới tuân thủ interface
+        const request: MaintenanceRequest = {
           id: Date.now(),
           title,
           description,
@@ -108,11 +135,14 @@ export default function MaintenanceRequestPage() {
           priority,
           status: 'Chờ xử lý',
           createdDate: new Date().toISOString().split('T')[0],
-          expectedDate: formData.get('expectedDate') as string,
+          // expectedDate: formData.get('expectedDate') as string, // (Đã xóa)
           notes: formData.get('notes') as string,
           images: []
+          // Các trường optional (estimatedCost...) là undefined, hợp lệ.
         };
-        
+        // --- (KẾT THÚC SỬA) ---
+
+        // Dòng này sẽ không còn báo lỗi type
         setRequests([...requests, request]);
         setShowCreateModal(false);
         form.reset();
@@ -126,13 +156,13 @@ export default function MaintenanceRequestPage() {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
-    
+
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
     const category = formData.get('category') as string;
-    const priority = formData.get('priority') as string;
+    const priority = formData.get('priority') as 'Cao' | 'Trung bình' | 'Thấp';
 
-    if (!title || !description || !category || !priority) {
+    if (!title || !description || !category || !priority || !selectedRequest) {
       error({ title: 'Vui lòng điền đầy đủ thông tin bắt buộc' });
       return;
     }
@@ -143,17 +173,20 @@ export default function MaintenanceRequestPage() {
       message: `Bạn có chắc chắn muốn lưu thay đổi cho yêu cầu "${selectedRequest?.title}" không?`,
       type: 'info',
       onConfirm: () => {
-        const updatedRequest = {
+        // --- (SỬA) ---
+        // Đảm bảo updatedRequest tuân thủ interface
+        const updatedRequest: MaintenanceRequest = {
           ...selectedRequest,
           title,
           description,
           category,
           priority,
-          expectedDate: formData.get('expectedDate') as string,
+          // expectedDate: formData.get('expectedDate') as string, // (Đã xóa)
           notes: formData.get('notes') as string
         };
-        
-        setRequests(requests.map(request => 
+        // --- (KẾT THÚC SỬA) ---
+
+        setRequests(requests.map(request =>
           request.id === selectedRequest.id ? updatedRequest : request
         ));
         setShowEditModal(false);
@@ -191,7 +224,7 @@ export default function MaintenanceRequestPage() {
       message: `Bạn có chắc chắn muốn hủy yêu cầu "${request.title}" không?`,
       type: 'warning',
       onConfirm: () => {
-        setRequests(requests.map(req => 
+        setRequests(requests.map(req =>
           req.id === requestId ? { ...req, status: 'Đã hủy' } : req
         ));
         warning({ title: `Đã hủy yêu cầu "${request.title}" thành công!` });
@@ -222,16 +255,17 @@ export default function MaintenanceRequestPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <CustomerSidebar 
-        isOpen={sidebarOpen} 
+      <CustomerSidebar
+        isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <CustomerHeader onMenuClick={() => setSidebarOpen(true)} />
-        
+
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
           <div className="max-w-7xl mx-auto">
+            {/* ... (Phần tiêu đề và nút Tạo mới không đổi) ... */}
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Yêu cầu sửa chữa</h1>
@@ -246,7 +280,7 @@ export default function MaintenanceRequestPage() {
               </button>
             </div>
 
-            {/* Thống kê nhanh */}
+            {/* ... (Phần Thống kê nhanh không đổi) ... */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center">
@@ -261,7 +295,6 @@ export default function MaintenanceRequestPage() {
                   </div>
                 </div>
               </div>
-              
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center">
                   <div className="p-2 bg-blue-100 rounded-lg">
@@ -275,7 +308,6 @@ export default function MaintenanceRequestPage() {
                   </div>
                 </div>
               </div>
-              
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center">
                   <div className="p-2 bg-green-100 rounded-lg">
@@ -289,7 +321,6 @@ export default function MaintenanceRequestPage() {
                   </div>
                 </div>
               </div>
-              
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center">
                   <div className="p-2 bg-red-100 rounded-lg">
@@ -305,12 +336,11 @@ export default function MaintenanceRequestPage() {
               </div>
             </div>
 
-            {/* Danh sách yêu cầu */}
+            {/* ... (Phần Danh sách yêu cầu - Table không đổi) ... */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-6 border-b border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-900">Danh sách yêu cầu</h2>
               </div>
-              
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
@@ -443,7 +473,7 @@ export default function MaintenanceRequestPage() {
                       placeholder="Mô tả ngắn gọn vấn đề"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Danh mục *
@@ -476,6 +506,8 @@ export default function MaintenanceRequestPage() {
                   />
                 </div>
 
+                {/* --- (SỬA) --- */}
+                {/* Bỏ "Ngày mong muốn" và dời "Hình ảnh" lên để giữ layout 2 cột */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -492,32 +524,24 @@ export default function MaintenanceRequestPage() {
                       <option value="Cao">Cao</option>
                     </select>
                   </div>
-                  
+
+                  {/* (Input "Ngày mong muốn" đã bị xóa) */}
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Ngày mong muốn hoàn thành
+                      Hình ảnh minh họa
                     </label>
                     <input
-                      type="date"
-                      name="expectedDate"
+                      type="file"
+                      name="images"
+                      multiple
+                      accept="image/*"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
+                    <p className="text-xs text-gray-500 mt-1">Có thể chọn nhiều hình ảnh</p>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hình ảnh minh họa
-                  </label>
-                  <input
-                    type="file"
-                    name="images"
-                    multiple
-                    accept="image/*"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Có thể chọn nhiều hình ảnh</p>
-                </div>
+                {/* --- (KẾT THÚC SỬA) --- */}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -606,8 +630,11 @@ export default function MaintenanceRequestPage() {
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="font-medium text-gray-900 mb-3">Hình ảnh minh họa</h4>
                       <div className="grid grid-cols-2 gap-2">
-                        {selectedRequest.images.map((image: string, index: number) => (
+                        {/* --- (SỬA LỖI TS6133) --- */}
+                        {/* Thêm dấu _ cho biến 'image' không sử dụng */}
+                        {selectedRequest.images.map((_image: string, index: number) => (
                           <div key={index} className="bg-gray-200 rounded-lg h-24 flex items-center justify-center">
+                            {/* Giả lập hiển thị ảnh, bạn có thể thay bằng thẻ <img> */}
                             <i className="ri-image-line text-gray-400 text-2xl"></i>
                           </div>
                         ))}
@@ -625,12 +652,11 @@ export default function MaintenanceRequestPage() {
                         <span className="text-gray-600">Ngày tạo:</span>
                         <span className="font-medium">{selectedRequest.createdDate}</span>
                       </div>
-                      {selectedRequest.expectedDate && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Ngày dự kiến:</span>
-                          <span className="font-medium">{selectedRequest.expectedDate}</span>
-                        </div>
-                      )}
+
+                      {/* --- (XÓA) --- */}
+                      {/* (Đã xóa "Ngày dự kiến") */}
+                      {/* {selectedRequest.expectedDate && ( ... )} */}
+
                       {selectedRequest.completedDate && (
                         <div className="flex justify-between">
                           <span className="text-gray-600">Ngày hoàn thành:</span>
@@ -685,7 +711,7 @@ export default function MaintenanceRequestPage() {
                 </div>
               )}
 
-              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
                 <button
                   onClick={() => setShowDetailModal(false)}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 whitespace-nowrap cursor-pointer"
@@ -741,7 +767,7 @@ export default function MaintenanceRequestPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Danh mục *
@@ -774,6 +800,8 @@ export default function MaintenanceRequestPage() {
                   />
                 </div>
 
+                {/* --- (XÓA) --- */}
+                {/* (Đã xóa "Ngày mong muốn") */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -790,18 +818,8 @@ export default function MaintenanceRequestPage() {
                       <option value="Cao">Cao</option>
                     </select>
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Ngày mong muốn hoàn thành
-                    </label>
-                    <input
-                      type="date"
-                      name="expectedDate"
-                      defaultValue={selectedRequest.expectedDate}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    />
-                  </div>
+
+                  {/* (Input "Ngày mong muốn" đã bị xóa) */}
                 </div>
 
                 <div>
@@ -811,7 +829,7 @@ export default function MaintenanceRequestPage() {
                   <textarea
                     name="notes"
                     rows={2}
-                    defaultValue={selectedRequest.notes}
+                    defaultValue={selectedRequest.notes || ''}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
@@ -841,13 +859,15 @@ export default function MaintenanceRequestPage() {
         </div>
       )}
 
+      {/* --- (SỬA LỖI TS2322) --- */}
+      {/* Đổi tên prop "onCancel" thành "onClose" (hoặc tên prop mà component ConfirmDialog của bạn chấp nhận) */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         title={confirmDialog.title}
         message={confirmDialog.message}
         type={confirmDialog.type}
         onConfirm={confirmDialog.onConfirm}
-        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
       />
     </div>
   );

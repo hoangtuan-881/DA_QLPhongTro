@@ -1,4 +1,3 @@
-
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 interface CustomerSidebarProps {
@@ -13,58 +12,52 @@ export default function CustomerSidebar({ isOpen, onClose, activeTab, setActiveT
   const navigate = useNavigate();
 
   const menuItems = [
-    { 
-      id: 'overview', 
-      icon: 'ri-dashboard-line', 
-      label: 'Tổng quan', 
+    {
+      id: 'overview',
+      icon: 'ri-dashboard-line',
+      label: 'Tổng quan',
       path: '/customer-dashboard',
-      isDashboard: true 
+      isDashboard: true
     },
-    { 
-      id: 'room', 
-      icon: 'ri-home-4-line', 
-      label: 'Phòng của tôi', 
+    {
+      id: 'room',
+      icon: 'ri-home-4-line',
+      label: 'Phòng của tôi',
       path: '/customer-dashboard',
-      isDashboard: true 
+      isDashboard: true
     },
-    { 
-      id: 'contract', 
-      icon: 'ri-file-text-line', 
-      label: 'Hợp đồng', 
+    {
+      id: 'contract',
+      icon: 'ri-file-text-line',
+      label: 'Hợp đồng',
       path: '/customer-dashboard',
-      isDashboard: true 
+      isDashboard: true
     },
-    { 
-      id: 'services', 
-      icon: 'ri-service-line', 
-      label: 'Dịch vụ', 
-      path: '/customer-dashboard',
-      isDashboard: true 
-    },
-    { 
-      id: 'maintenance', 
-      icon: 'ri-tools-line', 
-      label: 'Yêu cầu sửa chữa', 
+    // Đã xóa mục 'services' (Dịch vụ) ở đây
+    {
+      id: 'maintenance',
+      icon: 'ri-tools-line',
+      label: 'Yêu cầu sửa chữa',
       path: '/maintenance-request',
-      isDashboard: false 
+      isDashboard: false
     },
-    { 
-      id: 'available-rooms', 
-      icon: 'ri-search-line', 
-      label: 'Phòng còn trống', 
+    {
+      id: 'available-rooms',
+      icon: 'ri-search-line',
+      label: 'Phòng còn trống',
       path: '/available-rooms',
-      isDashboard: false 
+      isDashboard: false
     },
   ];
 
   const handleDashboardTabClick = (tabId: string) => {
     onClose();
-    
+
     // Nếu đang ở trang khác, navigate về customer-dashboard
     if (location.pathname !== '/customer-dashboard') {
-      navigate('/customer-dashboard', { 
+      navigate('/customer-dashboard', {
         state: { activeTab: tabId },
-        replace: true 
+        replace: true
       });
     } else {
       // Nếu đã ở trang dashboard, chỉ cần set tab
@@ -83,16 +76,15 @@ export default function CustomerSidebar({ isOpen, onClose, activeTab, setActiveT
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-        isOpen ? 'translate-x-0' : '-translate-x-full'
-      } flex flex-col`}>
+      <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'
+        } flex flex-col`}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 flex-shrink-0">
           <button
             onClick={handleHomeClick}
@@ -117,11 +109,10 @@ export default function CustomerSidebar({ isOpen, onClose, activeTab, setActiveT
               <button
                 key={item.id}
                 onClick={() => handleDashboardTabClick(item.id)}
-                className={`w-full flex items-center px-3 py-3 mb-1 text-sm font-medium rounded-lg transition-colors ${
-                  activeTab === item.id && location.pathname === '/customer-dashboard'
-                    ? 'bg-indigo-50 text-indigo-700 border-r-2 border-indigo-700'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`w-full flex items-center px-3 py-3 mb-1 text-sm font-medium rounded-lg transition-colors ${activeTab === item.id && location.pathname === '/customer-dashboard'
+                  ? 'bg-indigo-50 text-indigo-700 border-r-2 border-indigo-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
               >
                 <i className={`${item.icon} text-lg mr-3`}></i>
                 {item.label}
@@ -130,11 +121,10 @@ export default function CustomerSidebar({ isOpen, onClose, activeTab, setActiveT
               <Link
                 key={item.id}
                 to={item.path}
-                className={`flex items-center px-3 py-3 mb-1 text-sm font-medium rounded-lg transition-colors ${
-                  location.pathname === item.path
-                    ? 'bg-indigo-50 text-indigo-700 border-r-2 border-indigo-700'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`flex items-center px-3 py-3 mb-1 text-sm font-medium rounded-lg transition-colors ${location.pathname === item.path
+                  ? 'bg-indigo-50 text-indigo-700 border-r-2 border-indigo-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+                  }`}
                 onClick={onClose}
               >
                 <i className={`${item.icon} text-lg mr-3`}></i>

@@ -1,25 +1,47 @@
-
 import { useState } from 'react';
 
 export default function RoomStatus() {
   const [roomDetails] = useState({
-    roomNumber: '101A',
-    floor: '1',
-    area: '25m²',
-    type: 'Studio',
-    rentPrice: '4,500,000',
-    deposit: '9,000,000',
-    utilities: 'Điện, nước, wifi, giường, tủ, bàn',
-    moveInDate: '2024-01-15',
-    status: 'Đang thuê'
+    roomNumber: 'A401', // Cập nhật từ contractInfo.roomNumber
+    floor: '4', // Cập nhật (suy ra từ A401)
+    area: '25m²', // Giữ nguyên (không có trong mock)
+    type: 'Studio', // Giữ nguyên (không có trong mock)
+    rentPrice: '2.500.000', // Cập nhật từ contractInfo.rentPrice
+    deposit: '2.500.000', // Cập nhật (bằng rentPrice)
+
+    // --- ĐÃ THAY ĐỔI ---
+    // utilities: 'Điện, nước, internet, rác, gửi xe', // (Đã xóa)
+
+    // Thêm mảng Tiện nghi (Thiết bị)
+    amenities: [
+      'Giường + nệm',
+      'Tủ quần áo',
+      'Máy lạnh',
+      'WC riêng',
+      'Bàn làm việc'
+    ],
+
+    // Thêm mảng Dịch vụ (dựa trên mock ContractInfo)
+    services: [
+      'Điện (theo công tơ)',
+      'Nước (theo số người)',
+      'Internet (Gói chung)',
+      'Thu gom rác',
+      'Gửi xe'
+    ],
+    // --- KẾT THÚC THAY ĐỔI ---
+
+    moveInDate: '2024-01-15', // Cập nhật từ contractInfo.startDate
+    status: 'Đang hiệu lực' // Cập nhật từ contractInfo.status
   });
 
+  // Giữ nguyên 3 người
   const [roommates] = useState([
     {
       id: 1,
-      name: 'Nguyễn Văn A',
+      name: 'Nguyễn Văn An',
       phone: '0912345678',
-      email: 'nguyenvana@email.com',
+      email: 'nguyen.van.an@email.com',
       role: 'Người thuê chính',
       moveInDate: '2024-01-15',
       avatar: 'A'
@@ -55,7 +77,8 @@ export default function RoomStatus() {
           <i className="ri-home-4-line text-indigo-600 mr-2"></i>
           Thông tin phòng
         </h3>
-        
+
+        {/* ... (Thông tin cơ bản, giữ nguyên) ... */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div className="flex justify-between">
@@ -75,7 +98,7 @@ export default function RoomStatus() {
               <span className="font-medium text-gray-900">{roomDetails.type}</span>
             </div>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex justify-between">
               <span className="text-gray-600">Giá thuê:</span>
@@ -98,19 +121,42 @@ export default function RoomStatus() {
           </div>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <span className="text-gray-600">Tiện nghi:</span>
-          <p className="mt-1 text-gray-900">{roomDetails.utilities}</p>
+        <div className="mt-6 pt-6 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          <div>
+            <h4 className="text-base font-semibold text-gray-900 mb-3 flex items-center">
+              <i className="ri-lightbulb-line text-indigo-600 mr-2"></i>
+              Tiện nghi
+            </h4>
+            <ul className="list-disc list-inside text-gray-700 space-y-1 pl-2">
+              {roomDetails.amenities.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-base font-semibold text-gray-900 mb-3 flex items-center">
+              <i className="ri-service-line text-indigo-600 mr-2"></i>
+              Dịch vụ
+            </h4>
+            <ul className="list-disc list-inside text-gray-700 space-y-1 pl-2">
+              {roomDetails.services.map((item, index) => (
+                <li key={index}>{item}</li>
+              ))}
+            </ul>
+          </div>
         </div>
+        {/* --- KẾT THÚC THAY ĐỔI JSX --- */}
+
       </div>
 
-      {/* Người thuê chính */}
+      {/* Người thuê chính (Giữ nguyên) */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
           <i className="ri-user-star-line text-indigo-600 mr-2"></i>
           Người thuê chính
         </h3>
-        
+
         {mainTenant && (
           <div className="flex items-center space-x-4 p-4 bg-blue-50 rounded-lg">
             <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center">
@@ -142,13 +188,13 @@ export default function RoomStatus() {
         )}
       </div>
 
-      {/* Thành viên trong phòng */}
+      {/* Thành viên trong phòng (Giữ nguyên) */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
           <i className="ri-team-line text-indigo-600 mr-2"></i>
           Thành viên trong phòng ({members.length})
         </h3>
-        
+
         <div className="space-y-4">
           {members.map((member) => (
             <div key={member.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">

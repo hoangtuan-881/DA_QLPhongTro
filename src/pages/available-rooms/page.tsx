@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import CustomerHeader from '../customer-dashboard/components/CustomerHeader';
 import CustomerSidebar from '../customer-dashboard/components/CustomerSidebar';
@@ -9,18 +8,29 @@ export default function AvailableRoomsPage() {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<any>(null);
 
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('vi-VN');
+  };
+
   const [availableRooms] = useState([
     {
       id: 1,
-      number: '205B',
-      floor: 2,
-      area: 30,
-      type: 'Studio',
-      price: 5500000,
-      deposit: 11000000,
+      number: 'B205',
+      dãy: 2, // Đã đổi từ floor
+      area: 25,
+      type: 'Phòng ban công',
+      price: 2600000,
+      deposit: 2600000,
       description: 'Phòng studio rộng rãi, đầy đủ nội thát, view đẹp',
       amenities: ['Điều hòa', 'Tủ lạnh', 'Giường', 'Tủ quần áo', 'Bàn học', 'Wifi'],
-      utilities: ['Điện', 'Nước', 'Internet', 'Vệ sinh'],
+      // Đã đổi từ utilities và cập nhật cấu trúc
+      services: [
+        { name: 'Điện', price: 3500, unit: 'đ/kwh' },
+        { name: 'Nước', price: 60000, unit: 'đ/người' },
+        { name: 'Rác', price: 40000, unit: 'đ/phòng' },
+        { name: 'Gửi xe', price: 100000, unit: 'đ/xe' },
+        { name: 'Internet', price: 50000, unit: 'đ/phòng' },
+      ],
       nearbyFacilities: ['Siêu thị Co.opmart (200m)', 'Trường ĐH Kinh tế (500m)', 'Bệnh viện (300m)', 'Ngân hàng Vietcombank (150m)'],
       images: ['room1_1.jpg', 'room1_2.jpg', 'room1_3.jpg'],
       status: 'Trống',
@@ -28,15 +38,22 @@ export default function AvailableRoomsPage() {
     },
     {
       id: 2,
-      number: '301A',
-      floor: 3,
+      number: 'A301',
+      dãy: 3, // Đã đổi từ floor
       area: 25,
-      type: 'Standard',
-      price: 4800000,
-      deposit: 9600000,
+      type: 'Phòng thường',
+      price: 2600000,
+      deposit: 2600000,
       description: 'Phòng tiêu chuẩn, thoáng mát, gần trung tâm',
       amenities: ['Điều hòa', 'Giường', 'Tủ quần áo', 'Bàn học'],
-      utilities: ['Điện', 'Nước', 'Internet'],
+      // Đã đổi từ utilities và cập nhật cấu trúc
+      services: [
+        { name: 'Điện', price: 3500, unit: 'đ/kwh' },
+        { name: 'Nước', price: 60000, unit: 'đ/người' },
+        { name: 'Rác', price: 40000, unit: 'đ/phòng' },
+        { name: 'Gửi xe', price: 100000, unit: 'đ/xe' },
+        { name: 'Internet', price: 50000, unit: 'đ/phòng' },
+      ],
       nearbyFacilities: ['Chợ Bến Thành (1km)', 'Trung tâm thương mại (800m)', 'Trạm xe buýt (100m)'],
       images: ['room2_1.jpg', 'room2_2.jpg'],
       status: 'Trống',
@@ -44,15 +61,22 @@ export default function AvailableRoomsPage() {
     },
     {
       id: 3,
-      number: '102C',
-      floor: 1,
+      number: 'B201',
+      dãy: 1, // Đã đổi từ floor
       area: 35,
-      type: 'Deluxe',
-      price: 6200000,
-      deposit: 12400000,
-      description: 'Phòng cao cấp với ban công riêng, nội thất hiện đại',
+      type: 'Phòng góc',
+      price: 2600000,
+      deposit: 2600000,
+      description: 'Phòng tiêu chuẩn, thoáng mát, gần trung tâm',
       amenities: ['Điều hòa', 'Tủ lạnh', 'Máy giặt riêng', 'Giường King', 'Tủ quần áo', 'Bàn làm việc', 'Ban công'],
-      utilities: ['Điện', 'Nước', 'Internet', 'Vệ sinh', 'Bảo vệ 24/7'],
+      // Đã đổi từ utilities và cập nhật cấu trúc
+      services: [
+        { name: 'Điện', price: 3500, unit: 'đ/kwh' },
+        { name: 'Nước', price: 60000, unit: 'đ/người' },
+        { name: 'Rác', price: 40000, unit: 'đ/phòng' },
+        { name: 'Gửi xe', price: 100000, unit: 'đ/xe' },
+        { name: 'Internet', price: 50000, unit: 'đ/phòng' },
+      ],
       nearbyFacilities: ['Metro Thanh Xuân (300m)', 'Vincom Center (400m)', 'Công viên Cầu Giấy (200m)', 'Starbucks (250m)'],
       images: ['room3_1.jpg', 'room3_2.jpg', 'room3_3.jpg', 'room3_4.jpg'],
       status: 'Sắp trống',
@@ -60,15 +84,22 @@ export default function AvailableRoomsPage() {
     },
     {
       id: 4,
-      number: '404A',
-      floor: 4,
-      area: 28,
-      type: 'Studio',
-      price: 5200000,
-      deposit: 10400000,
-      description: 'Phòng tầng cao, view thành phố, không gian mở',
+      number: 'A404',
+      dãy: 4, // Đã đổi từ floor
+      area: 25,
+      type: 'Phòng góc',
+      price: 2600000,
+      deposit: 2600000,
+      description: 'Phòng tiêu chuẩn, thoáng mát, gần trung tâm',
       amenities: ['Điều hòa', 'Tủ lạnh mini', 'Giường', 'Góc bếp nhỏ', 'Tủ quần áo'],
-      utilities: ['Điện', 'Nước', 'Internet'],
+      // Đã đổi từ utilities và cập nhật cấu trúc
+      services: [
+        { name: 'Điện', price: 3500, unit: 'đ/kwh' },
+        { name: 'Nước', price: 60000, unit: 'đ/người' },
+        { name: 'Rác', price: 40000, unit: 'đ/phòng' },
+        { name: 'Gửi xe', price: 100000, unit: 'đ/xe' },
+        { name: 'Internet', price: 50000, unit: 'đ/phòng' },
+      ],
       nearbyFacilities: ['Đại học Bách Khoa (600m)', 'Big C (500m)', 'Café Highlands (300m)'],
       images: ['room4_1.jpg', 'room4_2.jpg'],
       status: 'Trống',
@@ -93,20 +124,16 @@ export default function AvailableRoomsPage() {
     // Logic xử lý đặt cọc
   };
 
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('vi-VN');
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <CustomerSidebar 
-        isOpen={sidebarOpen} 
+      <CustomerSidebar
+        isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <CustomerHeader onMenuClick={() => setSidebarOpen(true)} />
-        
+
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
           <div className="max-w-7xl mx-auto">
             <div className="mb-6">
@@ -124,11 +151,11 @@ export default function AvailableRoomsPage() {
                       <i className="ri-image-line text-gray-400 text-4xl"></i>
                     </div>
                     <div className="absolute top-4 left-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        room.status === 'Trống' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${room.status === 'Trống'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
                         {room.status}
                       </span>
                     </div>
@@ -143,7 +170,7 @@ export default function AvailableRoomsPage() {
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">Phòng {room.number}</h3>
-                        <p className="text-gray-600">{room.type} • Tầng {room.floor}</p>
+                        <p className="text-gray-600">{room.type} • Dãy {room.dãy}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-green-600">
@@ -164,7 +191,8 @@ export default function AvailableRoomsPage() {
                       </div>
                       <div className="flex items-center text-sm text-gray-600">
                         <i className="ri-calendar-line mr-2"></i>
-                        Có thể vào: {room.availableFrom}
+                        {/* THAY ĐỔI LOGIC Ở ĐÂY */}
+                        Có thể vào: {room.status === 'Trống' ? 'Vào ngay hôm nay' : room.availableFrom}
                       </div>
                     </div>
 
@@ -228,8 +256,8 @@ export default function AvailableRoomsPage() {
                         <span className="font-medium">{selectedRoom.number}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Tầng:</span>
-                        <span className="font-medium">Tầng {selectedRoom.floor}</span>
+                        <span className="text-gray-600">Dãy:</span>
+                        <span className="font-medium">{selectedRoom.dãy}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Loại phòng:</span>
@@ -241,17 +269,20 @@ export default function AvailableRoomsPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Trạng thái:</span>
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          selectedRoom.status === 'Trống' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
+                        <span className={`px-2 py-1 rounded-full text-xs ${selectedRoom.status === 'Trống'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                          }`}
+                        >
                           {selectedRoom.status}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Có thể vào:</span>
-                        <span className="font-medium">{selectedRoom.availableFrom}</span>
+                        {/* THAY ĐỔI LOGIC Ở ĐÂY */}
+                        <span className="font-medium">
+                          {selectedRoom.status === 'Trống' ? 'Vào ngay hôm nay' : selectedRoom.availableFrom}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -276,10 +307,10 @@ export default function AvailableRoomsPage() {
                   </div>
                 </div>
 
-                {/* Cột 2: Tiện nghi và tiện ích */}
+                {/* Cột 2: Tiện nghi và dịch vụ */}
                 <div className="space-y-4">
                   <div className="bg-purple-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-3">Nội thất & Tiện nghi</h4>
+                    <h4 className="font-medium text-gray-900 mb-3">Tiện nghi</h4>
                     <div className="grid grid-cols-2 gap-2">
                       {selectedRoom.amenities.map((amenity: string, index: number) => (
                         <div key={index} className="flex items-center text-sm text-gray-700">
@@ -291,12 +322,19 @@ export default function AvailableRoomsPage() {
                   </div>
 
                   <div className="bg-orange-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-3">Tiện ích bao gồm</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {selectedRoom.utilities.map((utility: string, index: number) => (
-                        <div key={index} className="flex items-center text-sm text-gray-700">
-                          <i className="ri-check-line text-green-600 mr-2"></i>
-                          {utility}
+                    <h4 className="font-medium text-gray-900 mb-3">Dịch vụ</h4>
+                    <div className="space-y-2">
+                      {selectedRoom.services.map((service: any, index: number) => (
+                        <div key={index} className="flex justify-between text-sm">
+                          <span className="flex items-center text-gray-700">
+                            <i className="ri-check-line text-green-600 mr-2"></i>
+                            {service.name}
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            {typeof service.price === 'number'
+                              ? `${formatPrice(service.price)} ${service.unit}`
+                              : `${service.price} ${service.unit}`}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -390,7 +428,7 @@ export default function AvailableRoomsPage() {
                       placeholder="Nhập họ và tên"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Số điện thoại *

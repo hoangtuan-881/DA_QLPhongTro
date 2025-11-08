@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
@@ -21,12 +20,8 @@ interface SystemSettings {
   maintenanceMode: boolean;
   maxLoginAttempts: number;
   sessionTimeout: number;
-  defaultRentPrice: number;
-  electricityPrice: number;
-  waterPrice: number;
-  servicePrice: number;
-  depositRate: number;
-  paymentDueDays: number;
+  // removed pricing-related fields:
+  // defaultRentPrice, electricityPrice, waterPrice, servicePrice, depositRate, paymentDueDays
 }
 
 export default function Settings() {
@@ -51,13 +46,7 @@ export default function Settings() {
     backupTime: '02:00',
     maintenanceMode: false,
     maxLoginAttempts: 5,
-    sessionTimeout: 30,
-    defaultRentPrice: 3000000,
-    electricityPrice: 3500,
-    waterPrice: 25000,
-    servicePrice: 200000,
-    depositRate: 2,
-    paymentDueDays: 5
+    sessionTimeout: 30
   });
 
   const handleSettingChange = (key: keyof SystemSettings, value: any) => {
@@ -81,12 +70,30 @@ export default function Settings() {
 
   const handleResetSettings = () => {
     if (confirm('Bạn có chắc chắn muốn khôi phục cài đặt mặc định?')) {
-      // Reset to default values
+      // Reset to default values (simple approach: reload initial object)
+      setSettings({
+        siteName: 'Hệ thống quản lý trọ',
+        siteDescription: 'Quản lý nhà trọ hiện đại và tiện lợi',
+        contactEmail: 'contact@tro.com',
+        contactPhone: '0901234567',
+        address: '123 Đường ABC, Quận 1, TP.HCM',
+        timezone: 'Asia/Ho_Chi_Minh',
+        currency: 'VNĐ',
+        language: 'vi',
+        dateFormat: 'dd/MM/yyyy',
+        emailNotifications: true,
+        smsNotifications: false,
+        autoBackup: true,
+        backupTime: '02:00',
+        maintenanceMode: false,
+        maxLoginAttempts: 5,
+        sessionTimeout: 30
+      });
+      setHasChanges(true);
       toast.info({
         title: 'Đã khôi phục cài đặt mặc định',
         message: 'Vui lòng lưu để áp dụng thay đổi'
       });
-      setHasChanges(true);
     }
   };
 
@@ -94,17 +101,17 @@ export default function Settings() {
     { id: 'general', name: 'Chung', icon: 'ri-settings-line' },
     { id: 'notifications', name: 'Thông báo', icon: 'ri-notification-line' },
     { id: 'security', name: 'Bảo mật', icon: 'ri-shield-line' },
-    { id: 'pricing', name: 'Giá cả', icon: 'ri-money-dollar-circle-line' },
+    // pricing removed
     { id: 'system', name: 'Hệ thống', icon: 'ri-computer-line' }
   ];
 
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
         <Header onMenuClick={() => setSidebarOpen(true)} />
-        
+
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex items-center justify-between mb-8">
@@ -112,7 +119,7 @@ export default function Settings() {
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Cài đặt hệ thống</h1>
                 <p className="text-gray-600">Quản lý cấu hình và tùy chỉnh hệ thống</p>
               </div>
-              
+
               {hasChanges && (
                 <div className="flex space-x-3">
                   <button
@@ -146,11 +153,10 @@ export default function Settings() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition duration-200 whitespace-nowrap ${
-                        activeTab === tab.id
+                      className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition duration-200 whitespace-nowrap ${activeTab === tab.id
                           ? 'bg-indigo-100 text-indigo-700'
                           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
+                        }`}
                     >
                       <i className={`${tab.icon} mr-3`}></i>
                       {tab.name}
@@ -162,7 +168,7 @@ export default function Settings() {
               {/* Content */}
               <div className="flex-1">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  
+
                   {/* General Settings */}
                   {activeTab === 'general' && (
                     <div className="space-y-6">
@@ -365,91 +371,6 @@ export default function Settings() {
                     </div>
                   )}
 
-                  {/* Pricing Settings */}
-                  {activeTab === 'pricing' && (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Cài đặt giá cả</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Giá thuê phòng mặc định (VNĐ)
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={settings.defaultRentPrice}
-                              onChange={(e) => handleSettingChange('defaultRentPrice', parseInt(e.target.value))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Giá điện (VNĐ/kWh)
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={settings.electricityPrice}
-                              onChange={(e) => handleSettingChange('electricityPrice', parseInt(e.target.value))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Giá nước (VNĐ/m³)
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={settings.waterPrice}
-                              onChange={(e) => handleSettingChange('waterPrice', parseInt(e.target.value))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Phí dịch vụ (VNĐ/tháng)
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={settings.servicePrice}
-                              onChange={(e) => handleSettingChange('servicePrice', parseInt(e.target.value))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Tỷ lệ đặt cọc (số tháng)
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="12"
-                              value={settings.depositRate}
-                              onChange={(e) => handleSettingChange('depositRate', parseInt(e.target.value))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Số ngày thanh toán (từ đầu tháng)
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="31"
-                              value={settings.paymentDueDays}
-                              onChange={(e) => handleSettingChange('paymentDueDays', parseInt(e.target.value))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {/* System Settings */}
                   {activeTab === 'system' && (
                     <div className="space-y-6">
@@ -485,7 +406,7 @@ export default function Settings() {
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="mt-8 pt-6 border-t">
                           <h4 className="text-md font-medium text-gray-900 mb-4">Thao tác hệ thống</h4>
                           <div className="flex flex-wrap gap-3">
@@ -508,24 +429,12 @@ export default function Settings() {
                               <i className="ri-download-line mr-2"></i>
                               Sao lưu ngay
                             </button>
-                            <button
-                              onClick={() => {
-                                toast.warning({
-                                  title: 'Chức năng đang phát triển',
-                                  message: 'Tính năng khôi phục sẽ có trong phiên bản tiếp theo'
-                                });
-                              }}
-                              className="border border-yellow-300 text-yellow-700 px-4 py-2 rounded-lg hover:bg-yellow-50 transition duration-200 whitespace-nowrap"
-                            >
-                              <i className="ri-upload-line mr-2"></i>
-                              Khôi phục dữ liệu
-                            </button>
                           </div>
                         </div>
                       </div>
                     </div>
                   )}
-                  
+
                 </div>
               </div>
             </div>

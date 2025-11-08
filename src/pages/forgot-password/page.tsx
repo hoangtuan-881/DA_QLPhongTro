@@ -9,7 +9,7 @@ export default function ForgotPassword() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [touched, setTouched] = useState(false);
-  const { showToast } = useToast();
+  //const { showToast } = useToast();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -36,30 +36,30 @@ export default function ForgotPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const emailError = validateEmail(email);
     setError(emailError);
     setTouched(true);
-    
+
     if (emailError) {
       return;
     }
 
     setIsLoading(true);
-    
+
     // Mô phỏng gửi email reset password
     setTimeout(() => {
       setIsLoading(false);
       setIsSubmitted(true);
-      showToast('Đã gửi email khôi phục mật khẩu thành công!', 'success');
+      //showToast('Đã gửi email khôi phục mật khẩu thành công!', 'success');
     }, 2000);
   };
 
   if (isSubmitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="absolute top-6 left-6 flex items-center text-indigo-600 hover:text-indigo-700 transition-colors duration-200 cursor-pointer"
         >
           <i className="ri-arrow-left-line mr-2"></i>
@@ -106,8 +106,8 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Link 
-        to="/" 
+      <Link
+        to="/"
         className="absolute top-6 left-6 flex items-center text-indigo-600 hover:text-indigo-700 transition-colors duration-200 cursor-pointer"
       >
         <i className="ri-arrow-left-line mr-2"></i>
@@ -134,11 +134,10 @@ export default function ForgotPassword() {
               </div>
               <input
                 type="email"
-                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  error && touched 
-                    ? 'border-red-500 bg-red-50' 
-                    : 'border-gray-300'
-                }`}
+                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${error && touched
+                  ? 'border-red-500 bg-red-50'
+                  : 'border-gray-300'
+                  }`}
                 placeholder="Nhập email đã đăng ký"
                 value={email}
                 onChange={(e) => handleChange(e.target.value)}

@@ -1,28 +1,147 @@
+import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 
-import { useState } from 'react';
 
+/** ---------- Types ---------- */
+type InternetPackageKey = "internet1" | "internet2";
+
+interface Electricity {
+  unitPrice: number;   // VND/kWh
+  usageKwh: number;    // kWh/tháng
+}
+interface Water {
+  unitPrice: number;   // VND/người/tháng
+  people: number;
+}
+interface Internet {
+  packages: Record<InternetPackageKey, number>; // { internet1: 50_000, internet2: 100_000 }
+  selected: InternetPackageKey;                 // "internet1" | "internet2"
+  perRoom: boolean;
+}
+interface Trash {
+  feePerRoom: number;
+}
+interface Parking {
+  feePerVehicle: number;
+  vehicles: number;
+}
+interface Services {
+  electricity: Electricity;
+  water: Water;
+  internet: Internet;
+  trash: Trash;
+  parking: Parking;
+}
+
+interface ContractInfoModel {
+  contractNumber: string;
+  roomNumber: string;
+  tenant: string;
+  phone: string;
+
+  status: string;
+  signDate: string;
+  startDate: string;
+  endDate: string;
+  nextRenewal: string;
+
+  rentPrice: number; // VND/tháng
+  services: Services;
+}
+
+/** ---------- Component ---------- */
 export default function ContractInfo() {
-  const [contractInfo] = useState({
-    contractNumber: 'HD001-2024',
-    roomNumber: '101A',
-    tenant: 'Nguyễn Văn A',
-    phone: '0912345678',
-    startDate: '2024-01-15',
-    endDate: '2025-01-14',
-    rentPrice: '4,500,000',
-    deposit: '9,000,000',
-    electricPrice: '3,500',
-    waterPrice: '25,000',
-    servicePrice: '500,000',
-    status: 'Đang hiệu lực',
-    signDate: '2024-01-10',
-    nextRenewal: '2025-01-14'
+  // Dùng _setContractInfo để tránh warning TS6133 khi chưa dùng tới setter
+  const [contractInfo, _setContractInfo] = useState<ContractInfoModel>({
+    contractNumber: "HD001-2024",
+    roomNumber: "A401",
+    tenant: "Nguyễn Văn An",
+    phone: "0912345678",
+
+    // Trạng thái & thời hạn
+    status: "Đang hiệu lực",
+    signDate: "2024-01-10",
+    startDate: "2024-01-15",
+    endDate: "2025-01-14",
+    nextRenewal: "2025-01-14",
+
+    // Giá cơ bản (để số)
+    rentPrice: 2_500_000, // VND/tháng
+
+    // Cấu hình dịch vụ
+    services: {
+      electricity: {
+        unitPrice: 3_500,  // VND/kWh
+        usageKwh: 120,       // kWh/tháng (mock)
+      },
+      water: {
+        unitPrice: 60_000, // VND/người/tháng
+        people: 1,         // mock
+      },
+      internet: {
+        packages: {
+          internet1: 50_000,   // gói chung
+          internet2: 100_000,  // gói riêng
+        },
+        selected: "internet1", // "internet1" | "internet2"
+        perRoom: true,
+      },
+      trash: {
+        feePerRoom: 40_000,    // VND/phòng/tháng
+      },
+      parking: {
+        feePerVehicle: 100_000,// VND/xe/tháng
+        vehicles: 1,           // mock
+      },
+    },
   });
 
+  // Deposit = tiền phòng 1 tháng
+  const deposit = contractInfo.rentPrice;
+
+  // ✅ fix TS7006: thêm kiểu tham số
+  const formatVND = (n: number) =>
+    (n ?? 0).toLocaleString("vi-VN", { style: "currency", currency: "VND" });
+
+  const bill = useMemo(() => {
+    const { rentPrice, services } = contractInfo;
+    const elec =
+      (services.electricity.unitPrice || 0) *
+      (services.electricity.usageKwh || 0);
+
+    const water =
+      (services.water.unitPrice || 0) * (services.water.people || 0);
+
+    // ✅ fix TS7053: selected gõ kiểu union -> index an toàn
+    const selected: InternetPackageKey = services.internet.selected;
+    const internet = services.internet.packages[selected] || 0;
+
+    const trash = services.trash.feePerRoom || 0;
+
+    const parking =
+      (services.parking.feePerVehicle || 0) *
+      (services.parking.vehicles || 0);
+
+    const subtotalServices = elec + water + internet + trash + parking;
+    const total = rentPrice + subtotalServices;
+
+    return {
+      breakdown: {
+        rent: rentPrice,
+        electricity: elec,
+        water,
+        internet,
+        trash,
+        parking,
+      },
+      subtotalServices,
+      total,
+    };
+  }, [contractInfo]);
+
   const handleViewContract = () => {
-    // Tạo URL giả lập cho file PDF hợp đồng
     const contractUrl = `/contracts/${contractInfo.contractNumber}.pdf`;
-    window.open(contractUrl, '_blank');
+    window.open(contractUrl, "_blank");
   };
 
   return (
@@ -42,29 +161,17 @@ export default function ContractInfo() {
             Xem hợp đồng đầy đủ
           </button>
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cột 1: Thông tin cơ bản */}
           <div className="space-y-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="font-medium text-gray-900 mb-3">Thông tin cơ bản</h4>
               <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Số hợp đồng:</span>
-                  <span className="font-medium text-gray-900">{contractInfo.contractNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Phòng:</span>
-                  <span className="font-medium text-gray-900">{contractInfo.roomNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Người thuê:</span>
-                  <span className="font-medium text-gray-900">{contractInfo.tenant}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Số điện thoại:</span>
-                  <span className="font-medium text-gray-900">{contractInfo.phone}</span>
-                </div>
+                <Row label="Số hợp đồng" value={contractInfo.contractNumber} />
+                <Row label="Phòng" value={contractInfo.roomNumber} />
+                <Row label="Người thuê" value={contractInfo.tenant} />
+                <Row label="Số điện thoại" value={contractInfo.phone} />
                 <div className="flex justify-between">
                   <span className="text-gray-600">Trạng thái:</span>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -77,60 +184,102 @@ export default function ContractInfo() {
             <div className="bg-blue-50 p-4 rounded-lg">
               <h4 className="font-medium text-gray-900 mb-3">Thời hạn hợp đồng</h4>
               <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Ngày ký:</span>
-                  <span className="font-medium text-gray-900">{contractInfo.signDate}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Bắt đầu:</span>
-                  <span className="font-medium text-gray-900">{contractInfo.startDate}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Kết thúc:</span>
-                  <span className="font-medium text-gray-900">{contractInfo.endDate}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Gia hạn tiếp theo:</span>
-                  <span className="font-medium text-orange-600">{contractInfo.nextRenewal}</span>
-                </div>
+                <Row label="Ngày ký" value={contractInfo.signDate} />
+                <Row label="Bắt đầu" value={contractInfo.startDate} />
+                <Row label="Kết thúc" value={contractInfo.endDate} />
+                <Row
+                  label="Gia hạn tiếp theo"
+                  value={contractInfo.nextRenewal}
+                  valueClass="text-orange-600"
+                />
               </div>
             </div>
           </div>
 
           {/* Cột 2: Chi phí */}
           <div className="space-y-4">
+            {/* Giá cơ bản */}
             <div className="bg-green-50 p-4 rounded-lg">
               <h4 className="font-medium text-gray-900 mb-3">Chi phí hàng tháng</h4>
               <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tiền thuê phòng:</span>
-                  <span className="font-medium text-green-600">{contractInfo.rentPrice} VNĐ</span>
+                <Row
+                  label="Tiền thuê phòng"
+                  value={formatVND(bill.breakdown.rent)}
+                  valueClass="text-green-600"
+                />
+              </div>
+            </div>
+
+            {/* Dịch vụ chi tiết */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-3">Dịch vụ</h4>
+              <div className="space-y-3">
+                <Row
+                  label="Điện"
+                  value={`${formatVND(
+                    contractInfo.services.electricity.unitPrice
+                  )} / kWh × ${contractInfo.services.electricity.usageKwh || 0} kWh = ${formatVND(
+                    bill.breakdown.electricity
+                  )}`}
+                />
+                <Row
+                  label="Nước"
+                  value={`${formatVND(
+                    contractInfo.services.water.unitPrice
+                  )} / người × ${contractInfo.services.water.people || 0} = ${formatVND(
+                    bill.breakdown.water
+                  )}`}
+                />
+                <Row
+                  label="Internet"
+                  value={`${contractInfo.services.internet.selected === "internet1"
+                    ? "Gói chung (Internet 1)"
+                    : "Gói riêng (Internet 2)"
+                    } = ${formatVND(bill.breakdown.internet)} / phòng`}
+                />
+                <Row
+                  label="Rác"
+                  value={`${formatVND(
+                    contractInfo.services.trash.feePerRoom
+                  )} / phòng = ${formatVND(bill.breakdown.trash)}`}
+                />
+                <Row
+                  label="Gửi xe"
+                  value={`${formatVND(
+                    contractInfo.services.parking.feePerVehicle
+                  )} / xe × ${contractInfo.services.parking.vehicles || 0} = ${formatVND(
+                    bill.breakdown.parking
+                  )}`}
+                />
+                <div className="flex justify-between border-t pt-3 mt-2">
+                  <span className="text-gray-600">Tổng dịch vụ</span>
+                  <span className="font-semibold">
+                    {formatVND(bill.subtotalServices)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Giá điện:</span>
-                  <span className="font-medium text-gray-900">{contractInfo.electricPrice} VNĐ/kWh</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Giá nước:</span>
-                  <span className="font-medium text-gray-900">{contractInfo.waterPrice} VNĐ/m³</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Phí dịch vụ:</span>
-                  <span className="font-medium text-gray-900">{contractInfo.servicePrice} VNĐ</span>
+                  <span className="text-gray-900 font-medium">
+                    TỔNG CỘNG / THÁNG
+                  </span>
+                  <span className="font-bold text-indigo-600">
+                    {formatVND(bill.total)}
+                  </span>
                 </div>
               </div>
             </div>
 
+            {/* Tiền cọc */}
             <div className="bg-orange-50 p-4 rounded-lg">
               <h4 className="font-medium text-gray-900 mb-3">Tiền cọc</h4>
               <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Số tiền:</span>
-                  <span className="font-medium text-orange-600">{contractInfo.deposit} VNĐ</span>
-                </div>
+                <Row
+                  label="Số tiền"
+                  value={formatVND(deposit)}
+                  valueClass="text-orange-600"
+                />
                 <div className="text-sm text-gray-600">
                   <i className="ri-information-line mr-1"></i>
-                  Tương đương 2 tháng tiền thuê
+                  Tiền cọc = 1 tháng tiền thuê (tự động theo giá phòng).
                 </div>
               </div>
             </div>
@@ -153,6 +302,21 @@ export default function ContractInfo() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** ---------- Row helper (kèm types để fix TS7031) ---------- */
+interface RowProps {
+  label: string;
+  value: ReactNode;     // <- dùng ReactNode thay cho JSX.Element | string | number
+  valueClass?: string;
+}
+function Row({ label, value, valueClass = "" }: RowProps) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-gray-600">{label}:</span>
+      <span className={`font-medium text-gray-900 ${valueClass}`}>{value}</span>
     </div>
   );
 }

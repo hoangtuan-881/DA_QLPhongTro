@@ -1,97 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
+import dichVuService, { DichVu } from '../../services/dich-vu.service';
+import { getErrorMessage } from '../../lib/http-client';
 
-interface Service {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  unit: string;
-  category: 'services' | 'utilities' | 'other';
-  isActive: boolean;
-  usageCount: number;
-}
-
-const mockServices: Service[] = [
-  {
-    id: '1',
-    name: 'Điện',
-    description: 'Dịch vụ điện theo số',
-    price: 3500,
-    unit: 'kWh',
-    category: 'utilities',
-    isActive: true,
-    usageCount: 45
-  },
-  {
-    id: '2',
-    name: 'Nước',
-    description: 'Dịch vụ nước theo người',
-    price: 60000,
-    unit: 'Người/Tháng',
-    category: 'utilities',
-    isActive: true,
-    usageCount: 32
-  },
-  {
-    id: '3',
-    name: 'Internet 1',
-    description: 'Dịch vụ internet chung cơ bản',
-    price: 50000,
-    unit: 'Phòng/Tháng',
-    category: 'services',
-    isActive: true,
-    usageCount: 28
-  },
-  {
-    id: '4',
-    name: 'Internet 2',
-    description: 'Dịch vụ internet riêng tốc độ cao',
-    price: 100000,
-    unit: 'Phòng/Tháng',
-    category: 'services',
-    isActive: true,
-    usageCount: 15
-  },
-  {
-    id: '5',
-    name: 'Rác',
-    description: 'Dịch vụ thu gom rác',
-    price: 40000,
-    unit: 'Phòng/Tháng',
-    category: 'services',
-    isActive: true,
-    usageCount: 8
-  },
-  {
-    id: '6',
-    name: 'Gửi xe',
-    description: 'Dịch vụ giữ xe, xếp xe',
-    price: 100000,
-    unit: 'Phòng/Tháng',
-    category: 'services',
-    isActive: true,
-    usageCount: 8
-  },
-  {
-    id: '7',
-    name: 'Giặt sấy',
-    description: 'Dịch vụ giặt sấy quần áo',
-    price: 7500,
-    unit: 'Kg',
-    category: 'other',
-    isActive: false,
-    usageCount: 8
-  }
-];
+// Type alias for cleaner code
+type Service = DichVu;
 
 export default function Services() {
   const toast = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [services, setServices] = useState<Service[]>(mockServices);
+
+  // Data state
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // UI states
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -148,6 +73,43 @@ export default function Services() {
     return data;
   }, [services, filterCategory, search]);
 
+  // Fetch services from API
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchServices = async () => {
+      try {
+        const response = await dichVuService.getAll({ signal: controller.signal });
+        if (!controller.signal.aborted) {
+          setServices(response.data.data || []);
+          setLoading(false);
+        }
+      } catch (error: any) {
+        // Only show error toast for non-cancelled requests
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          console.error('Error fetching services:', error);
+          toast.error({
+            title: 'Lỗi tải dữ liệu',
+            message: getErrorMessage(error)
+          });
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchServices();
+
+    // Cleanup: abort request if component unmounts or refreshKey changes
+    return () => {
+      controller.abort();
+    };
+  }, [refreshKey]);
+
+  const refreshServices = () => {
+    setLoading(true);
+    setRefreshKey(prev => prev + 1);
+  };
+
   const resetForm = () => setNewService(emptyForm);
 
   // ===== Thêm =====
@@ -163,22 +125,30 @@ export default function Services() {
       message: <>Bạn có chắc muốn thêm dịch vụ <strong>{newService.name}</strong>?</>,
       type: 'info',
       loading: false,
-      onConfirm: () => {
-        const created: Service = {
-          id: Date.now().toString(), // hoặc uuid
-          name: newService.name,
-          description: newService.description,
-          price: newService.price,
-          unit: newService.unit,
-          category: newService.category as Service['category'],
-          isActive: newService.isActive,
-          usageCount: 0
-        };
-        setServices(prev => [created, ...prev]);
-        setShowAddModal(false);
-        resetForm();
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        toast.success({ title: 'Đã thêm dịch vụ', message: `Thêm "${created.name}" thành công.` });
+      onConfirm: async () => {
+        try {
+          setConfirmDialog(prev => ({ ...prev, loading: true }));
+          await dichVuService.createService({
+            name: newService.name,
+            description: newService.description,
+            price: newService.price,
+            unit: newService.unit,
+            category: newService.category as Service['category'],
+            isActive: newService.isActive
+          });
+          setShowAddModal(false);
+          resetForm();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+          toast.success({ title: 'Đã thêm dịch vụ', message: `Thêm "${newService.name}" thành công.` });
+          refreshServices();
+        } catch (error) {
+          console.error('Error creating service:', error);
+          setConfirmDialog(prev => ({ ...prev, loading: false }));
+          toast.error({
+            title: 'Lỗi thêm dịch vụ',
+            message: getErrorMessage(error)
+          });
+        }
       }
     });
   };
@@ -208,27 +178,33 @@ export default function Services() {
       message: <>Cập nhật thông tin dịch vụ <strong>{editingService.name}</strong>?</>,
       type: 'info',
       loading: false,
-      onConfirm: () => {
-        setServices(prev => prev.map(s =>
-          s.id === editingService.id
-            ? {
-              ...s,
-              name: newService.name,
-              description: newService.description,
-              price: newService.price,
-              unit: newService.unit,
-              category: newService.category as Service['category'],
-              isActive: newService.isActive
-            }
-            : s
-        ));
-        setShowEditModal(false);
-        setEditingService(null);
-        resetForm();
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        toast.success({ title: 'Đã cập nhật', message: `Cập nhật "${newService.name}" thành công.` });
-        setShowDetailModal(false);
-        setSelectedService(null);
+      onConfirm: async () => {
+        try {
+          setConfirmDialog(prev => ({ ...prev, loading: true }));
+          await dichVuService.updateService(editingService.id, {
+            name: newService.name,
+            description: newService.description,
+            price: newService.price,
+            unit: newService.unit,
+            category: newService.category as Service['category'],
+            isActive: newService.isActive
+          });
+          setShowEditModal(false);
+          setEditingService(null);
+          resetForm();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+          toast.success({ title: 'Đã cập nhật', message: `Cập nhật "${newService.name}" thành công.` });
+          setShowDetailModal(false);
+          setSelectedService(null);
+          refreshServices();
+        } catch (error) {
+          console.error('Error updating service:', error);
+          setConfirmDialog(prev => ({ ...prev, loading: false }));
+          toast.error({
+            title: 'Lỗi cập nhật dịch vụ',
+            message: getErrorMessage(error)
+          });
+        }
       }
     });
   };
@@ -241,12 +217,23 @@ export default function Services() {
       message: <>Bạn có chắc muốn xóa <strong>{service.name}</strong>? Hành động này không thể hoàn tác.</>,
       type: 'danger',
       loading: false,
-      onConfirm: () => {
-        setServices(prev => prev.filter(s => s.id !== service.id));
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        toast.error({ title: 'Đã xóa', message: `Đã xóa dịch vụ "${service.name}".` });
-        setShowDetailModal(false);
-        setSelectedService(null);
+      onConfirm: async () => {
+        try {
+          setConfirmDialog(prev => ({ ...prev, loading: true }));
+          await dichVuService.deleteService(service.id);
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+          toast.error({ title: 'Đã xóa', message: `Đã xóa dịch vụ "${service.name}".` });
+          setShowDetailModal(false);
+          setSelectedService(null);
+          refreshServices();
+        } catch (error) {
+          console.error('Error deleting service:', error);
+          setConfirmDialog(prev => ({ ...prev, loading: false }));
+          toast.error({
+            title: 'Lỗi xóa dịch vụ',
+            message: getErrorMessage(error)
+          });
+        }
       }
     });
   };
@@ -260,15 +247,26 @@ export default function Services() {
       message: <>Bạn muốn {next ? 'kích hoạt' : 'tạm dừng'} <strong>{service.name}</strong>?</>,
       type: 'warning',
       loading: false,
-      onConfirm: () => {
-        setServices(prev => prev.map(s => s.id === service.id ? { ...s, isActive: next } : s));
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-        toast.success({
-          title: next ? 'Đã kích hoạt' : 'Đã tạm dừng',
-          message: `"${service.name}" đã được ${next ? 'kích hoạt' : 'tạm dừng'}.`
-        });
-        setShowDetailModal(false);
-        setSelectedService(null);
+      onConfirm: async () => {
+        try {
+          setConfirmDialog(prev => ({ ...prev, loading: true }));
+          await dichVuService.toggleStatus(service.id);
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+          toast.success({
+            title: next ? 'Đã kích hoạt' : 'Đã tạm dừng',
+            message: `"${service.name}" đã được ${next ? 'kích hoạt' : 'tạm dừng'}.`
+          });
+          setShowDetailModal(false);
+          setSelectedService(null);
+          refreshServices();
+        } catch (error) {
+          console.error('Error toggling service status:', error);
+          setConfirmDialog(prev => ({ ...prev, loading: false }));
+          toast.error({
+            title: 'Lỗi thay đổi trạng thái',
+            message: getErrorMessage(error)
+          });
+        }
       }
     });
   };
@@ -329,9 +327,41 @@ export default function Services() {
               </div>
             </div>
 
+            {/* Loading State */}
+            {loading && (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!loading && services.length === 0 && (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <i className="ri-service-line text-6xl text-gray-300 mb-4"></i>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có dịch vụ nào</h3>
+                <p className="text-gray-600 mb-4">Bắt đầu bằng cách thêm dịch vụ đầu tiên</p>
+                <button
+                  onClick={handleOpenAdd}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer"
+                >
+                  <i className="ri-add-line mr-2"></i> Thêm dịch vụ
+                </button>
+              </div>
+            )}
+
+            {/* No Results State */}
+            {!loading && services.length > 0 && filteredServices.length === 0 && (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center col-span-full">
+                <i className="ri-search-line text-6xl text-gray-300 mb-4"></i>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy dịch vụ</h3>
+                <p className="text-gray-600">Thử điều chỉnh bộ lọc hoặc tìm kiếm của bạn</p>
+              </div>
+            )}
+
             {/* Services Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredServices.map((service) => (
+            {!loading && filteredServices.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredServices.map((service) => (
                 <div key={service.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
@@ -354,7 +384,7 @@ export default function Services() {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Số lần sử dụng:</span>
+                        <span className="text-sm text-gray-600">Số phòng đang sử dụng:</span>
                         <span className="text-sm font-medium">{service.usageCount}</span>
                       </div>
                       <div className="flex justify-between">
@@ -391,7 +421,8 @@ export default function Services() {
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            )}
 
           </div>
         </main>
@@ -420,7 +451,7 @@ export default function Services() {
                   </span>
                 </div>
                 <div className="flex justify-between"><span className="text-gray-600">Giá:</span><span className="font-medium text-green-600">{selectedService.price.toLocaleString('vi-VN')}đ/{selectedService.unit}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">Số lần sử dụng:</span><span className="font-medium">{selectedService.usageCount}</span></div>
+                <div className="flex justify-between"><span className="text-gray-600">Số phòng đang sử dụng:</span><span className="font-medium">{selectedService.usageCount}</span></div>
                 <div className="flex justify-between"><span className="text-gray-600">Trạng thái:</span><span className={`font-medium ${selectedService.isActive ? 'text-green-600' : 'text-red-600'}`}>{selectedService.isActive ? 'Hoạt động' : 'Tạm dừng'}</span></div>
               </div>
 

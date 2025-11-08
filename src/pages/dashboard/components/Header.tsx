@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import UserMenu from '@/components/base/UserMenu';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -8,7 +8,6 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -71,47 +70,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
             )}
           </div>
 
-          {/* Profile */}
-          <div className="relative">
-            <button
-              onClick={() => setShowProfile(!showProfile)}
-              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100"
-            >
-              <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">A</span>
-              </div>
-              <span className="hidden md:block text-sm font-medium text-gray-700">Admin</span>
-              <i className="ri-arrow-down-s-line text-gray-400"></i>
-            </button>
-
-            {showProfile && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-2">
-                  <Link 
-                    to="/profile" 
-                    className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50"
-                    onClick={() => setShowProfile(false)}
-                  >
-                    <i className="ri-user-line mr-3"></i>
-                    Thông tin cá nhân
-                  </Link>
-                  <Link 
-                    to="/settings" 
-                    className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50"
-                    onClick={() => setShowProfile(false)}
-                  >
-                    <i className="ri-settings-line mr-3"></i>
-                    Cài đặt
-                  </Link>
-                  <hr className="my-2" />
-                  <a href="#" className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50">
-                    <i className="ri-logout-box-line mr-3"></i>
-                    Đăng xuất
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* User Menu with Logout */}
+          <UserMenu />
         </div>
       </div>
     </header>

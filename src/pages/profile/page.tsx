@@ -1,67 +1,161 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
+import { useAuth } from '../../contexts/AuthContext';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import {
+  profileService,
+  NhanVienProfile,
+  KhachThueProfile,
+  UpdateNhanVienRequest,
+  UpdateKhachThueRequest
+} from '../../services/profile.service';
 
-interface UserProfile {
-  id: string;
-  username: string;
+interface ProfileFormData {
   fullName: string;
   email: string;
   phone: string;
-  role: string;
-  avatar?: string;
   address: string;
   dateOfBirth: string;
   gender: string;
   idCard: string;
-  emergencyContact: string;
-  emergencyPhone: string;
-  joinDate: string;
-  lastLogin: string;
+  idCardIssueDate: string;
+  idCardIssuePlace: string;
 }
 
 export default function Profile() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<NhanVienProfile | KhachThueProfile | null>(null);
   const toast = useToast();
+  const { refreshUser } = useAuth();
 
-  const [profile, setProfile] = useState<UserProfile>({
-    id: '1',
-    username: 'admin',
-    fullName: 'Nguyễn Văn Admin',
-    email: 'admin@tro.com',
-    phone: '0901234567',
-    role: 'Admin',
-    address: '123 Đường ABC, Quận 1, TP.HCM',
-    dateOfBirth: '1990-01-15',
-    gender: 'Nam',
-    idCard: '001234567890',
-    emergencyContact: 'Nguyễn Thị B',
-    emergencyPhone: '0987654321',
-    joinDate: '2024-01-01',
-    lastLogin: '2024-01-20 09:30'
+  // Set page title
+  useDocumentTitle('Thông tin cá nhân');
+
+  const [editForm, setEditForm] = useState<ProfileFormData>({
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    dateOfBirth: '',
+    gender: '',
+    idCard: '',
+    idCardIssueDate: '',
+    idCardIssuePlace: ''
   });
-
-  const [editForm, setEditForm] = useState<UserProfile>(profile);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
 
-  const handleSaveProfile = () => {
-    setProfile(editForm);
-    setIsEditing(false);
-    toast.success({
-      title: 'Cập nhật thành công!',
-      message: 'Thông tin cá nhân đã được lưu'
-    });
+  // Fetch profile data on mount
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const data = await profileService.getProfile();
+      setProfile(data);
+
+      // Map backend data to form
+      if (profileService.isNhanVienProfile(data)) {
+        setEditForm({
+          fullName: data.HoTen || '',
+          email: data.Email || '',
+          phone: data.SDT || '',
+          address: data.DiaChi || '',
+          dateOfBirth: data.NgaySinh || '',
+          gender: data.GioiTinh || '',
+          idCard: data.CCCD || '',
+          idCardIssueDate: data.NgayCapCCCD || '',
+          idCardIssuePlace: data.NoiCapCCCD || ''
+        });
+      } else if (profileService.isKhachThueProfile(data)) {
+        setEditForm({
+          fullName: data.HoTen || '',
+          email: data.Email || '',
+          phone: data.SDT1 || '',
+          address: data.DiaChiThuongTru || '',
+          dateOfBirth: data.NgaySinh || '',
+          gender: '',
+          idCard: data.CCCD || '',
+          idCardIssueDate: data.NgayCapCCCD || '',
+          idCardIssuePlace: data.NoiCapCCCD || ''
+        });
+      }
+    } catch (error: any) {
+      toast.error({
+        title: 'Lỗi!',
+        message: error.response?.data?.message || 'Không thể tải thông tin profile'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleChangePassword = () => {
+  const handleSaveProfile = async () => {
+    try {
+      setLoading(true);
+
+      if (!profile) return;
+
+      let updateData: UpdateNhanVienRequest | UpdateKhachThueRequest;
+
+      if (profileService.isNhanVienProfile(profile)) {
+        updateData = {
+          HoTen: editForm.fullName,
+          Email: editForm.email,
+          SDT: editForm.phone,
+          DiaChi: editForm.address,
+          NgaySinh: editForm.dateOfBirth,
+          GioiTinh: editForm.gender,
+          CCCD: editForm.idCard,
+          NgayCapCCCD: editForm.idCardIssueDate,
+          NoiCapCCCD: editForm.idCardIssuePlace
+        };
+      } else {
+        updateData = {
+          HoTen: editForm.fullName,
+          Email: editForm.email,
+          SDT1: editForm.phone,
+          DiaChiThuongTru: editForm.address,
+          NgaySinh: editForm.dateOfBirth,
+          CCCD: editForm.idCard,
+          NgayCapCCCD: editForm.idCardIssueDate,
+          NoiCapCCCD: editForm.idCardIssuePlace
+        };
+      }
+
+      const updatedProfile = await profileService.updateProfile(updateData);
+      setProfile(updatedProfile);
+      setIsEditing(false);
+
+      // Refresh user in AuthContext to update header
+      await refreshUser();
+
+      toast.success({
+        title: 'Cập nhật thành công!',
+        message: 'Thông tin cá nhân đã được lưu'
+      });
+    } catch (error: any) {
+      toast.error({
+        title: 'Lỗi!',
+        message: error.response?.data?.message || 'Không thể cập nhật profile'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast.error({
         title: 'Lỗi!',
@@ -78,31 +172,84 @@ export default function Profile() {
       return;
     }
 
-    setPasswordForm({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
+    try {
+      setLoading(true);
+      await profileService.changePassword({
+        password_hien_tai: passwordForm.currentPassword,
+        password_moi: passwordForm.newPassword,
+        password_moi_confirmation: passwordForm.confirmPassword
+      });
 
-    toast.success({
-      title: 'Đổi mật khẩu thành công!',
-      message: 'Mật khẩu của bạn đã được cập nhật'
-    });
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+
+      toast.success({
+        title: 'Đổi mật khẩu thành công!',
+        message: 'Mật khẩu của bạn đã được cập nhật'
+      });
+    } catch (error: any) {
+      toast.error({
+        title: 'Lỗi!',
+        message: error.response?.data?.message || 'Không thể đổi mật khẩu'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setEditForm({
-          ...editForm,
-          avatar: e.target?.result as string
-        });
-      };
-      reader.readAsDataURL(file);
+      // TODO: Implement avatar upload to backend
+      toast.error({
+        title: 'Chưa hỗ trợ!',
+        message: 'Tính năng upload avatar đang được phát triển'
+      });
     }
   };
+
+  if (loading && !profile) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+          <Header onMenuClick={() => setSidebarOpen(true)} />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Đang tải thông tin...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+          <Header onMenuClick={() => setSidebarOpen(true)} />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <i className="ri-error-warning-line text-5xl text-red-500"></i>
+              <p className="mt-4 text-gray-600">Không thể tải thông tin profile</p>
+              <button
+                onClick={fetchProfile}
+                className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+              >
+                Thử lại
+              </button>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -123,11 +270,11 @@ export default function Profile() {
               <div className="flex items-center space-x-6">
                 <div className="relative">
                   <div className="w-24 h-24 bg-indigo-100 rounded-full flex items-center justify-center overflow-hidden">
-                    {profile.avatar ? (
-                      <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                    {profileService.isKhachThueProfile(profile) && profile.HinhAnh ? (
+                      <img src={profile.HinhAnh} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-indigo-600 font-bold text-2xl">
-                        {profile.fullName.charAt(0)}
+                        {profile?.HoTen?.charAt(0) || '?'}
                       </span>
                     )}
                   </div>
@@ -144,25 +291,32 @@ export default function Profile() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-gray-900">{profile.fullName}</h2>
-                  <p className="text-gray-600">{profile.email}</p>
+                  <h2 className="text-xl font-semibold text-gray-900">{profile?.HoTen || 'Chưa có tên'}</h2>
+                  <p className="text-gray-600">
+                    {profileService.isNhanVienProfile(profile) ? profile.Email : profile?.Email || 'Chưa cập nhật email'}
+                  </p>
                   <div className="flex items-center mt-2">
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {profile.role}
+                      {profile?.taiKhoan?.TenQuyen || 'N/A'}
                     </span>
                     <span className="ml-3 text-sm text-gray-500">
-                      Tham gia từ {new Date(profile.joinDate).toLocaleDateString('vi-VN')}
+                      Tài khoản: {profile?.taiKhoan?.TenDangNhap || 'N/A'}
+                    </span>
+                    <span className={`ml-3 text-xs px-2 py-1 rounded-full ${
+                      profile?.taiKhoan?.TrangThaiTaiKhoan === 'Hoạt động'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {profile?.taiKhoan?.TrangThaiTaiKhoan || 'N/A'}
                     </span>
                   </div>
                 </div>
                 <div className="flex space-x-3">
                   {!isEditing ? (
                     <button
-                      onClick={() => {
-                        setIsEditing(true);
-                        setEditForm(profile);
-                      }}
+                      onClick={() => setIsEditing(true)}
                       className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-200 whitespace-nowrap"
+                      disabled={loading}
                     >
                       <i className="ri-edit-line mr-2"></i>
                       Chỉnh sửa
@@ -172,18 +326,29 @@ export default function Profile() {
                       <button
                         onClick={() => {
                           setIsEditing(false);
-                          setEditForm(profile);
+                          fetchProfile();
                         }}
                         className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition duration-200 whitespace-nowrap"
+                        disabled={loading}
                       >
                         Hủy
                       </button>
                       <button
                         onClick={handleSaveProfile}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-200 whitespace-nowrap"
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-200 whitespace-nowrap flex items-center"
+                        disabled={loading}
                       >
-                        <i className="ri-save-line mr-2"></i>
-                        Lưu
+                        {loading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Đang lưu...
+                          </>
+                        ) : (
+                          <>
+                            <i className="ri-save-line mr-2"></i>
+                            Lưu
+                          </>
+                        )}
                       </button>
                     </>
                   )}
@@ -254,14 +419,14 @@ export default function Profile() {
                         </label>
                         <input
                           type="text"
-                          value={editForm.username}
+                          value={profile?.taiKhoan?.TenDangNhap || ''}
                           disabled
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email *
+                          Email
                         </label>
                         <input
                           type="email"
@@ -269,6 +434,7 @@ export default function Profile() {
                           onChange={(e) => setEditForm({...editForm, email: e.target.value})}
                           disabled={!isEditing}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50"
+                          placeholder="Nhập email"
                         />
                       </div>
                       <div>
@@ -283,7 +449,8 @@ export default function Profile() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50"
                         />
                       </div>
-                      <div>
+                      {/* Ẩn tạm thời - Uncomment để bật lại */}
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Ngày sinh
                         </label>
@@ -294,23 +461,26 @@ export default function Profile() {
                           disabled={!isEditing}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50"
                         />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Giới tính
-                        </label>
-                        <select
-                          value={editForm.gender}
-                          onChange={(e) => setEditForm({...editForm, gender: e.target.value})}
-                          disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50 pr-8"
-                        >
-                          <option value="Nam">Nam</option>
-                          <option value="Nữ">Nữ</option>
-                          <option value="Khác">Khác</option>
-                        </select>
-                      </div>
-                      <div>
+                      </div> */}
+                      {/* {profileService.isNhanVienProfile(profile) && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Giới tính
+                          </label>
+                          <select
+                            value={editForm.gender}
+                            onChange={(e) => setEditForm({...editForm, gender: e.target.value})}
+                            disabled={!isEditing}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50 pr-8"
+                          >
+                            <option value="">-- Chọn giới tính --</option>
+                            <option value="Nam">Nam</option>
+                            <option value="Nữ">Nữ</option>
+                            <option value="Khác">Khác</option>
+                          </select>
+                        </div>
+                      )} */}
+                      {/* <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           CMND/CCCD
                         </label>
@@ -320,21 +490,48 @@ export default function Profile() {
                           onChange={(e) => setEditForm({...editForm, idCard: e.target.value})}
                           disabled={!isEditing}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50"
+                          placeholder="Nhập số CMND/CCCD"
                         />
-                      </div>
+                      </div> */}
+                      {/* <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Ngày cấp CCCD
+                        </label>
+                        <input
+                          type="date"
+                          value={editForm.idCardIssueDate}
+                          onChange={(e) => setEditForm({...editForm, idCardIssueDate: e.target.value})}
+                          disabled={!isEditing}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50"
+                        />
+                      </div> */}
+                      {/* <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Nơi cấp CCCD
+                        </label>
+                        <input
+                          type="text"
+                          value={editForm.idCardIssuePlace}
+                          onChange={(e) => setEditForm({...editForm, idCardIssuePlace: e.target.value})}
+                          disabled={!isEditing}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50"
+                          placeholder="Nhập nơi cấp CCCD"
+                        />
+                      </div> */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Vai trò
                         </label>
                         <input
                           type="text"
-                          value={editForm.role}
+                          value={profile?.taiKhoan?.TenQuyen || ''}
                           disabled
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50"
                         />
                       </div>
                     </div>
-                    <div>
+                    {/* Ẩn tạm thời - Uncomment để bật lại */}
+                    {/* <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Địa chỉ
                       </label>
@@ -344,34 +541,9 @@ export default function Profile() {
                         disabled={!isEditing}
                         rows={3}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50"
+                        placeholder="Nhập địa chỉ"
                       />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Người liên hệ khẩn cấp
-                        </label>
-                        <input
-                          type="text"
-                          value={editForm.emergencyContact}
-                          onChange={(e) => setEditForm({...editForm, emergencyContact: e.target.value})}
-                          disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          SĐT liên hệ khẩn cấp
-                        </label>
-                        <input
-                          type="tel"
-                          value={editForm.emergencyPhone}
-                          onChange={(e) => setEditForm({...editForm, emergencyPhone: e.target.value})}
-                          disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm disabled:bg-gray-50"
-                        />
-                      </div>
-                    </div>
+                    </div> */}
                   </div>
                 )}
 

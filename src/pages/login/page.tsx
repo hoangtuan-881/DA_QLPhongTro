@@ -1,30 +1,42 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/useToast';
+import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 
 export default function Login() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const toast = useToast();
+
+  // Set page title
+  useDocumentTitle('Đăng nhập');
+
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    username: '',
+    password: '',
+    remember: false
   });
 
   const [errors, setErrors] = useState({
-    email: '',
+    username: '',
     password: ''
   });
 
   const [touched, setTouched] = useState({
-    email: false,
+    username: false,
     password: false
   });
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      return 'Vui lòng nhập email';
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validateUsername = (username: string) => {
+    if (!username) {
+      return 'Vui lòng nhập tên đăng nhập';
     }
-    if (!emailRegex.test(email)) {
-      return 'Hãy nhập email hoặc số điện thoại';
+    if (username.length < 3) {
+      return 'Tên đăng nhập phải có ít nhất 3 ký tự';
     }
     return '';
   };
@@ -41,46 +53,68 @@ export default function Login() {
 
   const handleBlur = (field: string) => {
     setTouched({ ...touched, [field]: true });
-    
-    if (field === 'email') {
-      setErrors({ ...errors, email: validateEmail(formData.email) });
+
+    if (field === 'username') {
+      setErrors({ ...errors, username: validateUsername(formData.username) });
     } else if (field === 'password') {
       setErrors({ ...errors, password: validatePassword(formData.password) });
     }
   };
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | boolean) => {
     setFormData({ ...formData, [field]: value });
-    
+
     // Clear error when user starts typing
-    if (touched[field as keyof typeof touched]) {
-      if (field === 'email') {
-        setErrors({ ...errors, email: validateEmail(value) });
+    if (field !== 'remember' && touched[field as keyof typeof touched]) {
+      if (field === 'username') {
+        setErrors({ ...errors, username: validateUsername(value as string) });
       } else if (field === 'password') {
-        setErrors({ ...errors, password: validatePassword(value) });
+        setErrors({ ...errors, password: validatePassword(value as string) });
       }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const emailError = validateEmail(formData.email);
+
+    const usernameError = validateUsername(formData.username);
     const passwordError = validatePassword(formData.password);
-    
+
     setErrors({
-      email: emailError,
+      username: usernameError,
       password: passwordError
     });
-    
+
     setTouched({
-      email: true,
+      username: true,
       password: true
     });
-    
-    if (!emailError && !passwordError) {
-      // Xử lý đăng nhập sẽ được thêm sau khi kết nối Supabase
-      console.log('Login data:', formData);
+
+    if (!usernameError && !passwordError) {
+      setIsSubmitting(true);
+
+      try {
+        await login({
+          TenDangNhap: formData.username,
+          password: formData.password,
+          remember: formData.remember
+        });
+
+        toast.success({
+          title: 'Đăng nhập thành công!',
+          message: 'Chào mừng bạn quay trở lại'
+        });
+
+        // Navigate to dashboard
+        navigate('/dashboard');
+      } catch (error: any) {
+        toast.error({
+          title: 'Đăng nhập thất bại',
+          message: error.message || 'Vui lòng kiểm tra lại thông tin đăng nhập'
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -107,29 +141,30 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              Tên đăng nhập
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <i className="ri-mail-line text-gray-400"></i>
+                <i className="ri-user-line text-gray-400"></i>
               </div>
               <input
-                type="email"
+                type="text"
                 className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.email && touched.email 
-                    ? 'border-red-500 bg-red-50' 
+                  errors.username && touched.username
+                    ? 'border-red-500 bg-red-50'
                     : 'border-gray-300'
                 }`}
-                placeholder="Nhập email của bạn"
-                value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-                onBlur={() => handleBlur('email')}
+                placeholder="Nhập tên đăng nhập"
+                value={formData.username}
+                onChange={(e) => handleChange('username', e.target.value)}
+                onBlur={() => handleBlur('username')}
+                disabled={isSubmitting}
               />
             </div>
-            {errors.email && touched.email && (
+            {errors.username && touched.username && (
               <div className="flex items-center mt-2 text-red-500 text-sm">
                 <i className="ri-error-warning-line mr-1"></i>
-                <span>{errors.email}</span>
+                <span>{errors.username}</span>
               </div>
             )}
           </div>
@@ -145,14 +180,15 @@ export default function Login() {
               <input
                 type="password"
                 className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors.password && touched.password 
-                    ? 'border-red-500 bg-red-50' 
+                  errors.password && touched.password
+                    ? 'border-red-500 bg-red-50'
                     : 'border-gray-300'
                 }`}
                 placeholder="Nhập mật khẩu"
                 value={formData.password}
                 onChange={(e) => handleChange('password', e.target.value)}
                 onBlur={() => handleBlur('password')}
+                disabled={isSubmitting}
               />
             </div>
             {errors.password && touched.password && (
@@ -168,6 +204,9 @@ export default function Login() {
               <input
                 type="checkbox"
                 className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                checked={formData.remember}
+                onChange={(e) => handleChange('remember', e.target.checked)}
+                disabled={isSubmitting}
               />
               <span className="ml-2 text-sm text-gray-600">Ghi nhớ đăng nhập</span>
             </label>
@@ -181,9 +220,17 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 font-medium whitespace-nowrap"
+            disabled={isSubmitting}
+            className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-200 font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            Đăng nhập
+            {isSubmitting ? (
+              <>
+                <i className="ri-loader-4-line animate-spin mr-2"></i>
+                Đang đăng nhập...
+              </>
+            ) : (
+              'Đăng nhập'
+            )}
           </button>
         </form>
 

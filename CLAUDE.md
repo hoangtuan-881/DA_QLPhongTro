@@ -10,6 +10,7 @@ src/
 ├── pages/{feature}/page.tsx      # Pages (lazy loaded)
 ├── components/base/              # Reusable components
 ├── hooks/                        # Custom hooks (use{Name})
+├── services/                     # API services
 ├── router/config.tsx             # Route definitions
 ├── i18n/                         # Translations
 └── lib/                          # Utils (http-client, etc.)
@@ -17,130 +18,83 @@ src/
 
 ---
 
+## 🚨 QUY TẮC QUAN TRỌNG - BACKEND ↔ FRONTEND
+
+### **KHÔNG BAO GIỜ MAPPING - SỬ DỤNG KEYS GIỐNG BACKEND**
+
+**QUY TẮC VÀNG:**
+1. ✅ **GIỮ NGUYÊN DESIGN** - KHÔNG thay đổi UI/UX hiện tại
+2. ✅ **SỬ DỤNG KEYS GIỐNG BACKEND** - PascalCase Vietnamese
+3. ✅ **KHÔNG MAPPING** - Frontend interface = Backend Resource fields
+4. ✅ **NẾU CHƯA ĐÚNG → REFACTOR LẠI**
+
+**Ví dụ:**
+
+```tsx
+// ❌ SAI - English keys + mapping
+interface Room {
+  id: string;
+  name: string;
+  status: 'available' | 'occupied';
+}
+const mapBackendToRoom = (data) => ({ id: data.MaPhong, name: data.TenPhong });
+
+// ✅ ĐÚNG - Vietnamese keys trực tiếp, KHÔNG mapping
+interface PhongTro {
+  MaPhong: number;
+  TenPhong: string;
+  TrangThai: 'Trống' | 'Đã cho thuê' | 'Bảo trì';
+}
+
+const [phongTros, setPhongTros] = useState<PhongTro[]>([]);
+const response = await phongTroService.getAll();
+setPhongTros(response.data.data); // ✅ Không map!
+```
+
+**Khi refactor module cũ:**
+1. Check Backend Resource → biết keys nào cần dùng
+2. Đổi Frontend interface khớp 100% với Backend
+3. Đổi variable names: `rooms` → `phongTros`, `room` → `phongTro`
+4. Xóa TẤT CẢ mapping functions
+5. **GIỮ NGUYÊN** toàn bộ Tailwind classes, layouts, modals
+
+**Checklist khi code:**
+- [ ] Interface có khớp với Backend Resource không?
+- [ ] Có mapping function nào không? (phải xóa!)
+- [ ] Variable names đã đổi sang tiếng Việt chưa?
+- [ ] UI/design có thay đổi không? (KHÔNG được phép!)
+
+---
+
 ## 🎯 KEY PATTERNS
 
-### 1️⃣ PAGE PATTERN (BẮT BUỘC)
+### 1️⃣ PAGE PATTERN
+- Tạo `src/pages/{feature}/page.tsx` với export default
+- Lazy load trong `src/router/config.tsx`
+- Feature components trong `src/pages/{feature}/components/`
 
-**Tạo page mới:**
-1. Tạo: `src/pages/{feature}/page.tsx`
-2. Export default component
-3. Lazy load trong `src/router/config.tsx`
+### 2️⃣ TYPESCRIPT
+- **BẮT BUỘC:** Type all props, state, functions
+- **IMPORT** interface từ service file
+- **❌ KHÔNG** dùng `any` type
 
+### 3️⃣ STYLING
+- **CHỈ DÙNG** Tailwind CSS classes
+- **❌ KHÔNG** inline styles
+- Responsive: mobile-first (`grid-cols-1 lg:grid-cols-2`)
+
+### 4️⃣ INTERNATIONALIZATION
 ```tsx
-// src/pages/rooms/page.tsx
-export default function Rooms() {
-  return <div>Rooms</div>;
-}
-
-// src/router/config.tsx
-const Rooms = lazy(() => import('../pages/rooms/page'));
-const routes: RouteObject[] = [
-  { path: '/rooms', element: <Rooms /> }
-];
-```
-
-**Feature-specific components:**
-```
-src/pages/dashboard/
-├── page.tsx           # Main page
-└── components/        # Dashboard-only components
-    ├── Header.tsx
-    └── StatsCards.tsx
-```
-
----
-
-### 2️⃣ TYPESCRIPT (BẮT BUỘC)
-
-**Interface cho props:**
-```tsx
-interface ComponentProps {
-  title: string;
-  onUpdate: (id: string) => void;
-  age?: number;  // Optional
-}
-
-export default function MyComponent({ title, onUpdate, age }: ComponentProps) {
-  const [user, setUser] = useState<User | null>(null);
-  // ...
-}
-```
-
-**❌ KHÔNG dùng `any`**
-
----
-
-### 3️⃣ STYLING (Tailwind CSS)
-
-```tsx
-// ✅ ĐÚNG - Tailwind classes
-<div className="flex h-screen bg-gray-50">
-  <h1 className="text-2xl font-bold text-gray-900 mb-2">Title</h1>
-</div>
-
-// ❌ SAI - Inline styles
-<div style={{ display: 'flex' }}>
-```
-
-**Responsive:**
-```tsx
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-```
-
----
-
-### 4️⃣ INTERNATIONALIZATION (i18n)
-
-```tsx
-// ✅ ĐÚNG
 const { t } = useTranslation();
-<h1>{t('common.welcome')}</h1>
-<p>{t('messages.greeting', { name: 'John' })}</p>
-
-// ❌ SAI - Hardcode text
-<h1>Chào mừng</h1>
+<h1>{t('common.welcome')}</h1>  // ✅ ĐÚNG
+<h1>Chào mừng</h1>              // ❌ SAI - hardcode
 ```
 
-**Translation files:** `src/i18n/local/{lang}/{namespace}.json`
-
----
-
-### 5️⃣ AUTO-IMPORTED APIS
-
-**Không cần import (configured in vite.config.ts):**
+### 5️⃣ AUTO-IMPORTED (không cần import)
 ```tsx
-// React Hooks
-useState, useEffect, useCallback, useMemo, useRef, lazy, memo
-
-// React Router
-useNavigate, useLocation, useParams, Link, NavLink
-
-// i18next
-useTranslation, Trans
-```
-
----
-
-### 6️⃣ CUSTOM HOOKS
-
-**Location:** `src/hooks/use{Feature}.ts`
-
-```tsx
-// src/hooks/useToast.ts
-export function useToast() {
-  const showToast = useCallback((type: 'success' | 'error', options) => {
-    // Implementation
-  }, []);
-
-  return {
-    success: (options) => showToast('success', options),
-    error: (options) => showToast('error', options),
-  };
-}
-
-// Usage
-const toast = useToast();
-toast.success({ title: 'Thành công!' });
+// React: useState, useEffect, useCallback, useMemo, useRef, lazy, memo
+// Router: useNavigate, useLocation, useParams, Link, NavLink
+// i18n: useTranslation, Trans
 ```
 
 ---
@@ -149,72 +103,51 @@ toast.success({ title: 'Thành công!' });
 
 ### **AbortController + Loading State**
 
-**React StrictMode** mount component 2 lần → Cần AbortController để tránh duplicate API calls
-
-**Pattern đầy đủ:**
-
 ```tsx
 export default function MyPage() {
-  // State
   const [data, setData] = useState<DataType[]>([]);
   const [loading, setLoading] = useState(true);  // ✅ Initial TRUE
   const [refreshKey, setRefreshKey] = useState(0);
-
   const toast = useToast();
 
-  // Fetch with AbortController
+  // Fetch với AbortController
   useEffect(() => {
     const controller = new AbortController();
 
     const fetchData = async () => {
       try {
         const response = await service.getAll(controller.signal);
-
-        // Check nếu chưa bị abort
         if (!controller.signal.aborted) {
           setData(response.data.data || []);
           setLoading(false);
         }
       } catch (error: any) {
-        // Ignore cancelled requests
         if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
-          toast.error({
-            title: 'Lỗi tải dữ liệu',
-            message: getErrorMessage(error) // ✅ Chi tiết validation error
-          });
+          toast.error({ title: 'Lỗi tải dữ liệu', message: getErrorMessage(error) });
           setLoading(false);
         }
-        // Cancelled requests KHÔNG set loading=false
       }
     };
 
     fetchData();
-
-    // Cleanup: abort khi unmount
-    return () => controller.abort();
+    return () => controller.abort(); // ✅ Cleanup
   }, [refreshKey]);
 
-  // Refresh handler
   const refreshData = () => {
-    setLoading(true);  // ✅ Reset loading
+    setLoading(true);
     setRefreshKey(prev => prev + 1);
   };
 
-  // Create/Update handler
   const handleCreate = async (formData: CreateData) => {
     try {
       await service.create(formData);
       toast.success({ title: 'Thành công' });
       refreshData();
     } catch (error) {
-      toast.error({
-        title: 'Lỗi',
-        message: getErrorMessage(error)  // ✅ Chi tiết error
-      });
+      toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
     }
   };
 
-  // Render
   return (
     <div>
       {loading && <LoadingSpinner />}
@@ -225,7 +158,7 @@ export default function MyPage() {
 }
 ```
 
-**Service methods phải support AbortSignal:**
+**Service phải support AbortSignal:**
 ```tsx
 class MyService {
   async getAll(signal?: AbortSignal) {
@@ -238,10 +171,9 @@ class MyService {
 
 ## ⚠️ ERROR HANDLING
 
-**getErrorMessage() trong `lib/http-client.ts`:**
+**getErrorMessage() - CHECK VALIDATION ERRORS TRƯỚC:**
 
 ```tsx
-// ✅ ĐÚNG - Check validation errors TRƯỚC
 export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<ApiResponse>;
@@ -250,7 +182,7 @@ export function getErrorMessage(error: unknown): string {
     if (axiosError.response?.data?.errors) {
       const errors = axiosError.response.data.errors;
       const firstErrorKey = Object.keys(errors)[0];
-      return errors[firstErrorKey][0]; // "Tên loại phòng đã tồn tại"
+      return errors[firstErrorKey][0];
     }
 
     // 2. FALLBACK: General message
@@ -270,62 +202,57 @@ export function getErrorMessage(error: unknown): string {
 }
 ```
 
-**Usage:**
-```tsx
-toast.error({
-  title: 'Lỗi',
-  message: getErrorMessage(error) // ✅ Hiển thị chi tiết validation error
-});
-```
-
 ---
 
 ## ✅ CHECKLIST TẠO FEATURE MỚI
 
-1. **Page Setup**
-   - Tạo `src/pages/{feature}/page.tsx` (export default)
-   - Lazy load trong `src/router/config.tsx`
+### 1. **Backend-Frontend Consistency** ⭐ **QUAN TRỌNG NHẤT**
+- ✅ Check Backend Resource → biết keys nào
+- ✅ Interface khớp 100% với Backend (PascalCase Vietnamese)
+- ✅ Variable names tiếng Việt: `dichVus` thay vì `services`
+- ✅ KHÔNG tạo mapping functions
+- ✅ GIỮ NGUYÊN design nếu đang refactor
 
-2. **TypeScript**
-   - Define interfaces cho props
-   - Type all state và functions
-   - ❌ NO `any` type
+### 2. **TypeScript**
+- Import interface từ service file
+- Type all state và functions
+- ❌ NO `any` type
 
-3. **Styling**
-   - Tailwind CSS classes
-   - Responsive: mobile-first
+### 3. **Styling**
+- Tailwind CSS classes only
+- ❌ KHÔNG thay đổi design khi refactor
 
-4. **i18n**
-   - `t('key')` cho text
-   - Add keys to `src/i18n/local/{lang}/`
+### 4. **i18n**
+- `t('key')` cho text
+- ❌ KHÔNG hardcode strings
 
-5. **Data Fetching** (nếu có API)
-   - ✅ `loading` initial = `true`
-   - ✅ AbortController trong useEffect
-   - ✅ Check `!controller.signal.aborted` trước update state
-   - ✅ Ignore `CanceledError` trong catch
-   - ✅ Service support `AbortSignal`
-   - ✅ Refresh function set `loading=true`
+### 5. **Data Fetching**
+- ✅ `loading` initial = `true`
+- ✅ AbortController trong useEffect
+- ✅ Check `!controller.signal.aborted` trước update state
+- ✅ Ignore `CanceledError` trong catch
+- ✅ Service support `AbortSignal`
+- ✅ Refresh function set `loading=true`
 
-6. **Error Handling**
-   - ✅ `getErrorMessage(error)` cho chi tiết validation errors
-   - ✅ Toast error chỉ cho non-cancelled requests
+### 6. **Error Handling**
+- ✅ `getErrorMessage(error)` cho chi tiết validation errors
+- ✅ Toast error chỉ cho non-cancelled requests
 
-7. **Loading States**
-   - Loading → Empty → Data states
+### 7. **Loading States**
+- Loading → Empty → Data states
 
 ---
 
 ## 🚨 COMMON MISTAKES
 
-**Architecture:**
-- ❌ Không lazy load pages
-- ❌ Quên export default trong page.tsx
-- ❌ Reusable components trong `pages/` (phải trong `components/base/`)
+**Backend ↔ Frontend:**
+- ❌ **Mapping data** giữa BE và FE (KHÔNG BAO GIỜ mapping!)
+- ❌ Dùng English keys thay vì Vietnamese keys từ Backend
+- ❌ Thay đổi UI/design khi refactor (phải GIỮ NGUYÊN)
+- ❌ Tạo interface riêng thay vì dùng từ service
 
 **TypeScript:**
 - ❌ Dùng `any` type
-- ❌ Component không có interface
 - ❌ Import thủ công React hooks (đã auto-import)
 
 **Styling & i18n:**
@@ -333,7 +260,7 @@ toast.error({
 - ❌ Hardcode strings (dùng i18n)
 
 **Error Handling:**
-- ❌ Check `message` trước `errors` trong `getErrorMessage()` (phải check errors TRƯỚC)
+- ❌ Check `message` trước `errors` (phải check errors TRƯỚC)
 - ❌ Không xử lý `CanceledError` riêng
 
 **API & Loading:**
@@ -352,32 +279,18 @@ toast.error({
 
 ## 📁 QUICK REFERENCE
 
+**Code phải:**
+- ✅ **Backend-consistent** (keys khớp 100%, KHÔNG mapping)
+- ✅ **Design-preserved** (giữ nguyên UI/UX khi refactor)
+- ✅ Type-safe (TypeScript strict)
+- ✅ Internationalized (i18n)
+- ✅ Error-handled (validation errors prioritized)
+- ✅ Request-managed (AbortController)
+- ✅ Loading-friendly (initial `true`)
+- ✅ StrictMode-compatible
+
 **Dev commands:**
 ```bash
 npm run dev      # Port 3000
 npm run build    # Output: out/
 ```
-
-**Common patterns:**
-```tsx
-// Navigation
-const navigate = useNavigate();
-navigate('/dashboard');
-
-// State Management (Context)
-const AppContext = createContext<AppContextType>(undefined);
-
-// Memoization
-const value = useMemo(() => compute(data), [data]);
-const handler = useCallback(() => doSomething(), [dep]);
-const MemoComp = memo(MyComponent);
-```
-
-**Code phải:**
-- ✅ Type-safe (TypeScript strict)
-- ✅ Internationalized (i18n)
-- ✅ Optimized (lazy loading)
-- ✅ Error-handled (validation errors prioritized)
-- ✅ Request-managed (AbortController)
-- ✅ Loading-friendly (initial `true`)
-- ✅ StrictMode-compatible

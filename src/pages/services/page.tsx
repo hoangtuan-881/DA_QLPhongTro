@@ -3,26 +3,23 @@ import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
-import dichVuService, { DichVu } from '../../services/dich-vu.service';
+import dichVuService, { DichVu, DichVuCreateInput } from '../../services/dich-vu.service';
 import { getErrorMessage } from '../../lib/http-client';
-
-// Type alias for cleaner code
-type Service = DichVu;
 
 export default function Services() {
   const toast = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Data state
-  const [services, setServices] = useState<Service[]>([]);
+  const [dichVus, setDichVus] = useState<DichVu[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // UI states
-  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterDanhMuc, setFilterDanhMuc] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [selectedDichVu, setSelectedDichVu] = useState<DichVu | null>(null);
+  const [editingDichVu, setEditingDichVu] = useState<DichVu | null>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -38,56 +35,48 @@ export default function Services() {
   });
 
   // Form
-  const emptyForm = { name: '', description: '', price: 0, unit: '', category: '' as '' | Service['category'], isActive: true };
-  const [newService, setNewService] = useState<typeof emptyForm>(emptyForm);
+  const emptyForm: Partial<DichVuCreateInput> = { TenDichVu: '', MoTa: '', DonGia: 0, DonViTinh: '', DanhMuc: 'Dịch vụ', TrangThaiHoatDong: true };
+  const [newDichVu, setNewDichVu] = useState<Partial<DichVuCreateInput>>(emptyForm);
 
   // Helpers
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'services': return 'bg-blue-100 text-blue-800';
-      case 'utilities': return 'bg-purple-100 text-purple-800';
-      case 'other': return 'bg-green-100 text-green-800';
+  const getDanhMucColor = (danhMuc: string) => {
+    switch (danhMuc) {
+      case 'Dịch vụ': return 'bg-blue-100 text-blue-800';
+      case 'Tiện ích': return 'bg-purple-100 text-purple-800';
+      case 'Khác': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-  const getCategoryText = (category: string) => {
-    switch (category) {
-      case 'services': return 'Dịch vụ';
-      case 'utilities': return 'Tiện ích';
-      case 'other': return 'Khác';
-      default: return category;
-    }
-  };
 
-  // Lọc & search luôn dựa trên "services" (state) để UI thay đổi ngay
-  const filteredServices = useMemo(() => {
-    let data = services;
-    if (filterCategory !== 'all') data = data.filter(s => s.category === filterCategory);
+  // Lọc & search dựa trên dichVus
+  const filteredDichVus = useMemo(() => {
+    let data = dichVus;
+    if (filterDanhMuc !== 'all') data = data.filter(dv => dv.DanhMuc === filterDanhMuc);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
-      data = data.filter(s =>
-        s.name.toLowerCase().includes(q) ||
-        s.description.toLowerCase().includes(q)
+      data = data.filter(dv =>
+        dv.TenDichVu.toLowerCase().includes(q) ||
+        dv.MoTa.toLowerCase().includes(q)
       );
     }
     return data;
-  }, [services, filterCategory, search]);
+  }, [dichVus, filterDanhMuc, search]);
 
-  // Fetch services from API
+  // Fetch dich vus from API
   useEffect(() => {
     const controller = new AbortController();
 
-    const fetchServices = async () => {
+    const fetchDichVus = async () => {
       try {
         const response = await dichVuService.getAll({ signal: controller.signal });
         if (!controller.signal.aborted) {
-          setServices(response.data.data || []);
+          setDichVus(response.data.data || []);
           setLoading(false);
         }
       } catch (error: any) {
         // Only show error toast for non-cancelled requests
         if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
-          console.error('Error fetching services:', error);
+          console.error('Error fetching dich vus:', error);
           toast.error({
             title: 'Lỗi tải dữ liệu',
             message: getErrorMessage(error)
@@ -97,7 +86,7 @@ export default function Services() {
       }
     };
 
-    fetchServices();
+    fetchDichVus();
 
     // Cleanup: abort request if component unmounts or refreshKey changes
     return () => {
@@ -105,44 +94,37 @@ export default function Services() {
     };
   }, [refreshKey]);
 
-  const refreshServices = () => {
+  const refreshDichVus = () => {
     setLoading(true);
     setRefreshKey(prev => prev + 1);
   };
 
-  const resetForm = () => setNewService(emptyForm);
+  const resetForm = () => setNewDichVu(emptyForm);
 
   // ===== Thêm =====
   const handleOpenAdd = () => { resetForm(); setShowAddModal(true); };
   const handleSubmitAdd = () => {
-    if (!newService.name || !newService.description || !newService.category || !newService.unit || newService.price <= 0) {
+    if (!newDichVu.TenDichVu || !newDichVu.MoTa || !newDichVu.DanhMuc || !newDichVu.DonViTinh || !newDichVu.DonGia || newDichVu.DonGia <= 0) {
       toast.error({ title: 'Thiếu thông tin', message: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận thêm dịch vụ',
-      message: <>Bạn có chắc muốn thêm dịch vụ <strong>{newService.name}</strong>?</>,
+      message: <>Bạn có chắc muốn thêm dịch vụ <strong>{newDichVu.TenDichVu}</strong>?</>,
       type: 'info',
       loading: false,
       onConfirm: async () => {
         try {
           setConfirmDialog(prev => ({ ...prev, loading: true }));
-          await dichVuService.createService({
-            name: newService.name,
-            description: newService.description,
-            price: newService.price,
-            unit: newService.unit,
-            category: newService.category as Service['category'],
-            isActive: newService.isActive
-          });
+          await dichVuService.createService(newDichVu as DichVuCreateInput);
           setShowAddModal(false);
           resetForm();
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
-          toast.success({ title: 'Đã thêm dịch vụ', message: `Thêm "${newService.name}" thành công.` });
-          refreshServices();
+          toast.success({ title: 'Đã thêm dịch vụ', message: `Thêm "${newDichVu.TenDichVu}" thành công.` });
+          refreshDichVus();
         } catch (error) {
-          console.error('Error creating service:', error);
+          console.error('Error creating dich vu:', error);
           setConfirmDialog(prev => ({ ...prev, loading: false }));
           toast.error({
             title: 'Lỗi thêm dịch vụ',
@@ -154,51 +136,44 @@ export default function Services() {
   };
 
   // ===== Sửa =====
-  const handleEdit = (service: Service) => {
-    setEditingService(service);
-    setNewService({
-      name: service.name,
-      description: service.description,
-      price: service.price,
-      unit: service.unit,
-      category: service.category,
-      isActive: service.isActive
+  const handleEdit = (dichVu: DichVu) => {
+    setEditingDichVu(dichVu);
+    setNewDichVu({
+      TenDichVu: dichVu.TenDichVu,
+      MoTa: dichVu.MoTa,
+      DonGia: dichVu.DonGia,
+      DonViTinh: dichVu.DonViTinh,
+      DanhMuc: dichVu.DanhMuc,
+      TrangThaiHoatDong: dichVu.TrangThaiHoatDong
     });
     setShowEditModal(true);
   };
   const handleSubmitEdit = () => {
-    if (!editingService) return;
-    if (!newService.name || !newService.description || !newService.category || !newService.unit || newService.price <= 0) {
+    if (!editingDichVu) return;
+    if (!newDichVu.TenDichVu || !newDichVu.MoTa || !newDichVu.DanhMuc || !newDichVu.DonViTinh || !newDichVu.DonGia || newDichVu.DonGia <= 0) {
       toast.error({ title: 'Thiếu thông tin', message: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận cập nhật dịch vụ',
-      message: <>Cập nhật thông tin dịch vụ <strong>{editingService.name}</strong>?</>,
+      message: <>Cập nhật thông tin dịch vụ <strong>{editingDichVu.TenDichVu}</strong>?</>,
       type: 'info',
       loading: false,
       onConfirm: async () => {
         try {
           setConfirmDialog(prev => ({ ...prev, loading: true }));
-          await dichVuService.updateService(editingService.id, {
-            name: newService.name,
-            description: newService.description,
-            price: newService.price,
-            unit: newService.unit,
-            category: newService.category as Service['category'],
-            isActive: newService.isActive
-          });
+          await dichVuService.updateService(editingDichVu.MaDichVu, newDichVu);
           setShowEditModal(false);
-          setEditingService(null);
+          setEditingDichVu(null);
           resetForm();
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
-          toast.success({ title: 'Đã cập nhật', message: `Cập nhật "${newService.name}" thành công.` });
+          toast.success({ title: 'Đã cập nhật', message: `Cập nhật "${newDichVu.TenDichVu}" thành công.` });
           setShowDetailModal(false);
-          setSelectedService(null);
-          refreshServices();
+          setSelectedDichVu(null);
+          refreshDichVus();
         } catch (error) {
-          console.error('Error updating service:', error);
+          console.error('Error updating dich vu:', error);
           setConfirmDialog(prev => ({ ...prev, loading: false }));
           toast.error({
             title: 'Lỗi cập nhật dịch vụ',
@@ -210,24 +185,24 @@ export default function Services() {
   };
 
   // ===== Xóa =====
-  const handleDelete = (service: Service) => {
+  const handleDelete = (dichVu: DichVu) => {
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận xóa dịch vụ',
-      message: <>Bạn có chắc muốn xóa <strong>{service.name}</strong>? Hành động này không thể hoàn tác.</>,
+      message: <>Bạn có chắc muốn xóa <strong>{dichVu.TenDichVu}</strong>? Hành động này không thể hoàn tác.</>,
       type: 'danger',
       loading: false,
       onConfirm: async () => {
         try {
           setConfirmDialog(prev => ({ ...prev, loading: true }));
-          await dichVuService.deleteService(service.id);
+          await dichVuService.deleteService(dichVu.MaDichVu);
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
-          toast.error({ title: 'Đã xóa', message: `Đã xóa dịch vụ "${service.name}".` });
+          toast.error({ title: 'Đã xóa', message: `Đã xóa dịch vụ "${dichVu.TenDichVu}".` });
           setShowDetailModal(false);
-          setSelectedService(null);
-          refreshServices();
+          setSelectedDichVu(null);
+          refreshDichVus();
         } catch (error) {
-          console.error('Error deleting service:', error);
+          console.error('Error deleting dich vu:', error);
           setConfirmDialog(prev => ({ ...prev, loading: false }));
           toast.error({
             title: 'Lỗi xóa dịch vụ',
@@ -239,28 +214,28 @@ export default function Services() {
   };
 
   // ===== Toggle trạng thái =====
-  const toggleServiceStatus = (service: Service) => {
-    const next = !service.isActive;
+  const toggleDichVuStatus = (dichVu: DichVu) => {
+    const next = !dichVu.TrangThaiHoatDong;
     setConfirmDialog({
       isOpen: true,
       title: `${next ? 'Kích hoạt' : 'Tạm dừng'} dịch vụ`,
-      message: <>Bạn muốn {next ? 'kích hoạt' : 'tạm dừng'} <strong>{service.name}</strong>?</>,
+      message: <>Bạn muốn {next ? 'kích hoạt' : 'tạm dừng'} <strong>{dichVu.TenDichVu}</strong>?</>,
       type: 'warning',
       loading: false,
       onConfirm: async () => {
         try {
           setConfirmDialog(prev => ({ ...prev, loading: true }));
-          await dichVuService.toggleStatus(service.id);
+          await dichVuService.toggleStatus(dichVu.MaDichVu);
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
           toast.success({
             title: next ? 'Đã kích hoạt' : 'Đã tạm dừng',
-            message: `"${service.name}" đã được ${next ? 'kích hoạt' : 'tạm dừng'}.`
+            message: `"${dichVu.TenDichVu}" đã được ${next ? 'kích hoạt' : 'tạm dừng'}.`
           });
           setShowDetailModal(false);
-          setSelectedService(null);
-          refreshServices();
+          setSelectedDichVu(null);
+          refreshDichVus();
         } catch (error) {
-          console.error('Error toggling service status:', error);
+          console.error('Error toggling dich vu status:', error);
           setConfirmDialog(prev => ({ ...prev, loading: false }));
           toast.error({
             title: 'Lỗi thay đổi trạng thái',
@@ -308,14 +283,14 @@ export default function Services() {
             <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
               <div className="flex flex-wrap gap-4">
                 <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
+                  value={filterDanhMuc}
+                  onChange={(e) => setFilterDanhMuc(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 pr-8"
                 >
                   <option value="all">Tất cả danh mục</option>
-                  <option value="services">Dịch vụ</option>
-                  <option value="utilities">Tiện ích</option>
-                  <option value="other">Khác</option>
+                  <option value="Dịch vụ">Dịch vụ</option>
+                  <option value="Tiện ích">Tiện ích</option>
+                  <option value="Khác">Khác</option>
                 </select>
                 <input
                   type="text"
@@ -335,7 +310,7 @@ export default function Services() {
             )}
 
             {/* Empty State */}
-            {!loading && services.length === 0 && (
+            {!loading && dichVus.length === 0 && (
               <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                 <i className="ri-service-line text-6xl text-gray-300 mb-4"></i>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có dịch vụ nào</h3>
@@ -350,7 +325,7 @@ export default function Services() {
             )}
 
             {/* No Results State */}
-            {!loading && services.length > 0 && filteredServices.length === 0 && (
+            {!loading && dichVus.length > 0 && filteredDichVus.length === 0 && (
               <div className="bg-white rounded-lg shadow-sm p-12 text-center col-span-full">
                 <i className="ri-search-line text-6xl text-gray-300 mb-4"></i>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy dịch vụ</h3>
@@ -358,20 +333,20 @@ export default function Services() {
               </div>
             )}
 
-            {/* Services Grid */}
-            {!loading && filteredServices.length > 0 && (
+            {/* Dich Vu Grid */}
+            {!loading && filteredDichVus.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredServices.map((service) => (
-                <div key={service.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                {filteredDichVus.map((dichVu) => (
+                <div key={dichVu.MaDichVu} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{service.name}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{service.description}</p>
+                        <h3 className="text-lg font-semibold text-gray-900">{dichVu.TenDichVu}</h3>
+                        <p className="text-sm text-gray-600 mt-1">{dichVu.MoTa}</p>
                       </div>
                       <div className="flex items-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(service.category)}`}>
-                          {getCategoryText(service.category)}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDanhMucColor(dichVu.DanhMuc)}`}>
+                          {dichVu.DanhMuc}
                         </span>
                       </div>
                     </div>
@@ -380,38 +355,38 @@ export default function Services() {
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Giá:</span>
                         <span className="text-sm font-medium text-green-600">
-                          {service.price.toLocaleString('vi-VN')}đ/{service.unit}
+                          {dichVu.DonGia.toLocaleString('vi-VN')}đ/{dichVu.DonViTinh}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Số phòng đang sử dụng:</span>
-                        <span className="text-sm font-medium">{service.usageCount}</span>
+                        <span className="text-sm font-medium">{dichVu.SoLuongSuDung}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Trạng thái:</span>
-                        <span className={`text-sm font-medium ${service.isActive ? 'text-green-600' : 'text-red-600'}`}>
-                          {service.isActive ? 'Hoạt động' : 'Tạm dừng'}
+                        <span className={`text-sm font-medium ${dichVu.TrangThaiHoatDong ? 'text-green-600' : 'text-red-600'}`}>
+                          {dichVu.TrangThaiHoatDong ? 'Hoạt động' : 'Tạm dừng'}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { setSelectedService(service); setShowDetailModal(true); }}
+                        onClick={() => { setSelectedDichVu(dichVu); setShowDetailModal(true); }}
                         className="flex-1 bg-indigo-50 text-indigo-600 px-3 py-2 rounded-lg hover:bg-indigo-100 text-sm font-medium cursor-pointer"
                         title="Xem chi tiết"
                       >
                         <i className="ri-eye-line mr-1"></i> Chi tiết
                       </button>
                       <button
-                        onClick={() => handleEdit(service)}
+                        onClick={() => handleEdit(dichVu)}
                         className="px-3 py-2 text-green-600 hover:bg-green-50 rounded-lg cursor-pointer"
                         title="Chỉnh sửa"
                       >
                         <i className="ri-edit-line"></i>
                       </button>
                       <button
-                        onClick={() => handleDelete(service)}
+                        onClick={() => handleDelete(dichVu)}
                         className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
                         title="Xóa dịch vụ"
                       >
@@ -429,7 +404,7 @@ export default function Services() {
       </div>
 
       {/* Detail Modal */}
-      {showDetailModal && selectedService && (
+      {showDetailModal && selectedDichVu && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowDetailModal(false)}></div>
@@ -442,23 +417,23 @@ export default function Services() {
               </div>
 
               <div className="space-y-4">
-                <div className="flex justify-between"><span className="text-gray-600">Tên dịch vụ:</span><span className="font-medium">{selectedService.name}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">Mô tả:</span><span className="font-medium">{selectedService.description}</span></div>
+                <div className="flex justify-between"><span className="text-gray-600">Tên dịch vụ:</span><span className="font-medium">{selectedDichVu.TenDichVu}</span></div>
+                <div className="flex justify-between"><span className="text-gray-600">Mô tả:</span><span className="font-medium">{selectedDichVu.MoTa}</span></div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Danh mục:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(selectedService.category)}`}>
-                    {getCategoryText(selectedService.category)}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDanhMucColor(selectedDichVu.DanhMuc)}`}>
+                    {selectedDichVu.DanhMuc}
                   </span>
                 </div>
-                <div className="flex justify-between"><span className="text-gray-600">Giá:</span><span className="font-medium text-green-600">{selectedService.price.toLocaleString('vi-VN')}đ/{selectedService.unit}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">Số phòng đang sử dụng:</span><span className="font-medium">{selectedService.usageCount}</span></div>
-                <div className="flex justify-between"><span className="text-gray-600">Trạng thái:</span><span className={`font-medium ${selectedService.isActive ? 'text-green-600' : 'text-red-600'}`}>{selectedService.isActive ? 'Hoạt động' : 'Tạm dừng'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-600">Giá:</span><span className="font-medium text-green-600">{selectedDichVu.DonGia.toLocaleString('vi-VN')}đ/{selectedDichVu.DonViTinh}</span></div>
+                <div className="flex justify-between"><span className="text-gray-600">Số phòng đang sử dụng:</span><span className="font-medium">{selectedDichVu.SoLuongSuDung}</span></div>
+                <div className="flex justify-between"><span className="text-gray-600">Trạng thái:</span><span className={`font-medium ${selectedDichVu.TrangThaiHoatDong ? 'text-green-600' : 'text-red-600'}`}>{selectedDichVu.TrangThaiHoatDong ? 'Hoạt động' : 'Tạm dừng'}</span></div>
               </div>
 
               <div className="flex gap-3 mt-6 pt-6 border-t">
-                <button onClick={() => handleEdit(selectedService)} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap">Chỉnh sửa</button>
-                <button onClick={() => toggleServiceStatus(selectedService)} className={`flex-1 px-4 py-2 rounded-lg cursor-pointer whitespace-nowrap text-white ${selectedService.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>{selectedService.isActive ? 'Tạm dừng' : 'Kích hoạt'}</button>
-                <button onClick={() => handleDelete(selectedService)} className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 cursor-pointer whitespace-nowrap">Xóa dịch vụ</button>
+                <button onClick={() => handleEdit(selectedDichVu)} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap">Chỉnh sửa</button>
+                <button onClick={() => toggleDichVuStatus(selectedDichVu)} className={`flex-1 px-4 py-2 rounded-lg cursor-pointer whitespace-nowrap text-white ${selectedDichVu.TrangThaiHoatDong ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>{selectedDichVu.TrangThaiHoatDong ? 'Tạm dừng' : 'Kích hoạt'}</button>
+                <button onClick={() => handleDelete(selectedDichVu)} className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 cursor-pointer whitespace-nowrap">Xóa dịch vụ</button>
               </div>
             </div>
           </div>
@@ -475,34 +450,34 @@ export default function Services() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tên dịch vụ *</label>
-                  <input type="text" value={newService.name} onChange={(e) => setNewService({ ...newService, name: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                  <input type="text" value={newDichVu.TenDichVu} onChange={(e) => setNewDichVu({ ...newDichVu, TenDichVu: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả *</label>
-                  <textarea value={newService.description} onChange={(e) => setNewService({ ...newService, description: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={3} />
+                  <textarea value={newDichVu.MoTa} onChange={(e) => setNewDichVu({ ...newDichVu, MoTa: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={3} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Giá (VNĐ) *</label>
-                    <input type="number" value={newService.price} onChange={(e) => setNewService({ ...newService, price: parseInt(e.target.value) || 0 })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                    <input type="number" value={newDichVu.DonGia} onChange={(e) => setNewDichVu({ ...newDichVu, DonGia: parseInt(e.target.value) || 0 })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Đơn vị *</label>
-                    <input type="text" value={newService.unit} onChange={(e) => setNewService({ ...newService, unit: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                    <input type="text" value={newDichVu.DonViTinh} onChange={(e) => setNewDichVu({ ...newDichVu, DonViTinh: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục *</label>
-                  <select value={newService.category} onChange={(e) => setNewService({ ...newService, category: e.target.value as any })} className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
+                  <select value={newDichVu.DanhMuc} onChange={(e) => setNewDichVu({ ...newDichVu, DanhMuc: e.target.value as DichVu['DanhMuc'] })} className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
                     <option value="">Chọn danh mục</option>
-                    <option value="services">Dịch vụ</option>
-                    <option value="utilities">Tiện ích</option>
-                    <option value="other">Khác</option>
+                    <option value="Dịch vụ">Dịch vụ</option>
+                    <option value="Tiện ích">Tiện ích</option>
+                    <option value="Khác">Khác</option>
                   </select>
                 </div>
                 <div>
                   <label className="flex items-center">
-                    <input type="checkbox" checked={newService.isActive} onChange={(e) => setNewService({ ...newService, isActive: e.target.checked })} className="mr-2" />
+                    <input type="checkbox" checked={newDichVu.TrangThaiHoatDong} onChange={(e) => setNewDichVu({ ...newDichVu, TrangThaiHoatDong: e.target.checked })} className="mr-2" />
                     <span className="text-sm text-gray-700">Kích hoạt dịch vụ ngay</span>
                   </label>
                 </div>
@@ -518,7 +493,7 @@ export default function Services() {
       )}
 
       {/* Edit Modal */}
-      {showEditModal && editingService && (
+      {showEditModal && editingDichVu && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowEditModal(false)}></div>
@@ -527,39 +502,39 @@ export default function Services() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tên dịch vụ *</label>
-                  <input type="text" value={newService.name} onChange={(e) => setNewService({ ...newService, name: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                  <input type="text" value={newDichVu.TenDichVu} onChange={(e) => setNewDichVu({ ...newDichVu, TenDichVu: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả *</label>
-                  <textarea value={newService.description} onChange={(e) => setNewService({ ...newService, description: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={3} />
+                  <textarea value={newDichVu.MoTa} onChange={(e) => setNewDichVu({ ...newDichVu, MoTa: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={3} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Giá (VNĐ) *</label>
-                    <input type="number" value={newService.price} onChange={(e) => setNewService({ ...newService, price: parseInt(e.target.value) || 0 })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                    <input type="number" value={newDichVu.DonGia} onChange={(e) => setNewDichVu({ ...newDichVu, DonGia: parseInt(e.target.value) || 0 })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Đơn vị *</label>
-                    <input type="text" value={newService.unit} onChange={(e) => setNewService({ ...newService, unit: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                    <input type="text" value={newDichVu.DonViTinh} onChange={(e) => setNewDichVu({ ...newDichVu, DonViTinh: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục *</label>
-                  <select value={newService.category} onChange={(e) => setNewService({ ...newService, category: e.target.value as any })} className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
-                    <option value="services">Dịch vụ</option>
-                    <option value="utilities">Tiện ích</option>
-                    <option value="other">Khác</option>
+                  <select value={newDichVu.DanhMuc} onChange={(e) => setNewDichVu({ ...newDichVu, DanhMuc: e.target.value as DichVu['DanhMuc'] })} className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
+                    <option value="Dịch vụ">Dịch vụ</option>
+                    <option value="Tiện ích">Tiện ích</option>
+                    <option value="Khác">Khác</option>
                   </select>
                 </div>
                 <div>
                   <label className="flex items-center">
-                    <input type="checkbox" checked={newService.isActive} onChange={(e) => setNewService({ ...newService, isActive: e.target.checked })} className="mr-2" />
+                    <input type="checkbox" checked={newDichVu.TrangThaiHoatDong} onChange={(e) => setNewDichVu({ ...newDichVu, TrangThaiHoatDong: e.target.checked })} className="mr-2" />
                     <span className="text-sm text-gray-700">Dịch vụ đang hoạt động</span>
                   </label>
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={() => { setShowEditModal(false); setEditingService(null); resetForm(); }} className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 cursor-pointer whitespace-nowrap">Hủy</button>
+                  <button type="button" onClick={() => { setShowEditModal(false); setEditingDichVu(null); resetForm(); }} className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 cursor-pointer whitespace-nowrap">Hủy</button>
                   <button type="button" onClick={handleSubmitEdit} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap">Cập nhật</button>
                 </div>
               </div>

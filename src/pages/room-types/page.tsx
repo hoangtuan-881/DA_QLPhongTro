@@ -11,14 +11,14 @@ export default function RoomTypes() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Data state
-  const [roomTypes, setRoomTypes] = useState<LoaiPhong[]>([]);
+  const [loaiPhongs, setLoaiPhongs] = useState<LoaiPhong[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // UI states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingRoomType, setEditingRoomType] = useState<LoaiPhong | null>(null);
+  const [editingLoaiPhong, setEditingLoaiPhong] = useState<LoaiPhong | null>(null);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: '',
@@ -32,17 +32,17 @@ export default function RoomTypes() {
   useEffect(() => {
     const controller = new AbortController();
 
-    const fetchRoomTypes = async () => {
+    const fetchLoaiPhongs = async () => {
       try {
         const response = await loaiPhongService.getAll(controller.signal);
         if (!controller.signal.aborted) {
-          setRoomTypes(response.data.data || []);
+          setLoaiPhongs(response.data.data || []);
           setLoading(false);
         }
       } catch (error: any) {
         // Only show error toast for non-cancelled requests
         if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
-          console.error('Error fetching room types:', error);
+          console.error('Error fetching loai phongs:', error);
           toast.error({
             title: 'Lỗi tải dữ liệu',
             message: getErrorMessage(error)
@@ -52,7 +52,7 @@ export default function RoomTypes() {
       }
     };
 
-    fetchRoomTypes();
+    fetchLoaiPhongs();
 
     // Cleanup: abort request if component unmounts or refreshKey changes
     return () => {
@@ -60,13 +60,13 @@ export default function RoomTypes() {
     };
   }, [refreshKey]);
 
-  const refreshRoomTypes = () => {
+  const refreshLoaiPhongs = () => {
     setLoading(true);
     setRefreshKey(prev => prev + 1);
   };
 
   // ===== Thêm loại phòng =====
-  const handleAddRoomType = (e: React.FormEvent) => {
+  const handleAddLoaiPhong = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const amenitiesText = formData.get('TienNghi') as string;
@@ -97,9 +97,9 @@ export default function RoomTypes() {
           setShowAddModal(false);
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
           toast.success({ title: 'Thành công', message: 'Đã thêm loại phòng' });
-          refreshRoomTypes();
+          refreshLoaiPhongs();
         } catch (error) {
-          console.error('Error creating room type:', error);
+          console.error('Error creating loai phong:', error);
           setConfirmDialog(prev => ({ ...prev, loading: false }));
           toast.error({ title: 'Lỗi thêm loại phòng', message: getErrorMessage(error) });
         }
@@ -108,14 +108,14 @@ export default function RoomTypes() {
   };
 
   // ===== Sửa loại phòng =====
-  const handleEdit = (roomType: LoaiPhong) => {
-    setEditingRoomType(roomType);
+  const handleEdit = (loaiPhong: LoaiPhong) => {
+    setEditingLoaiPhong(loaiPhong);
     setShowEditModal(true);
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingRoomType) return;
+    if (!editingLoaiPhong) return;
 
     const formData = new FormData(e.target as HTMLFormElement);
     const amenitiesText = formData.get('TienNghi') as string;
@@ -136,20 +136,20 @@ export default function RoomTypes() {
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận cập nhật',
-      message: <>Cập nhật thông tin loại phòng <strong>{editingRoomType.TenLoaiPhong}</strong>?</>,
+      message: <>Cập nhật thông tin loại phòng <strong>{editingLoaiPhong.TenLoaiPhong}</strong>?</>,
       type: 'info',
       loading: false,
       onConfirm: async () => {
         try {
           setConfirmDialog(prev => ({ ...prev, loading: true }));
-          await loaiPhongService.update(editingRoomType.MaLoaiPhong, updatedData);
+          await loaiPhongService.update(editingLoaiPhong.MaLoaiPhong, updatedData);
           setShowEditModal(false);
-          setEditingRoomType(null);
+          setEditingLoaiPhong(null);
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
           toast.success({ title: 'Đã cập nhật', message: 'Cập nhật loại phòng thành công' });
-          refreshRoomTypes();
+          refreshLoaiPhongs();
         } catch (error) {
-          console.error('Error updating room type:', error);
+          console.error('Error updating loai phong:', error);
           setConfirmDialog(prev => ({ ...prev, loading: false }));
           toast.error({ title: 'Lỗi cập nhật', message: getErrorMessage(error) });
         }
@@ -158,11 +158,11 @@ export default function RoomTypes() {
   };
 
   // ===== Xóa loại phòng =====
-  const handleDeleteRoomType = (roomType: LoaiPhong) => {
-    if (roomType.TongSoPhong > 0) {
+  const handleDeleteLoaiPhong = (loaiPhong: LoaiPhong) => {
+    if (loaiPhong.TongSoPhong > 0) {
       toast.error({
         title: 'Không thể xóa',
-        message: `Loại phòng "${roomType.TenLoaiPhong}" đang có ${roomType.TongSoPhong} phòng. Vui lòng xóa tất cả phòng thuộc loại này trước.`
+        message: `Loại phòng "${loaiPhong.TenLoaiPhong}" đang có ${loaiPhong.TongSoPhong} phòng. Vui lòng xóa tất cả phòng thuộc loại này trước.`
       });
       return;
     }
@@ -170,18 +170,18 @@ export default function RoomTypes() {
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận xóa loại phòng',
-      message: <>Bạn có chắc muốn xóa <strong>{roomType.TenLoaiPhong}</strong>? Hành động này không thể hoàn tác.</>,
+      message: <>Bạn có chắc muốn xóa <strong>{loaiPhong.TenLoaiPhong}</strong>? Hành động này không thể hoàn tác.</>,
       type: 'danger',
       loading: false,
       onConfirm: async () => {
         try {
           setConfirmDialog(prev => ({ ...prev, loading: true }));
-          await loaiPhongService.delete(roomType.MaLoaiPhong);
+          await loaiPhongService.delete(loaiPhong.MaLoaiPhong);
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
-          toast.error({ title: 'Đã xóa', message: `Đã xóa loại phòng "${roomType.TenLoaiPhong}"` });
-          refreshRoomTypes();
+          toast.error({ title: 'Đã xóa', message: `Đã xóa loại phòng "${loaiPhong.TenLoaiPhong}"` });
+          refreshLoaiPhongs();
         } catch (error) {
-          console.error('Error deleting room type:', error);
+          console.error('Error deleting loai phong:', error);
           setConfirmDialog(prev => ({ ...prev, loading: false }));
           toast.error({ title: 'Lỗi xóa', message: getErrorMessage(error) });
         }
@@ -230,7 +230,7 @@ export default function RoomTypes() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Tổng loại phòng</p>
-                    <p className="text-2xl font-semibold text-gray-900">{roomTypes.length}</p>
+                    <p className="text-2xl font-semibold text-gray-900">{loaiPhongs.length}</p>
                   </div>
                 </div>
               </div>
@@ -242,7 +242,7 @@ export default function RoomTypes() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Tổng phòng</p>
                     <p className="text-2xl font-semibold text-gray-900">
-                      {roomTypes.reduce((sum, rt) => sum + rt.TongSoPhong, 0)}
+                      {loaiPhongs.reduce((sum, lp) => sum + lp.TongSoPhong, 0)}
                     </p>
                   </div>
                 </div>
@@ -255,7 +255,7 @@ export default function RoomTypes() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Phòng trống</p>
                     <p className="text-2xl font-semibold text-gray-900">
-                      {roomTypes.reduce((sum, rt) => sum + rt.SoPhongTrong, 0)}
+                      {loaiPhongs.reduce((sum, lp) => sum + lp.SoPhongTrong, 0)}
                     </p>
                   </div>
                 </div>
@@ -268,8 +268,8 @@ export default function RoomTypes() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Giá trung bình</p>
                     <p className="text-2xl font-semibold text-gray-900">
-                      {roomTypes.length > 0
-                        ? (roomTypes.reduce((sum, rt) => sum + rt.DonGiaCoBan, 0) / roomTypes.length / 1000000).toFixed(1)
+                      {loaiPhongs.length > 0
+                        ? (loaiPhongs.reduce((sum, lp) => sum + lp.DonGiaCoBan, 0) / loaiPhongs.length / 1000000).toFixed(1)
                         : 0}M
                     </p>
                   </div>
@@ -285,7 +285,7 @@ export default function RoomTypes() {
             )}
 
             {/* Empty State */}
-            {!loading && roomTypes.length === 0 && (
+            {!loading && loaiPhongs.length === 0 && (
               <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <i className="ri-price-tag-3-line text-gray-400 text-4xl"></i>
@@ -302,27 +302,27 @@ export default function RoomTypes() {
               </div>
             )}
 
-            {/* Room Types Grid */}
-            {!loading && roomTypes.length > 0 && (
+            {/* Loai Phong Grid */}
+            {!loading && loaiPhongs.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {roomTypes.map((roomType) => (
-                  <div key={roomType.MaLoaiPhong} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                {loaiPhongs.map((loaiPhong) => (
+                  <div key={loaiPhong.MaLoaiPhong} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-4">
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900">{roomType.TenLoaiPhong}</h3>
-                          <p className="text-sm text-gray-600 mt-1">{roomType.MoTa}</p>
+                          <h3 className="text-lg font-semibold text-gray-900">{loaiPhong.TenLoaiPhong}</h3>
+                          <p className="text-sm text-gray-600 mt-1">{loaiPhong.MoTa}</p>
                         </div>
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => handleEdit(roomType)}
+                            onClick={() => handleEdit(loaiPhong)}
                             className="text-blue-600 hover:text-blue-800 cursor-pointer"
                             title="Chỉnh sửa"
                           >
                             <i className="ri-edit-line"></i>
                           </button>
                           <button
-                            onClick={() => handleDeleteRoomType(roomType)}
+                            onClick={() => handleDeleteLoaiPhong(loaiPhong)}
                             className="text-red-600 hover:text-red-800 cursor-pointer"
                             title="Xóa"
                           >
@@ -335,28 +335,28 @@ export default function RoomTypes() {
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Giá cơ bản:</span>
                           <span className="text-sm font-medium text-green-600">
-                            {roomType.DonGiaCoBan.toLocaleString('vi-VN')}đ/tháng
+                            {loaiPhong.DonGiaCoBan.toLocaleString('vi-VN')}đ/tháng
                           </span>
                         </div>
-                        {roomType.DienTich && (
+                        {loaiPhong.DienTich && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">Diện tích:</span>
-                            <span className="text-sm font-medium">{roomType.DienTich}m²</span>
+                            <span className="text-sm font-medium">{loaiPhong.DienTich}m²</span>
                           </div>
                         )}
                       </div>
 
-                      {roomType.TienNghi.length > 0 && (
+                      {loaiPhong.TienNghi.length > 0 && (
                         <div className="mb-4">
                           <p className="text-sm text-gray-600 mb-2">Tiện nghi:</p>
                           <div className="flex flex-wrap gap-1">
-                            {roomType.TienNghi.slice(0, 4).map((amenity, index) => (
+                            {loaiPhong.TienNghi.slice(0, 4).map((amenity, index) => (
                               <span key={index} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
                                 {amenity}
                               </span>
                             ))}
-                            {roomType.TienNghi.length > 4 && (
-                              <span className="text-xs text-gray-500">+{roomType.TienNghi.length - 4} khác</span>
+                            {loaiPhong.TienNghi.length > 4 && (
+                              <span className="text-xs text-gray-500">+{loaiPhong.TienNghi.length - 4} khác</span>
                             )}
                           </div>
                         </div>
@@ -365,21 +365,21 @@ export default function RoomTypes() {
                       <div className="border-t pt-4">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-medium text-gray-700">Tình trạng phòng</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(roomType.SoPhongTrong, roomType.TongSoPhong)}`}>
-                            {roomType.SoPhongTrong}/{roomType.TongSoPhong} trống
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(loaiPhong.SoPhongTrong, loaiPhong.TongSoPhong)}`}>
+                            {loaiPhong.SoPhongTrong}/{loaiPhong.TongSoPhong} trống
                           </span>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           <div className="text-center">
-                            <div className="text-blue-600 font-medium">{roomType.SoPhongDaThue}</div>
+                            <div className="text-blue-600 font-medium">{loaiPhong.SoPhongDaThue}</div>
                             <div className="text-gray-500">Đã thuê</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-green-600 font-medium">{roomType.SoPhongTrong}</div>
+                            <div className="text-green-600 font-medium">{loaiPhong.SoPhongTrong}</div>
                             <div className="text-gray-500">Trống</div>
                           </div>
                           <div className="text-center">
-                            <div className="text-orange-600 font-medium">{roomType.SoPhongBaoTri}</div>
+                            <div className="text-orange-600 font-medium">{loaiPhong.SoPhongBaoTri}</div>
                             <div className="text-gray-500">Bảo trì</div>
                           </div>
                         </div>
@@ -406,7 +406,7 @@ export default function RoomTypes() {
                 </button>
               </div>
 
-              <form onSubmit={handleAddRoomType} className="space-y-4">
+              <form onSubmit={handleAddLoaiPhong} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tên loại phòng *</label>
@@ -485,7 +485,7 @@ export default function RoomTypes() {
       )}
 
       {/* Edit Modal */}
-      {showEditModal && editingRoomType && (
+      {showEditModal && editingLoaiPhong && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowEditModal(false)}></div>
@@ -505,7 +505,7 @@ export default function RoomTypes() {
                       type="text"
                       name="TenLoaiPhong"
                       required
-                      defaultValue={editingRoomType.TenLoaiPhong}
+                      defaultValue={editingLoaiPhong.TenLoaiPhong}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
@@ -515,7 +515,7 @@ export default function RoomTypes() {
                       type="number"
                       name="DonGiaCoBan"
                       required
-                      defaultValue={editingRoomType.DonGiaCoBan}
+                      defaultValue={editingLoaiPhong.DonGiaCoBan}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
@@ -527,7 +527,7 @@ export default function RoomTypes() {
                     <input
                       type="number"
                       name="DienTich"
-                      defaultValue={editingRoomType.DienTich || ''}
+                      defaultValue={editingLoaiPhong.DienTich || ''}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
@@ -537,7 +537,7 @@ export default function RoomTypes() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
                   <textarea
                     name="MoTa"
-                    defaultValue={editingRoomType.MoTa}
+                    defaultValue={editingLoaiPhong.MoTa}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     rows={3}
                   ></textarea>
@@ -547,7 +547,7 @@ export default function RoomTypes() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tiện nghi</label>
                   <textarea
                     name="TienNghi"
-                    defaultValue={editingRoomType.TienNghi.join(', ')}
+                    defaultValue={editingLoaiPhong.TienNghi.join(', ')}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     rows={3}
                   ></textarea>

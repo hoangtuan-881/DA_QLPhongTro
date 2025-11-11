@@ -8,29 +8,23 @@ import { API_ENDPOINTS } from '@/config/api';
 import { AxiosResponse } from 'axios';
 import { ApiResponse } from '@/lib/http-client';
 
-// Service Type Interface (matching backend DichVuResource)
+// Service Type Interface (matching backend DichVuResource - PascalCase Vietnamese)
 export interface DichVu {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  unit: string;
-  category: 'services' | 'utilities' | 'other';
-  isActive: boolean;
-  usageCount: number;
+  MaDichVu: number;
+  TenDichVu: string;
+  MoTa: string;
+  DonGia: number;
+  DonViTinh: string;
+  DanhMuc: 'Dịch vụ' | 'Tiện ích' | 'Khác';
+  TrangThaiHoatDong: boolean;
+  SoLuongSuDung: number;
 }
 
-// Create/Update payload (matching backend validator)
-export interface DichVuCreatePayload {
-  name: string;
-  description?: string;
-  price: number;
-  unit?: string;
-  category: 'services' | 'utilities' | 'other';
-  isActive?: boolean;
-}
+// Create payload (matching backend validator - no MaDichVu, no computed fields)
+export type DichVuCreateInput = Omit<DichVu, 'MaDichVu' | 'SoLuongSuDung'>;
 
-export interface DichVuUpdatePayload extends Partial<DichVuCreatePayload> {}
+// Update payload (partial)
+export type DichVuUpdateInput = Partial<DichVuCreateInput>;
 
 /**
  * Dich Vu Service Class
@@ -65,24 +59,22 @@ class DichVuService extends BaseApiService<DichVu> {
   }
 
   /**
-   * Create new service
-   * Maps frontend fields to backend fields
+   * Create new service (no mapping needed)
    */
-  async createService(data: DichVuCreatePayload): Promise<AxiosResponse<ApiResponse<DichVu>>> {
+  async createService(data: DichVuCreateInput): Promise<AxiosResponse<ApiResponse<DichVu>>> {
     return this.create(data);
   }
 
   /**
-   * Update existing service
-   * Maps frontend fields to backend fields
+   * Update existing service (no mapping needed)
    */
-  async updateService(id: string | number, data: DichVuUpdatePayload): Promise<AxiosResponse<ApiResponse<DichVu>>> {
+  async updateService(id: string | number, data: DichVuUpdateInput): Promise<AxiosResponse<ApiResponse<DichVu>>> {
     return this.update(id, data);
   }
 
   /**
    * Delete service
-   * Will fail if service is in use (usageCount > 0)
+   * Will fail if service is in use (SoLuongSuDung > 0)
    */
   async deleteService(id: string | number): Promise<AxiosResponse<ApiResponse<void>>> {
     return this.delete(id);

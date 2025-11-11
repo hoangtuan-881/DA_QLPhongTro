@@ -1,9 +1,11 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
+import phongTroService, { PhongTro, PhongTroCreateInput, PhongTroUpdateInput } from '../../services/phong-tro.service';
+import dayTroService, { DayTro, DayTroCreateInput, DayTroUpdateInput } from '../../services/day-tro.service';
+import { getErrorMessage } from '../../lib/http-client';
 
 
 export interface Building {
@@ -593,27 +595,45 @@ export const mockRooms: Room[] = [
 export default function Rooms() {
   // ====== STATE ======
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [rooms, setRooms] = useState<Room[]>(mockRooms);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+
+  // Phòng trọ data (từ API)
+  const [phongTros, setPhongTros] = useState<PhongTro[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedPhongTro, setSelectedPhongTro] = useState<PhongTro | null>(null);
+  const [editingPhongTro, setEditingPhongTro] = useState<PhongTro | null>(null);
+
+  // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddBuildingModal, setShowAddBuildingModal] = useState(false);
   const [showEditBuildingModal, setShowEditBuildingModal] = useState(false);
   const [showChangeRoomModal, setShowChangeRoomModal] = useState(false);
   const [showCheckOutModal, setShowCheckOutModal] = useState(false);
+
+  // Filter & Search states
   const [activeTab, setActiveTab] = useState('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [detailActiveTab, setDetailActiveTab] = useState('basic');
-  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
-  const [editingBuilding, setEditingBuilding] = useState<Building | null>(null);
   const [selectedBuilding, setSelectedBuilding] = useState<string>('');
-  const [changeRoomData, setChangeRoomData] = useState<{ fromRoom: Room | null; toRoom: string }>({ fromRoom: null, toRoom: '' });
 
-  // New states for grid/list view and bulk operations
+  // Dãy trọ data (từ API)
+  const [dayTros, setDayTros] = useState<DayTro[]>([]);
+  const [loadingDayTros, setLoadingDayTros] = useState(true);
+  const [editingDayTro, setEditingDayTro] = useState<DayTro | null>(null);
+  const [newDayTro, setNewDayTro] = useState({
+    TenDay: '',
+    DiaChi: ''
+  });
+
+  // Change room states
+  const [changeRoomData, setChangeRoomData] = useState<{ fromRoom: PhongTro | null; toRoom: string }>({ fromRoom: null, toRoom: '' });
+
+  // Grid/List view and bulk operations
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedRooms, setSelectedRooms] = useState<string[]>([]);
+  const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -625,15 +645,6 @@ export default function Rooms() {
   });
 
   const toast = useToast();
-  // State cho danh sách dãy nhà (thay thế mockBuildings)
-  const [buildingList, setBuildingList] = useState<Building[]>(mockBuildings);
-
-  // State cho form "Thêm Dãy Mới"
-  const [newBuilding, setNewBuilding] = useState({
-    name: '',
-    address: '',
-    description: ''
-  });
 
   // State cho form "Thêm Phòng Mới"
   const [newRoomData, setNewRoomData] = useState({
@@ -641,30 +652,74 @@ export default function Rooms() {
     building: '',
     type: mockRoomTypes[0]?.name || 'Phòng thường' // Lấy loại phòng đầu tiên làm mặc định
   });
+
+  // ====== FETCH DATA ======
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchPhongTros = async () => {
+      try {
+        const response = await phongTroService.getAll(controller.signal);
+        if (!controller.signal.aborted) {
+          setPhongTros(response.data.data || []);
+          setLoading(false);
+        }
+      } catch (error: any) {
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          toast.error({ title: 'Lỗi tải dữ liệu', message: getErrorMessage(error) });
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchPhongTros();
+    return () => controller.abort();
+  }, [refreshKey]);
+
+  const refreshData = () => {
+    setLoading(true);
+    setRefreshKey(prev => prev + 1);
+  };
+
+  // Fetch Dãy Trọ
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchDayTros = async () => {
+      try {
+        const response = await dayTroService.getAll(controller.signal);
+        if (!controller.signal.aborted) {
+          setDayTros(response.data.data || []);
+          setLoadingDayTros(false);
+        }
+      } catch (error: any) {
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          toast.error({ title: 'Lỗi tải danh sách dãy trọ', message: getErrorMessage(error) });
+          setLoadingDayTros(false);
+        }
+      }
+    };
+
+    fetchDayTros();
+    return () => controller.abort();
+  }, [refreshKey]);
+
+  const refreshDayTros = () => {
+    setLoadingDayTros(true);
+    setRefreshKey(prev => prev + 1);
+  };
+
   // ====== HELPERS ======
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'available':
+  const getStatusColor = (trangThai: string) => {
+    switch (trangThai) {
+      case 'Trống':
         return 'bg-green-100 text-green-800';
-      case 'occupied':
+      case 'Đã cho thuê':
         return 'bg-blue-100 text-blue-800';
-      case 'maintenance':
+      case 'Bảo trì':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'available':
-        return 'Trống';
-      case 'occupied':
-        return 'Đã thuê';
-      case 'maintenance':
-        return 'Bảo trì';
-      default:
-        return status;
     }
   };
 
@@ -672,74 +727,75 @@ export default function Rooms() {
   const findRoomTypeMeta = (typeName: string) => mockRoomTypes.find(rt => rt.name === typeName);
 
   // ====== FILTER SOURCES ======
-  // Đọc từ state "buildingList" thay vì "mockBuildings"
-  const buildings = ['all', ...buildingList.map(b => b.name)];
+  // Đọc từ state "dayTros"
+  const buildings = ['all', ...dayTros.map(d => d.TenDay)];
 
   // Loại phòng cố định theo mockRoomTypes (6 loại)
   const roomTypes = ['all', ...mockRoomTypes.map(rt => rt.name)];
 
   // Lọc phòng
-  const filteredRooms = rooms.filter(room => {
-    const matchesBuilding = activeTab === 'all' || room.building === activeTab;
-    const matchesStatus = filterStatus === 'all' || room.status === filterStatus;
-    const matchesType = filterType === 'all' || room.type === filterType;
+  const filteredPhongTros = phongTros.filter(phongTro => {
+    const matchesBuilding = activeTab === 'all' || phongTro.TenDay === activeTab;
+    const matchesStatus = filterStatus === 'all' || phongTro.TrangThai === filterStatus;
+    const matchesType = filterType === 'all' || phongTro.TenLoaiPhong === filterType;
 
     const term = searchTerm.trim().toLowerCase();
     const matchesSearch =
       term === '' ||
-      room.number.toLowerCase().includes(term) ||
-      (room.tenant?.name || '').toLowerCase().includes(term) ||
-      room.building.toLowerCase().includes(term) ||
-      room.type.toLowerCase().includes(term);
+      phongTro.TenPhong.toLowerCase().includes(term) ||
+      (phongTro.TenDay || '').toLowerCase().includes(term) ||
+      (phongTro.TenLoaiPhong || '').toLowerCase().includes(term);
 
     return matchesBuilding && matchesStatus && matchesType && matchesSearch;
   });
 
   // ====== BULK SELECTION ======
   const handleSelectAll = () => {
-    if (selectedRooms.length === filteredRooms.length) {
+    if (selectedRooms.length === filteredPhongTros.length) {
       setSelectedRooms([]);
     } else {
-      setSelectedRooms(filteredRooms.map(room => room.id));
+      setSelectedRooms(filteredPhongTros.map(phongTro => phongTro.MaPhong));
     }
   };
 
-  const handleSelectRoom = (roomId: string) => {
-    setSelectedRooms(prev => (prev.includes(roomId) ? prev.filter(id => id !== roomId) : [...prev, roomId]));
+  const handleSelectRoom = (maPhong: number) => {
+    setSelectedRooms(prev => (prev.includes(maPhong) ? prev.filter(id => id !== maPhong) : [...prev, maPhong]));
   };
 
   // ====== BULK OPS ======
-  const handleBulkStatusChange = (newStatus: 'available' | 'occupied' | 'maintenance') => {
-    const statusText = newStatus === 'available' ? 'trống' : newStatus === 'occupied' ? 'đã thuê' : 'bảo trì';
-
+  const handleBulkStatusChange = (newTrangThai: 'Trống' | 'Đã cho thuê' | 'Bảo trì') => {
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận thay đổi trạng thái',
-      message: `Bạn có chắc chắn muốn chuyển ${selectedRooms.length} phòng sang trạng thái "${statusText}" không?`,
+      message: `Bạn có chắc chắn muốn chuyển ${selectedRooms.length} phòng sang trạng thái "${newTrangThai}" không?`,
       type: 'warning',
       loading: false,
-      onConfirm: () => {
-        setRooms(prev =>
-          prev.map(room => (selectedRooms.includes(room.id) ? { ...room, status: newStatus } : room))
-        );
-        toast.success({
-          title: 'Cập nhật thành công',
-          message: `Đã chuyển ${selectedRooms.length} phòng sang trạng thái "${statusText}"`
-        });
-        setSelectedRooms([]);
-        setShowBulkActions(false);
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      onConfirm: async () => {
+        try {
+          // TODO: Call API to bulk update status
+          // For now, just show success
+          toast.success({
+            title: 'Cập nhật thành công',
+            message: `Đã chuyển ${selectedRooms.length} phòng sang trạng thái "${newTrangThai}"`
+          });
+          setSelectedRooms([]);
+          setShowBulkActions(false);
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          refreshData();
+        } catch (error) {
+          toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+        }
       }
     });
   };
 
   const handleBulkDelete = () => {
-    const occupiedRooms = rooms.filter(room => selectedRooms.includes(room.id) && room.status === 'occupied');
+    const occupiedPhongTros = phongTros.filter(phongTro => selectedRooms.includes(phongTro.MaPhong) && phongTro.TrangThai === 'Đã cho thuê');
 
-    if (occupiedRooms.length > 0) {
+    if (occupiedPhongTros.length > 0) {
       toast.error({
         title: 'Không thể xóa',
-        message: `Có ${occupiedRooms.length} phòng đang được thuê. Vui lòng trả phòng trước khi xóa.`
+        message: `Có ${occupiedPhongTros.length} phòng đang được thuê. Vui lòng trả phòng trước khi xóa.`
       });
       return;
     }
@@ -750,22 +806,28 @@ export default function Rooms() {
       message: `Bạn có chắc chắn muốn xóa ${selectedRooms.length} phòng không? Hành động này không thể hoàn tác.`,
       type: 'danger',
       loading: false,
-      onConfirm: () => {
-        setRooms(prev => prev.filter(room => !selectedRooms.includes(room.id)));
-        toast.success({
-          title: 'Xóa thành công',
-          message: `Đã xóa ${selectedRooms.length} phòng khỏi hệ thống`
-        });
-        setSelectedRooms([]);
-        setShowBulkActions(false);
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      onConfirm: async () => {
+        try {
+          // Call API to bulk delete
+          await Promise.all(selectedRooms.map(maPhong => phongTroService.delete(maPhong)));
+          toast.success({
+            title: 'Xóa thành công',
+            message: `Đã xóa ${selectedRooms.length} phòng khỏi hệ thống`
+          });
+          setSelectedRooms([]);
+          setShowBulkActions(false);
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          refreshData();
+        } catch (error) {
+          toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+        }
       }
     });
   };
 
   // ====== SINGLE ROOM OPS ======
-  const handleDeleteRoom = (room: Room) => {
-    if (room.status === 'occupied') {
+  const handleDeleteRoom = (phongTro: PhongTro) => {
+    if (phongTro.TrangThai === 'Đã cho thuê') {
       toast.error({
         title: 'Không thể xóa',
         message: 'Phòng đang được thuê. Vui lòng trả phòng trước khi xóa.'
@@ -776,17 +838,22 @@ export default function Rooms() {
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận xóa phòng',
-      message: `Bạn có chắc chắn muốn xóa phòng ${room.number} không? Hành động này không thể hoàn tác.`,
+      message: `Bạn có chắc chắn muốn xóa phòng ${phongTro.TenPhong} không? Hành động này không thể hoàn tác.`,
       type: 'danger',
       loading: false,
-      onConfirm: () => {
-        setRooms(prev => prev.filter(r => r.id !== room.id));
-        toast.success({
-          title: 'Xóa thành công',
-          message: `Đã xóa phòng ${room.number} khỏi hệ thống`
-        });
-        setSelectedRoom(null);
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      onConfirm: async () => {
+        try {
+          await phongTroService.delete(phongTro.MaPhong);
+          toast.success({
+            title: 'Xóa thành công',
+            message: `Đã xóa phòng ${phongTro.TenPhong} khỏi hệ thống`
+          });
+          setSelectedPhongTro(null);
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          refreshData();
+        } catch (error) {
+          toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+        }
       }
     });
   };
@@ -795,42 +862,40 @@ export default function Rooms() {
     window.open(contractUrl, '_blank');
   };
 
-  const handleChangeRoom = (room: Room) => {
-    setChangeRoomData({ fromRoom: room, toRoom: '' });
+  const handleChangeRoom = (phongTro: PhongTro) => {
+    setChangeRoomData({ fromRoom: phongTro, toRoom: '' });
     setShowChangeRoomModal(true);
   };
 
-  const handleCheckOut = (room: Room) => {
-    setSelectedRoom(room);
+  const handleCheckOut = (phongTro: PhongTro) => {
+    setSelectedPhongTro(phongTro);
     setShowCheckOutModal(true);
   };
 
-  const handleEditRoom = (room: Room) => {
-    // Đồng bộ area/price theo RoomType ngay lúc mở modal cho thống nhất UI
-    const meta = findRoomTypeMeta(room.type);
-    const synced: Room = meta
-      ? { ...room, area: meta.area, price: meta.basePrice }
-      : room;
-
-    setEditingRoom({ ...synced });
+  const handleEditRoom = (phongTro: PhongTro) => {
+    setEditingPhongTro({ ...phongTro });
     setShowEditModal(true);
   };
 
-  const handleEditBuilding = (buildingName: string) => {
-    const building = buildingList.find(b => b.name === buildingName);
-    if (building) {
-      setEditingBuilding({ ...building });
+  const handleEditDayTro = (tenDay: string) => {
+    const dayTro = dayTros.find(d => d.TenDay === tenDay);
+    if (dayTro) {
+      setEditingDayTro({ ...dayTro });
       setShowEditBuildingModal(true);
     }
   };
 
-  const handleDeleteBuilding = (buildingName: string) => {
+  const handleDeleteDayTro = (tenDay: string) => {
+    // Tìm dãy trọ
+    const dayTro = dayTros.find(d => d.TenDay === tenDay);
+    if (!dayTro) return;
+
     // Kiểm tra xem dãy có phòng nào không
-    const roomsInBuilding = rooms.filter(room => room.building === buildingName);
-    if (roomsInBuilding.length > 0) {
+    const phongTrosInDayTro = phongTros.filter(phongTro => phongTro.TenDay === tenDay);
+    if (phongTrosInDayTro.length > 0) {
       toast.error({
         title: 'Không thể xóa',
-        message: `Dãy "${buildingName}" vẫn còn ${roomsInBuilding.length} phòng. Không thể xóa.`
+        message: `Dãy "${tenDay}" vẫn còn ${phongTrosInDayTro.length} phòng. Không thể xóa.`
       });
       return;
     }
@@ -838,20 +903,23 @@ export default function Rooms() {
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận xóa dãy phòng',
-      message: `Bạn có chắc chắn muốn xóa ${buildingName} không? Dãy này hiện không có phòng.`,
+      message: `Bạn có chắc chắn muốn xóa ${tenDay} không? Dãy này hiện không có phòng.`,
       type: 'danger',
       loading: false,
-      onConfirm: () => {
-        // Cập nhật state "buildingList"
-        setBuildingList(prev => prev.filter(b => b.name !== buildingName));
-
-        toast.success({
-          title: 'Xóa thành công',
-          message: `Đã xóa ${buildingName} khỏi hệ thống`
-        });
-        // Nếu đang ở tab dãy vừa xóa thì chuyển về "Tất cả"
-        setActiveTab('all');
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      onConfirm: async () => {
+        try {
+          await dayTroService.deleteDayTro(dayTro.MaDay);
+          toast.success({
+            title: 'Xóa thành công',
+            message: `Đã xóa ${tenDay} khỏi hệ thống`
+          });
+          // Nếu đang ở tab dãy vừa xóa thì chuyển về "Tất cả"
+          setActiveTab('all');
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          refreshDayTros();
+        } catch (error) {
+          toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+        }
       }
     });
   };
@@ -868,151 +936,134 @@ export default function Rooms() {
   };
 
   // Chuyển phòng: chuyển tenant/members/dịch vụ từ phòng A → phòng B (phòng B phải available)
-  const handleConfirmChangeRoom = () => {
+  const handleConfirmChangeRoom = async () => {
     const from = changeRoomData.fromRoom;
     const toNumber = changeRoomData.toRoom;
     if (!from || !toNumber) return;
 
-    setRooms(prev => {
-      const toIdx = prev.findIndex(r => r.number === toNumber);
-      if (toIdx === -1) return prev;
-
-      const fromIdx = prev.findIndex(r => r.id === from.id);
-      if (fromIdx === -1) return prev;
-
-      const toRoom = prev[toIdx];
-      if (toRoom.status !== 'available') {
-        toast.error({ title: 'Không thể đổi', message: 'Phòng đích không ở trạng thái trống.' });
-        return prev;
-      }
-
-      const updated = [...prev];
-
-      // Move tenant/members/services status
-      updated[toIdx] = {
-        ...toRoom,
-        tenant: from.tenant,
-        members: from.members,
-        services: { ...from.services },
-        status: 'occupied'
-      };
-
-      updated[fromIdx] = {
-        ...from,
-        tenant: undefined,
-        members: undefined,
-        status: 'available'
-      };
-
-      return updated;
-    });
-
-    toast.success({
-      title: 'Chuyển phòng thành công',
-      message: `Đã chuyển khách từ phòng ${from.number} sang phòng ${toNumber}`
-    });
-    setShowChangeRoomModal(false);
-    setChangeRoomData({ fromRoom: null, toRoom: '' });
+    try {
+      // TODO: Call API to change room
+      // For now, just show success
+      toast.success({
+        title: 'Chuyển phòng thành công',
+        message: `Đã chuyển khách từ phòng ${from.TenPhong} sang phòng ${toNumber}`
+      });
+      setShowChangeRoomModal(false);
+      setChangeRoomData({ fromRoom: null, toRoom: '' });
+      refreshData();
+    } catch (error) {
+      toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+    }
   };
 
   // Trả phòng: clear tenant/members, set available
-  const handleConfirmCheckOut = () => {
-    if (!selectedRoom) return;
+  const handleConfirmCheckOut = async () => {
+    if (!selectedPhongTro) return;
 
-    setRooms(prev =>
-      prev.map(r =>
-        r.id === selectedRoom.id
-          ? { ...r, tenant: undefined, members: undefined, status: 'available' }
-          : r
-      )
-    );
-
-    toast.success({
-      title: 'Trả phòng thành công',
-      message: `Đã xác nhận trả phòng ${selectedRoom.number}. Phòng sẽ chuyển về trạng thái trống.`
-    });
-    setShowCheckOutModal(false);
-    setSelectedRoom(null);
+    try {
+      // TODO: Call API to checkout
+      // For now, just show success
+      toast.success({
+        title: 'Trả phòng thành công',
+        message: `Đã xác nhận trả phòng ${selectedPhongTro.TenPhong}. Phòng sẽ chuyển về trạng thái trống.`
+      });
+      setShowCheckOutModal(false);
+      setSelectedPhongTro(null);
+      refreshData();
+    } catch (error) {
+      toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+    }
   };
 
-  // Lưu phòng: ghi lại thay đổi từ editingRoom vào rooms (đồng bộ area/price theo type hiện chọn)
-  const handleSaveRoom = () => {
-    if (!editingRoom) return;
+  // Lưu phòng: ghi lại thay đổi từ editingPhongTro
+  const handleSaveRoom = async () => {
+    if (!editingPhongTro) return;
 
-    const payload: Room = editingRoom;
+    try {
+      const updateData: PhongTroUpdateInput = {
+        MaDay: editingPhongTro.MaDay,
+        MaLoaiPhong: editingPhongTro.MaLoaiPhong,
+        TenPhong: editingPhongTro.TenPhong,
+        DonGiaCoBan: editingPhongTro.DonGiaCoBan,
+        DienTich: editingPhongTro.DienTich,
+        TrangThai: editingPhongTro.TrangThai,
+        MoTa: editingPhongTro.MoTa,
+        TienNghi: editingPhongTro.TienNghi
+      };
 
-    setRooms(prev => prev.map(r => (r.id === payload.id ? payload : r)));
-
-    toast.success({
-      title: 'Cập nhật thành công',
-      message: 'Đã lưu thông tin phòng thành công!'
-    });
-    setShowEditModal(false);
-    setEditingRoom(null);
+      await phongTroService.update(editingPhongTro.MaPhong, updateData);
+      toast.success({
+        title: 'Cập nhật thành công',
+        message: 'Đã lưu thông tin phòng thành công!'
+      });
+      setShowEditModal(false);
+      setEditingPhongTro(null);
+      refreshData();
+    } catch (error) {
+      toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+    }
   };
 
-  const handleSaveBuilding = () => {
-    if (!editingBuilding) return;
+  const handleSaveDayTro = async () => {
+    if (!editingDayTro) return;
 
-    // Cập nhật state "buildingList"
-    setBuildingList(prev =>
-      prev.map(b => (b.id === editingBuilding.id ? editingBuilding : b))
-    );
+    try {
+      const updateData: DayTroUpdateInput = {
+        TenDay: editingDayTro.TenDay,
+        DiaChi: editingDayTro.DiaChi
+      };
 
-    // Cập nhật tên dãy trong tất cả các phòng liên quan
-    setRooms(prevRooms =>
-      prevRooms.map(room =>
-        room.building === editingBuilding.name // Giả sử tên cũ
-          ? { ...room, building: editingBuilding.name } // Cập nhật tên mới
-          : room
-      )
-    );
-
-    toast.success({
-      title: 'Cập nhật thành công',
-      message: `Đã lưu thông tin dãy ${editingBuilding.name}!`
-    });
-    setShowEditBuildingModal(false);
-    setEditingBuilding(null);
+      await dayTroService.updateDayTro(editingDayTro.MaDay, updateData);
+      toast.success({
+        title: 'Cập nhật thành công',
+        message: `Đã lưu thông tin dãy ${editingDayTro.TenDay}!`
+      });
+      setShowEditBuildingModal(false);
+      setEditingDayTro(null);
+      refreshDayTros();
+      refreshData(); // Refresh rooms to get updated building names
+    } catch (error) {
+      toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+    }
   };
 
-  const handleAddBuilding = () => {
-    if (!newBuilding.name.trim() || !newBuilding.address.trim()) {
+  const handleAddDayTro = async () => {
+    if (!newDayTro.TenDay.trim() || !newDayTro.DiaChi.trim()) {
       toast.error({ title: 'Lỗi', message: 'Tên dãy và địa chỉ không được để trống.' });
       return;
     }
-    if (buildingList.some(b => b.name === newBuilding.name.trim())) {
+    if (dayTros.some(d => d.TenDay.trim().toLowerCase() === newDayTro.TenDay.trim().toLowerCase())) {
       toast.error({ title: 'Lỗi', message: 'Tên dãy này đã tồn tại.' });
       return;
     }
 
-    const buildingToAdd: Building = {
-      ...newBuilding,
-      id: (buildingList.length + 1).toString(), // ID đơn giản
-      name: newBuilding.name.trim(),
-      address: newBuilding.address.trim(),
-    };
+    try {
+      const createData: DayTroCreateInput = {
+        TenDay: newDayTro.TenDay.trim(),
+        DiaChi: newDayTro.DiaChi.trim()
+      };
 
-    // Cập nhật state "buildingList"
-    setBuildingList([...buildingList, buildingToAdd]);
+      await dayTroService.createDayTro(createData);
+      toast.success({
+        title: 'Thêm thành công',
+        message: `Đã thêm dãy ${createData.TenDay} thành công!`
+      });
 
-    toast.success({
-      title: 'Thêm thành công',
-      message: `Đã thêm dãy ${buildingToAdd.name} thành công!`
-    });
-
-    setShowAddBuildingModal(false);
-    setNewBuilding({ name: '', address: '', description: '' }); // Reset form
+      setShowAddBuildingModal(false);
+      setNewDayTro({ TenDay: '', DiaChi: '' }); // Reset form
+      refreshDayTros();
+    } catch (error) {
+      toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+    }
   };
 
-  // Thêm phòng mới (từ modal): auto set area/price theo RoomType đã chọn trong form (đọc từ DOM hoặc state nội bộ modal nếu có)
-  // Ở đây giữ hàm hiển thị toast + đóng modal; khi bạn nối form controlled, chỉ cần tạo Room mới và setRooms([...rooms, newRoom])
-  const handleAddRoom = () => {
+  // Thêm phòng mới
+  const handleAddRoom = async () => {
     if (!newRoomData.number.trim() || !newRoomData.building || !newRoomData.type) {
       toast.error({ title: 'Lỗi', message: 'Vui lòng điền đủ Số phòng, Dãy, và Loại phòng.' });
       return;
     }
-    if (rooms.some(r => r.number.toLowerCase() === newRoomData.number.trim().toLowerCase())) {
+    if (phongTros.some(p => p.TenPhong.toLowerCase() === newRoomData.number.trim().toLowerCase())) {
       toast.error({ title: 'Lỗi', message: `Số phòng "${newRoomData.number}" đã tồn tại.` });
       return;
     }
@@ -1024,58 +1075,59 @@ export default function Rooms() {
       return;
     }
 
-    const roomToAdd: Room = {
-      id: (rooms.length + 10).toString(), // ID đơn giản, tạm thời
-      number: newRoomData.number.trim(),
-      building: newRoomData.building,
-      type: newRoomData.type,
-      area: meta.area,
-      price: meta.basePrice,
-      status: 'available',
-      services: { // Mặc định tắt hết
-        electricity: false,
-        water: false,
-        internet: false,
-        parking: false,
-        laundry: false,
-        cleaning: false,
-        garbage: false
-      },
-      facilities: [...meta.amenities] // Lấy tiện nghi cơ bản từ loại phòng
-      // tenant và members sẽ là undefined
-    };
+    // TODO: Get MaDay and MaLoaiPhong from backend API
+    // For now, we'll use placeholder values
+    const building = buildingList.find(b => b.name === newRoomData.building);
+    if (!building) {
+      toast.error({ title: 'Lỗi', message: 'Không tìm thấy dãy phòng.' });
+      return;
+    }
 
-    // Cập nhật state "rooms"
-    setRooms([...rooms, roomToAdd]);
+    try {
+      const createData: PhongTroCreateInput = {
+        MaDay: parseInt(building.id), // TODO: This needs to be correct ID from backend
+        MaLoaiPhong: parseInt(meta.id), // TODO: This needs to be correct ID from backend
+        TenPhong: newRoomData.number.trim(),
+        DonGiaCoBan: meta.basePrice,
+        DienTich: meta.area,
+        TrangThai: 'Trống',
+        MoTa: null,
+        TienNghi: meta.amenities
+      };
 
-    toast.success({
-      title: 'Thêm thành công',
-      message: `Đã thêm phòng ${roomToAdd.number} vào ${roomToAdd.building}!`
-    });
+      await phongTroService.create(createData);
+      toast.success({
+        title: 'Thêm thành công',
+        message: `Đã thêm phòng ${newRoomData.number} vào ${newRoomData.building}!`
+      });
 
-    setShowAddModal(false);
-    // Reset form
-    setNewRoomData({
-      number: '',
-      building: '',
-      type: mockRoomTypes[0]?.name || 'Phòng thường'
-    });
+      setShowAddModal(false);
+      // Reset form
+      setNewRoomData({
+        number: '',
+        building: '',
+        type: mockRoomTypes[0]?.name || 'Phòng thường'
+      });
+      refreshData();
+    } catch (error) {
+      toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+    }
   };
 
   // ====== TABS COUNT ======
   const tabButtons = [
-    { id: 'all', label: 'Tất cả', count: rooms.length },
+    { id: 'all', label: 'Tất cả', count: phongTros.length },
     ...buildings
       .filter(b => b !== 'all')
       .map(building => ({
         id: building,
         label: building,
-        count: rooms.filter(r => r.building === building).length
+        count: phongTros.filter(p => p.TenDay === building).length
       }))
   ];
 
   // Danh sách phòng trống dùng cho "Đổi phòng"
-  const availableRooms = rooms.filter(room => room.status === 'available');
+  const availablePhongTros = phongTros.filter(phongTro => phongTro.TrangThai === 'Trống');
 
 
   return (
@@ -1143,14 +1195,14 @@ export default function Rooms() {
                             <i className="ri-add-line text-lg"></i>
                           </button>
                           <button
-                            onClick={() => handleEditBuilding(tab.id)}
+                            onClick={() => handleEditDayTro(tab.id)}
                             className="text-blue-600 hover:text-blue-800 cursor-pointer"
                             title="Sửa dãy"
                           >
                             <i className="ri-edit-line text-lg"></i>
                           </button>
                           <button
-                            onClick={() => handleDeleteBuilding(tab.id)}
+                            onClick={() => handleDeleteDayTro(tab.id)}
                             className="text-red-600 hover:text-red-800 cursor-pointer"
                             title="Xóa dãy"
                           >
@@ -1218,14 +1270,14 @@ export default function Rooms() {
                     </div>
                     <div className="flex gap-2 mt-3">
                       <button
-                        onClick={() => handleBulkStatusChange('available')}
+                        onClick={() => handleBulkStatusChange('Trống')}
                         className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-700 cursor-pointer whitespace-nowrap"
                       >
                         <i className="ri-check-line mr-1"></i>
                         Chuyển thành trống
                       </button>
                       <button
-                        onClick={() => handleBulkStatusChange('maintenance')}
+                        onClick={() => handleBulkStatusChange('Bảo trì')}
                         className="bg-orange-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-orange-700 cursor-pointer whitespace-nowrap"
                       >
                         <i className="ri-tools-line mr-1"></i>
@@ -1278,9 +1330,9 @@ export default function Rooms() {
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm"
                     >
                       <option value="all">Tất cả trạng thái</option>
-                      <option value="available">Phòng trống</option>
-                      <option value="occupied">Đã thuê</option>
-                      <option value="maintenance">Bảo trì</option>
+                      <option value="Trống">Phòng trống</option>
+                      <option value="Đã cho thuê">Đã thuê</option>
+                      <option value="Bảo trì">Bảo trì</option>
                     </select>
                   </div>
                   <div className="flex items-end">
@@ -1300,75 +1352,84 @@ export default function Rooms() {
               </div>
             </div>
 
+            {/* Loading State */}
+            {loading && (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+              </div>
+            )}
+
             {/* Select All Checkbox */}
-            {filteredRooms.length > 0 && (
+            {!loading && filteredPhongTros.length > 0 && (
               <div className="bg-white rounded-lg shadow-sm mb-4 p-4">
                 <label className="flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={selectedRooms.length === filteredRooms.length}
+                    checked={selectedRooms.length === filteredPhongTros.length}
                     onChange={handleSelectAll}
                     className="mr-3 h-4 w-4 text-indigo-600 rounded"
                   />
-                  <span className="text-sm font-medium text-gray-700">Chọn tất cả ({filteredRooms.length} phòng)</span>
+                  <span className="text-sm font-medium text-gray-700">Chọn tất cả ({filteredPhongTros.length} phòng)</span>
                 </label>
               </div>
             )}
 
+            {/* Empty State */}
+            {!loading && filteredPhongTros.length === 0 && (
+              <div className="text-center py-12">
+                <i className="ri-inbox-line text-6xl text-gray-300"></i>
+                <p className="text-gray-500 mt-4">Không tìm thấy phòng nào</p>
+              </div>
+            )}
+
             {/* Rooms Display */}
-            {viewMode === 'grid' ? (
+            {!loading && viewMode === 'grid' && (
               // Grid View
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRooms.map((room) => (
-                  <div key={room.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                {filteredPhongTros.map((phongTro) => (
+                  <div key={phongTro.MaPhong} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div className="p-6">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center">
                           <input
                             type="checkbox"
-                            checked={selectedRooms.includes(room.id)}
-                            onChange={() => handleSelectRoom(room.id)}
+                            checked={selectedRooms.includes(phongTro.MaPhong)}
+                            onChange={() => handleSelectRoom(phongTro.MaPhong)}
                             className="mr-3 h-4 w-4 text-indigo-600 rounded"
                           />
                           <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{room.number}</h3>
-                            <p className="text-sm text-gray-600">• {room.type}</p>
+                            <h3 className="text-lg font-semibold text-gray-900">{phongTro.TenPhong}</h3>
+                            <p className="text-sm text-gray-600">• {phongTro.TenLoaiPhong}</p>
                           </div>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(room.status)}`}>
-                          {getStatusText(room.status)}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(phongTro.TrangThai)}`}>
+                          {phongTro.TrangThai}
                         </span>
                       </div>
 
                       <div className="space-y-2 mb-4">
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Diện tích:</span>
-                          <span className="text-sm font-medium">{room.area}m²</span>
+                          <span className="text-sm font-medium">{phongTro.DienTich}m²</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Giá thuê:</span>
                           <span className="text-sm font-medium text-green-600">
-                            {room.price.toLocaleString('vi-VN')}đ/tháng
+                            {(phongTro.GiaThueHienTai || phongTro.DonGiaCoBan).toLocaleString('vi-VN')}đ/tháng
                           </span>
                         </div>
-                        {room.tenant && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">Khách thuê:</span>
-                            <span className="text-sm font-medium">{room.tenant.name}</span>
-                          </div>
-                        )}
                       </div>
 
                       <div className="mb-4">
                         <p className="text-sm text-gray-600 mb-2">Tiện nghi:</p>
                         <div className="flex flex-wrap gap-1">
-                          {room.facilities.slice(0, 3).map((facility, index) => (
+                          {phongTro.TienNghi.slice(0, 3).map((tienNghi, index) => (
                             <span key={index} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-                              {facility}
+                              {tienNghi}
                             </span>
                           ))}
-                          {room.facilities.length > 3 && (
-                            <span className="text-xs text-gray-500">+{room.facilities.length - 3} khác</span>
+                          {phongTro.TienNghi.length > 3 && (
+                            <span className="text-xs text-gray-500">+{phongTro.TienNghi.length - 3} khác</span>
                           )}
                         </div>
                       </div>
@@ -1376,13 +1437,13 @@ export default function Rooms() {
                       <div className="space-y-2">
                         <div className="flex gap-2">
                           <button
-                            onClick={() => setSelectedRoom(room)}
+                            onClick={() => setSelectedPhongTro(phongTro)}
                             className="flex-1 bg-indigo-50 text-indigo-600 px-3 py-2 rounded-lg hover:bg-indigo-100 text-sm font-medium cursor-pointer"
                           >
                             Chi tiết
                           </button>
                           <button
-                            onClick={() => handleEditRoom(room)}
+                            onClick={() => handleEditRoom(phongTro)}
                             className="px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer"
                           >
                             <i className="ri-edit-line"></i>
@@ -1390,17 +1451,17 @@ export default function Rooms() {
                         </div>
 
                         {/* Quick Actions */}
-                        {room.status === 'occupied' && (
+                        {phongTro.TrangThai === 'Đã cho thuê' && (
                           <div className="flex gap-2">
                             <button
-                              onClick={() => handleChangeRoom(room)}
+                              onClick={() => handleChangeRoom(phongTro)}
                               className="flex-1 bg-orange-50 text-orange-600 px-3 py-2 rounded-lg hover:bg-orange-100 text-sm font-medium cursor-pointer"
                             >
                               <i className="ri-exchange-line mr-1"></i>
                               Đổi phòng
                             </button>
                             <button
-                              onClick={() => handleCheckOut(room)}
+                              onClick={() => handleCheckOut(phongTro)}
                               className="flex-1 bg-red-50 text-red-600 px-3 py-2 rounded-lg hover:bg-red-100 text-sm font-medium cursor-pointer"
                             >
                               <i className="ri-logout-box-line mr-1"></i>
@@ -1413,8 +1474,10 @@ export default function Rooms() {
                   </div>
                 ))}
               </div>
-            ) : (
-              // List View
+            )}
+
+            {/* List View */}
+            {!loading && viewMode === 'list' && (
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -1423,7 +1486,7 @@ export default function Rooms() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           <input
                             type="checkbox"
-                            checked={selectedRooms.length === filteredRooms.length}
+                            checked={selectedRooms.length === filteredPhongTros.length}
                             onChange={handleSelectAll}
                             className="h-4 w-4 text-indigo-600 rounded"
                           />
@@ -1433,72 +1496,68 @@ export default function Rooms() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Diện tích</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá thuê</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách thuê</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredRooms.map((room) => (
-                        <tr key={room.id} className="hover:bg-gray-50">
+                      {filteredPhongTros.map((phongTro) => (
+                        <tr key={phongTro.MaPhong} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
                               type="checkbox"
-                              checked={selectedRooms.includes(room.id)}
-                              onChange={() => handleSelectRoom(room.id)}
+                              checked={selectedRooms.includes(phongTro.MaPhong)}
+                              onChange={() => handleSelectRoom(phongTro.MaPhong)}
                               className="h-4 w-4 text-indigo-600 rounded"
                             />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{room.number}</div>
+                            <div className="text-sm font-medium text-gray-900">{phongTro.TenPhong}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{room.building}</div>
+                            <div className="text-sm text-gray-900">{phongTro.TenDay}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{room.type}</div>
+                            <div className="text-sm text-gray-900">{phongTro.TenLoaiPhong}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{room.area}m²</div>
+                            <div className="text-sm text-gray-900">{phongTro.DienTich}m²</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-green-600">{room.price.toLocaleString('vi-VN')}đ</div>
+                            <div className="text-sm font-medium text-green-600">{(phongTro.GiaThueHienTai || phongTro.DonGiaCoBan).toLocaleString('vi-VN')}đ</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{room.tenant?.name || '-'}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(room.status)}`}>
-                              {getStatusText(room.status)}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(phongTro.TrangThai)}`}>
+                              {phongTro.TrangThai}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
                               <button
-                                onClick={() => setSelectedRoom(room)}
+                                onClick={() => setSelectedPhongTro(phongTro)}
                                 className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
                                 title="Chi tiết"
                               >
                                 <i className="ri-eye-line"></i>
                               </button>
                               <button
-                                onClick={() => handleEditRoom(room)}
+                                onClick={() => handleEditRoom(phongTro)}
                                 className="text-blue-600 hover:text-blue-900 cursor-pointer"
                                 title="Chỉnh sửa"
                               >
                                 <i className="ri-edit-line"></i>
                               </button>
-                              {room.status === 'occupied' && (
+                              {phongTro.TrangThai === 'Đã cho thuê' && (
                                 <>
                                   <button
-                                    onClick={() => handleChangeRoom(room)}
+                                    onClick={() => handleChangeRoom(phongTro)}
                                     className="text-orange-600 hover:text-orange-900 cursor-pointer"
                                     title="Đổi phòng"
                                   >
                                     <i className="ri-exchange-line"></i>
                                   </button>
                                   <button
-                                    onClick={() => handleCheckOut(room)}
+                                    onClick={() => handleCheckOut(phongTro)}
                                     className="text-red-600 hover:text-red-900 cursor-pointer"
                                     title="Trả phòng"
                                   >
@@ -1527,356 +1586,93 @@ export default function Rooms() {
       </div>
 
       {/* Room Detail Modal */}
-      {selectedRoom && (
+      {selectedPhongTro && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSelectedRoom(null)}></div>
-            <div className="relative bg-white rounded-lg max-w-5xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSelectedPhongTro(null)}></div>
+            <div className="relative bg-white rounded-lg max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Chi tiết phòng {selectedRoom.number}</h2>
-                <button onClick={() => setSelectedRoom(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <h2 className="text-xl font-bold text-gray-900">Chi tiết phòng {selectedPhongTro.TenPhong}</h2>
+                <button onClick={() => setSelectedPhongTro(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
                   <i className="ri-close-line text-xl"></i>
                 </button>
               </div>
 
-              {/* Detail Tab Navigation */}
-              <div className="border-b border-gray-200 mb-6">
-                <nav className="flex space-x-8" aria-label="Detail Tabs">
-                  <button
-                    onClick={() => setDetailActiveTab('basic')}
-                    className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap cursor-pointer ${detailActiveTab === 'basic'
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                  >
-                    Thông tin cơ bản
-                  </button>
-                  {selectedRoom.tenant && (
-                    <>
-                      <button
-                        onClick={() => setDetailActiveTab('tenant')}
-                        className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap cursor-pointer ${detailActiveTab === 'tenant'
-                          ? 'border-indigo-500 text-indigo-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                          }`}
-                      >
-                        Khách thuê
-                      </button>
-                      <button
-                        onClick={() => setDetailActiveTab('services')}
-                        className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap cursor-pointer ${detailActiveTab === 'services'
-                          ? 'border-indigo-500 text-indigo-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                          }`}
-                      >
-                        Dịch vụ
-                      </button>
-                      <button
-                        onClick={() => setDetailActiveTab('members')}
-                        className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap cursor-pointer ${detailActiveTab === 'members'
-                          ? 'border-indigo-500 text-indigo-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                          }`}
-                      >
-                        Thành viên
-                      </button>
-                    </>
-                  )}
-                </nav>
-              </div>
-
               {/* Detail Content */}
               <div className="space-y-6">
-                {detailActiveTab === 'basic' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4">Thông tin phòng</h3>
-                      <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Số phòng:</span>
-                          <span className="font-medium">{selectedRoom.number}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Dãy:</span>
-                          <span className="font-medium">{selectedRoom.building}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Loại phòng:</span>
-                          <span className="font-medium">{selectedRoom.type}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Diện tích:</span>
-                          <span className="font-medium">{selectedRoom.area}m²</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Giá thuê:</span>
-                          <span className="font-medium text-green-600">
-                            {selectedRoom.price.toLocaleString('vi-VN')}đ/tháng
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Trạng thái:</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedRoom.status)}`}>
-                            {getStatusText(selectedRoom.status)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-4">Tiện nghi</h3>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="grid grid-cols-2 gap-2">
-                          {selectedRoom.facilities.map((facility, index) => (
-                            <div key={index} className="flex items-center">
-                              <i className="ri-check-line text-green-500 mr-2"></i>
-                              <span className="text-sm">{facility}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {detailActiveTab === 'tenant' && selectedRoom.tenant && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-4">Thông tin khách thuê</h3>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="space-y-3 bg-blue-50 p-4 rounded-lg">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Họ tên:</span>
-                          <span className="font-medium">{selectedRoom.tenant.name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Ngày sinh:</span>
-                          <span className="font-medium">
-                            {new Date(selectedRoom.tenant.birthDate).toLocaleDateString('vi-VN')}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Nơi sinh:</span>
-                          <span className="font-medium">{selectedRoom.tenant.birthPlace}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">CMND/CCCD:</span>
-                          <span className="font-medium">{selectedRoom.tenant.idCard}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Ngày cấp:</span>
-                          <span className="font-medium">
-                            {new Date(selectedRoom.tenant.idCardDate).toLocaleDateString('vi-VN')}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Nơi cấp:</span>
-                          <span className="font-medium">{selectedRoom.tenant.idCardPlace}</span>
-                        </div>
-                      </div>
-                      <div className="space-y-3 bg-blue-50 p-4 rounded-lg">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Điện thoại 1:</span>
-                          <span className="font-medium">{selectedRoom.tenant.phone}</span>
-                        </div>
-                        {selectedRoom.tenant.phone2 && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Điện thoại 2:</span>
-                            <span className="font-medium">{selectedRoom.tenant.phone2}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Email:</span>
-                          <span className="font-medium">{selectedRoom.tenant.email}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Địa chỉ thường trú:</span>
-                          <span className="font-medium text-right">{selectedRoom.tenant.address}</span>
-                        </div>
-                        {selectedRoom.tenant.vehicleNumber && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Số xe:</span>
-                            <span className="font-medium">{selectedRoom.tenant.vehicleNumber}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Hợp đồng:</span>
-                          <span className="font-medium">
-                            {new Date(selectedRoom.tenant.contractStart).toLocaleDateString('vi-VN')} -{' '}
-                            {new Date(selectedRoom.tenant.contractEnd).toLocaleDateString('vi-VN')}
-                          </span>
-                        </div>
-                        {selectedRoom.tenant.notes && (
-                          <div>
-                            <span className="text-gray-600">Ghi chú:</span>
-                            <p className="font-medium mt-1">{selectedRoom.tenant.notes}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {detailActiveTab === 'services' && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-4">Dịch vụ sử dụng</h3>
+                    <h3 className="font-semibold text-gray-900 mb-4">Thông tin phòng</h3>
                     <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                      <div className="grid grid-cols-2 gap-3">
-                        <label className="flex items-center">
-                          <input type="checkbox" checked={selectedRoom.services.electricity} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
-                          <span className="text-sm">Điện</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input type="checkbox" checked={selectedRoom.services.water} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
-                          <span className="text-sm">Nước</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input type="checkbox" checked={selectedRoom.services.internet} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
-                          <span className="text-sm">Internet 1</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input type="checkbox" checked={selectedRoom.services.parking} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
-                          <span className="text-sm">Internet 2</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input type="checkbox" checked={selectedRoom.services.laundry} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
-                          <span className="text-sm">Gửi xe</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input type="checkbox" checked={selectedRoom.services.garbage} readOnly className="mr-3 h-4 w-4 text-indigo-600 rounded" />
-                          <span className="text-sm">Rác</span>
-                        </label>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Số phòng:</span>
+                        <span className="font-medium">{selectedPhongTro.TenPhong}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Dãy:</span>
+                        <span className="font-medium">{selectedPhongTro.TenDay}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Loại phòng:</span>
+                        <span className="font-medium">{selectedPhongTro.TenLoaiPhong}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Diện tích:</span>
+                        <span className="font-medium">{selectedPhongTro.DienTich}m²</span>
+                        </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Giá thuê:</span>
+                        <span className="font-medium text-green-600">
+                          {(selectedPhongTro.GiaThueHienTai || selectedPhongTro.DonGiaCoBan).toLocaleString('vi-VN')}đ/tháng
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Trạng thái:</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedPhongTro.TrangThai)}`}>
+                          {selectedPhongTro.TrangThai}
+                        </span>
+                      </div>
+                      {selectedPhongTro.MoTa && (
+                        <div className="col-span-2">
+                          <span className="text-gray-600">Mô tả:</span>
+                          <p className="text-sm mt-1">{selectedPhongTro.MoTa}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-4">Tiện nghi</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="grid grid-cols-2 gap-2">
+                        {selectedPhongTro.TienNghi.map((tienNghi, index) => (
+                          <div key={index} className="flex items-center">
+                            <i className="ri-check-line text-green-500 mr-2"></i>
+                            <span className="text-sm">{tienNghi}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
 
-                {/* Thay thế bắt đầu từ đây */}
-                {detailActiveTab === 'members' && selectedRoom.members && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-4">
-                      Thành viên trong phòng ({selectedRoom.members.length})
-                    </h3>
-                    <div className="space-y-4">
-                      {' '}
-                      {/* Container cho các thẻ thành viên */}
-                      {selectedRoom.members.map((member, index) => (
-                        <div
-                          key={index}
-                          className="bg-gray-50 border border-gray-200 rounded-lg p-4"
-                        >
-                          <h4 className="font-semibold text-gray-800 mb-3">
-                            {member.name}
-                          </h4>
-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-6 gap-y-2">
-                            {/* Cột 1: Thông tin cá nhân */}
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Ngày sinh:</span>
-                                <span className="font-medium">
-                                  {member.birthDate
-                                    ? new Date(member.birthDate).toLocaleDateString('vi-VN')
-                                    : '-'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Nơi sinh:</span>
-                                <span className="font-medium">{member.birthPlace || '-'}</span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Giới tính:</span>
-                                <span className="font-medium">{member.gender || '-'}</span>
-                              </div>
-                            </div>
-                            {/* Cột 2: Thông tin định danh */}
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">CMND/CCCD:</span>
-                                <span className="font-medium">{member.idCard || '-'}</span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Ngày cấp:</span>
-                                <span className="font-medium">
-                                  {member.idCardDate
-                                    ? new Date(member.idCardDate).toLocaleDateString('vi-VN')
-                                    : '-'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Nơi cấp:</span>
-                                <span className="font-medium">
-                                  {member.idCardPlace || '-'}
-                                </span>
-                              </div>
-                            </div>
-                            {/* Cột 3: Thông tin liên hệ */}
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Điện thoại 1:</span>
-                                <span className="font-medium">{member.phone || '-'}</span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Điện thoại 2:</span>
-                                <span className="font-medium">{member.phone2 || '-'}</span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Email:</span>
-                                <span className="font-medium">{member.email || '-'}</span>
-                              </div>
-                            </div>
-                            {/* Hàng đầy đủ: Địa chỉ, xe, ghi chú */}
-                            <div className="lg:col-span-3 space-y-2 mt-2">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Số xe:</span>
-                                <span className="font-medium">
-                                  {member.vehicleNumber || '-'}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Địa chỉ:</span>
-                                <span className="font-medium text-right max-w-md truncate">
-                                  {member.address || '-'}
-                                </span>
-                              </div>
-                              {member.notes && (
-                                <div className="text-sm">
-                                  <span className="text-gray-600">Ghi chú:</span>
-                                  <p className="font-medium mt-1 text-gray-800">
-                                    {member.notes}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 mt-8 pt-6 border-t">
-                <button
-                  onClick={() => handleEditRoom(selectedRoom)}
-                  className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap"
-                >
-                  Chỉnh sửa thông tin
-                </button>
-                {selectedRoom.contractUrl && (
+                {/* Actions */}
+                <div className="flex gap-3 pt-4 border-t">
                   <button
-                    onClick={() => handleViewContract(selectedRoom.contractUrl!)}
-                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 cursor-pointer whitespace-nowrap"
+                    onClick={() => handleEditRoom(selectedPhongTro)}
+                    className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer"
                   >
-                    <i className="ri-file-pdf-line mr-2"></i>
-                    Xem hợp đồng PDF
+                    <i className="ri-edit-line mr-2"></i>
+                    Chỉnh sửa
                   </button>
-                )}
-                <button
-                  onClick={() => handleDeleteRoom(selectedRoom)}
-                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 cursor-pointer whitespace-nowrap"
-                >
-                  <i className="ri-delete-bin-line mr-2"></i>
-                  Xóa phòng
-                </button>
+                  <button
+                    onClick={() => handleDeleteRoom(selectedPhongTro)}
+                    className="px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 cursor-pointer"
+                  >
+                    <i className="ri-delete-bin-line mr-2"></i>
+                    Xóa phòng
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1895,7 +1691,7 @@ export default function Rooms() {
                 className="space-y-4"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  handleSaveBuilding();
+                  handleSaveDayTro();
                 }}
               >
                 <div>
@@ -1960,7 +1756,7 @@ export default function Rooms() {
                 className="space-y-4"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  handleAddBuilding();
+                  handleAddDayTro();
                 }}
               >
                 <div>

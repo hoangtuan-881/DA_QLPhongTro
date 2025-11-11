@@ -200,7 +200,7 @@ export default function ContractInfo() {
           <div className="space-y-4">
             {/* Giá cơ bản */}
             <div className="bg-green-50 p-4 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-3">Chi phí hàng tháng</h4>
+              <h4 className="font-medium text-gray-900 mb-3">Chi phí tháng trước</h4>
               <div className="space-y-3">
                 <Row
                   label="Tiền thuê phòng"

@@ -1,6 +1,16 @@
 import httpClient from '../lib/http-client';
 import { API_ENDPOINTS } from '../config/api';
 
+// TODO Backend: Add ThietBiPhong interface when API is ready
+export interface ThietBiPhong {
+  MaThietBi: number;
+  TenThietBi: string;
+  MaThietBi_Code: string;
+  LoaiThietBi: 'NoiThat' | 'ThietBiDien' | 'DienTu' | 'AnToan' | 'Khac';
+  SoLuong: number;
+  GhiChu?: string;
+}
+
 export interface PhongTro {
   MaPhong: number;
   MaDay: number;
@@ -30,6 +40,7 @@ export interface PhongTro {
   };
   khachThue?: any[];
   dichVuDangKy?: any[];
+  thietBis?: ThietBiPhong[];  // TODO Backend: Populate from API
 }
 
 export type PhongTroCreateInput = Omit<PhongTro,

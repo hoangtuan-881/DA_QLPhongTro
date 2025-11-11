@@ -11,18 +11,24 @@ interface AdditionalCharge {
   amount: number;
   date: string;
 }
+type InternetPlan = 1 | 2;
 
 interface Payment {
   id: string;
   tenantName: string;
   room: string;
+  building: string;
   month: string;
   rentAmount: number;
   electricityUsage: number;
   electricityAmount: number;
-  waterUsage: number; // Số người
+  waterUsage: number;
   waterAmount: number;
-  serviceAmount: number;
+  internetPlan: InternetPlan;
+  internetAmount: number;
+  trashAmount: number;
+  parkingCount: number;
+  parkingAmount: number;
   additionalCharges?: AdditionalCharge[];
   totalAmount: number;
   paidAmount: number;
@@ -39,8 +45,13 @@ interface NewInvoice {
   month: string;
   rentAmount: number;
   electricityUsage: number;
-  waterUsage: number; // Số người
-  serviceAmount: number;
+  waterUsage: number;
+  internetPlan: InternetPlan;
+  internetAmount: number;
+  trashAmount: number;
+  parkingCount: number;
+  parkingAmount: number;
+
   additionalCharges: AdditionalCharge[];
   notes: string;
 }
@@ -61,9 +72,12 @@ interface BulkInvoiceRoom {
   tenantName: string;
   rentAmount: number;
   electricityUsage: number;
-  waterUsage: number; // Số người
+  waterUsage: number;
   building: string;
   selected: boolean;
+  internetPlan?: InternetPlan;
+  parkingCount?: number;
+  trashIncluded?: boolean;
 }
 
 interface CommonCharge {
@@ -73,34 +87,34 @@ interface CommonCharge {
   selected: boolean;
 }
 
-/**
- * Bảng giá dịch vụ (Dùng để tính toán)
- * Điện: 3500/kWh
- * Nước: 60000/Người
- * Rác: 40000/Phòng
- * Gửi xe: 100000/Xe
- * Internet 1: 50000/Phòng
- * Internet 2: 100000/Phòng
- */
-
 const mockPayments: Payment[] = [
   {
     id: '1',
     tenantName: 'Nguyễn Văn A',
     room: 'A101',
+    building: 'Dãy A',
     month: '2025-10',
     rentAmount: 3500000,
-    electricityUsage: 100, // 100 kWh
-    electricityAmount: 350000, // 100 * 3500
-    waterUsage: 2, // 2 người
-    waterAmount: 120000, // 2 * 60000
-    serviceAmount: 290000, // Internet 1 (50k) + Rác (40k) + Gửi xe (2 xe * 100k = 200k)
+    electricityUsage: 100,
+    electricityAmount: 350000,
+    waterUsage: 2,
+    waterAmount: 120000,
+
+    // Dịch vụ tách
+    internetPlan: 1,            // 50k
+    internetAmount: 50000,
+    trashAmount: 40000,         // 40k/phòng
+    parkingCount: 2,            // 2 xe
+    parkingAmount: 200000,      // 100k/xe
+
     additionalCharges: [
       { id: '1', description: 'Sửa vòi nước', amount: 150000, date: '2025-10-10' }
     ],
-    totalAmount: 4410000, // 3.5M + 350k + 120k + 290k + 150k
+
+    totalAmount: 4410000,       // 3.5M + 350k + 120k + (50k+40k+200k) + 150k
     paidAmount: 4410000,
     remainingAmount: 0,
+
     dueDate: '2025-11-05',
     paidDate: '2025-11-03',
     status: 'paid',
@@ -110,17 +124,29 @@ const mockPayments: Payment[] = [
     id: '2',
     tenantName: 'Trần Thị B',
     room: 'A102',
+    building: 'Dãy A',
     month: '2025-10',
     rentAmount: 3200000,
-    electricityUsage: 80, // 80 kWh
-    electricityAmount: 280000, // 80 * 3500
-    waterUsage: 1, // 1 người
-    waterAmount: 60000, // 1 * 60000
-    serviceAmount: 240000, // Internet 2 (100k) + Rác (40k) + Gửi xe (1 xe * 100k = 100k)
+
+    electricityUsage: 80,
+    electricityAmount: 280000,
+
+    waterUsage: 1,
+    waterAmount: 60000,
+
+    // Dịch vụ tách
+    internetPlan: 2,            // 100k
+    internetAmount: 100000,
+    trashAmount: 40000,
+    parkingCount: 1,
+    parkingAmount: 100000,
+
     additionalCharges: [],
-    totalAmount: 3780000, // 3.2M + 280k + 60k + 240k
-    paidAmount: 3200000, // Mới trả tiền nhà
+
+    totalAmount: 3780000,       // 3.2M + 280k + 60k + (100k+40k+100k)
+    paidAmount: 3200000,        // Mới trả tiền nhà
     remainingAmount: 580000,
+
     dueDate: '2025-11-05',
     paidDate: '2025-11-05',
     status: 'partial',
@@ -130,17 +156,28 @@ const mockPayments: Payment[] = [
     id: '3',
     tenantName: 'Lê Văn C',
     room: 'B201',
+    building: 'Dãy B',
     month: '2025-10',
     rentAmount: 4000000,
-    electricityUsage: 150, // 150 kWh
-    electricityAmount: 525000, // 150 * 3500
-    waterUsage: 3, // 3 người
-    waterAmount: 180000, // 3 * 60000
-    serviceAmount: 340000, // Internet 2 (100k) + Rác (40k) + Gửi xe (2 xe * 100k = 200k)
+    electricityUsage: 150,
+    electricityAmount: 525000,
+
+    waterUsage: 3,
+    waterAmount: 180000,
+
+    // Dịch vụ tách
+    internetPlan: 2,            // 100k
+    internetAmount: 100000,
+    trashAmount: 40000,
+    parkingCount: 2,
+    parkingAmount: 200000,
+
     additionalCharges: [],
-    totalAmount: 5045000, // 4M + 525k + 180k + 340k
+
+    totalAmount: 5045000,       // 4M + 525k + 180k + (100k+40k+200k)
     paidAmount: 0,
     remainingAmount: 5045000,
+
     dueDate: '2025-11-05',
     status: 'overdue',
     paymentMethod: undefined
@@ -149,17 +186,29 @@ const mockPayments: Payment[] = [
     id: '4',
     tenantName: 'Phạm Hoàng D',
     room: 'B202',
+    building: 'Dãy B',
     month: '2025-11',
     rentAmount: 3800000,
-    electricityUsage: 110, // 110 kWh
-    electricityAmount: 385000, // 110 * 3500
-    waterUsage: 2, // 2 người
-    waterAmount: 120000, // 2 * 60000
-    serviceAmount: 190000, // Internet 1 (50k) + Rác (40k) + Gửi xe (1 xe * 100k = 100k)
+
+    electricityUsage: 110,
+    electricityAmount: 385000,
+
+    waterUsage: 2,
+    waterAmount: 120000,
+
+    // Dịch vụ tách
+    internetPlan: 1,            // 50k
+    internetAmount: 50000,
+    trashAmount: 40000,
+    parkingCount: 1,
+    parkingAmount: 100000,
+
     additionalCharges: [],
-    totalAmount: 4495000, // 3.8M + 385k + 120k + 190k
+
+    totalAmount: 4495000,       // 3.8M + 385k + 120k + (50k+40k+100k)
     paidAmount: 0,
     remainingAmount: 4495000,
+
     dueDate: '2025-12-05',
     status: 'pending',
     paymentMethod: undefined
@@ -168,17 +217,29 @@ const mockPayments: Payment[] = [
     id: '5',
     tenantName: 'Nguyễn Văn A',
     room: 'A101',
+    building: 'Dãy C',
     month: '2025-09',
     rentAmount: 3500000,
-    electricityUsage: 90, // 90 kWh
-    electricityAmount: 315000, // 90 * 3500
-    waterUsage: 2, // 2 người
-    waterAmount: 120000, // 2 * 60000
-    serviceAmount: 290000, // Internet 1 (50k) + Rác (40k) + Gửi xe (2 xe * 100k = 200k)
+
+    electricityUsage: 90,
+    electricityAmount: 315000,
+
+    waterUsage: 2,
+    waterAmount: 120000,
+
+    // Dịch vụ tách
+    internetPlan: 1,            // 50k
+    internetAmount: 50000,
+    trashAmount: 40000,
+    parkingCount: 2,
+    parkingAmount: 200000,
+
     additionalCharges: [],
-    totalAmount: 4225000, // 3.5M + 315k + 120k + 290k
+
+    totalAmount: 4225000,       // 3.5M + 315k + 120k + (50k+40k+200k)
     paidAmount: 4225000,
     remainingAmount: 0,
+
     dueDate: '2025-10-05',
     paidDate: '2025-10-01',
     status: 'paid',
@@ -188,28 +249,37 @@ const mockPayments: Payment[] = [
     id: '6',
     tenantName: 'Vũ Đình E',
     room: 'C301',
+    building: 'Dãy C',
     month: '2025-11',
     rentAmount: 4500000,
-    electricityUsage: 130, // 130 kWh
-    electricityAmount: 455000, // 130 * 3500
-    waterUsage: 2, // 2 người
-    waterAmount: 120000, // 2 * 60000
-    serviceAmount: 140000, // Internet 2 (100k) + Rác (40k) + Gửi xe (0 xe)
+
+    electricityUsage: 130,
+    electricityAmount: 455000,
+
+    waterUsage: 2,
+    waterAmount: 120000,
+
+    // Dịch vụ tách
+    internetPlan: 2,            // 100k
+    internetAmount: 100000,
+    trashAmount: 40000,
+    parkingCount: 0,
+    parkingAmount: 0,
+
     additionalCharges: [
       { id: '2', description: 'Phí làm thêm chìa khóa', amount: 80000, date: '2025-11-02' }
     ],
-    totalAmount: 5295000, // 4.5M + 455k + 120k + 140k + 80k
+
+    totalAmount: 5295000,       // 4.5M + 455k + 120k + (100k+40k+0) + 80k
     paidAmount: 0,
     remainingAmount: 5295000,
+
     dueDate: '2025-12-05',
     status: 'pending',
     paymentMethod: undefined
   }
 ];
 
-// === ĐÃ CẬP NHẬT ===
-// Cập nhật lại mã phòng, tên khách, và số điện (usage)
-// để khớp với dữ liệu trong `mockPayments`
 const mockElectricReadings: ElectricReading[] = [
   {
     id: '1',
@@ -267,79 +337,85 @@ const mockElectricReadings: ElectricReading[] = [
   }
 ];
 
-// === ĐÃ CẬP NHẬT ===
-// Cập nhật mã phòng, tên, tiền thuê, số điện/nước
-// để làm nguồn dữ liệu lập hóa đơn hàng loạt
-// (waterUsage ở đây là SỐ NGƯỜI)
 const mockBulkRooms: BulkInvoiceRoom[] = [
   {
     id: '1',
     room: 'A101',
     tenantName: 'Nguyễn Văn A',
     rentAmount: 3500000,
-    electricityUsage: 100, // Đã ghi ở T10
-    waterUsage: 2, // 2 người
+    electricityUsage: 100,
+    waterUsage: 2,
     building: 'Dãy A',
-    selected: false
+    selected: false,
+    internetPlan: 1,    // 50k
+    parkingCount: 2,    // 2 xe
+    trashIncluded: true // tính rác như bình thường (hoặc bỏ field)
   },
   {
     id: '2',
     room: 'A102',
     tenantName: 'Trần Thị B',
     rentAmount: 3200000,
-    electricityUsage: 80, // Đã ghi ở T10
-    waterUsage: 1, // 1 người
+    electricityUsage: 80,
+    waterUsage: 1,
     building: 'Dãy A',
-    selected: false
+    selected: false,
+    internetPlan: 2,  // 100k
+    parkingCount: 1
   },
   {
     id: '3',
     room: 'B201',
     tenantName: 'Lê Văn C',
     rentAmount: 4000000,
-    electricityUsage: 150, // Đã ghi ở T10
-    waterUsage: 3, // 3 người
+    electricityUsage: 150,
+    waterUsage: 3,
     building: 'Dãy B',
-    selected: false
+    selected: false,
+    internetPlan: 2,
+    parkingCount: 2
   },
   {
     id: '4',
     room: 'B202',
     tenantName: 'Phạm Hoàng D',
     rentAmount: 3800000,
-    electricityUsage: 110, // Chưa ghi (cho T11)
-    waterUsage: 2, // 2 người
+    electricityUsage: 110,
+    waterUsage: 2,
     building: 'Dãy B',
-    selected: false
+    selected: false,
+    internetPlan: 1,
+    parkingCount: 1
   },
   {
     id: '5',
     room: 'C301',
     tenantName: 'Vũ Đình E',
     rentAmount: 4500000,
-    electricityUsage: 130, // Chưa ghi (cho T11)
-    waterUsage: 2, // 2 người
+    electricityUsage: 130,
+    waterUsage: 2,
     building: 'Dãy C',
-    selected: false
+    selected: false,
+    internetPlan: 2,
+    parkingCount: 0
   },
   {
     id: '6',
     room: 'C302',
     tenantName: 'Trần Văn F',
     rentAmount: 4100000,
-    electricityUsage: 95, // Đã ghi ở T10
-    waterUsage: 2, // 2 người
+    electricityUsage: 95,
+    waterUsage: 2,
     building: 'Dãy C',
-    selected: false
+    selected: false,
+    internetPlan: 1,
+    parkingCount: 0
   }
 ];
 
-// === KHÔNG THAY ĐỔI ===
-// Các khoản phí này dùng chung khi lập hóa đơn hàng loạt, không cần đồng bộ
+
 const defaultCommonCharges: CommonCharge[] = [
-  { id: '1', description: 'Rác tháng Tết', amount: 40000, selected: true }, // Mặc định chọn
-  { id: '2', description: 'Phí vệ sinh chung', amount: 50000, selected: false },
-  { id: '3', description: 'Phí an ninh', amount: 100000, selected: false },
+  { id: '1', description: 'Rác tháng Tết', amount: 40000, selected: true },
 ];
 
 export default function Payments() {
@@ -366,34 +442,46 @@ export default function Payments() {
     onConfirm: () => void;
     type?: 'danger' | 'warning' | 'info';
   } | null>(null);
-  const [searchRoomQuery, setSearchRoomQuery] = useState(''); // <-- Đổi tên
-  const [showRoomDropdown, setShowRoomDropdown] = useState(false); // <-- Đổi tên
+  const [searchRoomQuery, setSearchRoomQuery] = useState('');
+  const [showRoomDropdown, setShowRoomDropdown] = useState(false);
   const [tempCharge, setTempCharge] = useState({ description: '', amount: 0 });
-
-  // New invoice states
+  const [newCommonCharge, setNewCommonCharge] = useState({ description: '', amount: 0 })
   const [newInvoice, setNewInvoice] = useState<NewInvoice>({
     tenantName: '',
     room: '',
     month: new Date().toISOString().slice(0, 7),
     rentAmount: 0,
     electricityUsage: 0,
-    waterUsage: 0, // Đây là số người
-    serviceAmount: 0,
+    waterUsage: 0,
+    internetPlan: 1,
+    internetAmount: 0,
+    trashAmount: 0,
+    parkingCount: 0,
+    parkingAmount: 0,
+
     additionalCharges: [],
     notes: ''
   });
-
-  // Bulk invoice states
+  const [selectedBuildingForInvoice, setSelectedBuildingForInvoice] = useState<string>('');
+  const roomsBySelectedBuilding: BulkInvoiceRoom[] = selectedBuildingForInvoice
+    ? mockBulkRooms.filter(r => r.building === selectedBuildingForInvoice)
+    : [];
   const [bulkRooms, setBulkRooms] = useState<BulkInvoiceRoom[]>(mockBulkRooms);
-  const [commonCharges, setCommonCharges] = useState<CommonCharge[]>(defaultCommonCharges);
+  const [commonCharges, setCommonCharges] = useState<CommonCharge[]>(
+    defaultCommonCharges.map(c => ({ ...c, selected: false }))
+  );
   const [selectedBuilding, setSelectedBuilding] = useState<string>('all');
   const [bulkSettings, setBulkSettings] = useState({
     month: new Date().toISOString().slice(0, 7),
-    electricityRate: 3500,
-    waterRate: 60000, // Giá theo người
-    serviceAmount: 150000, // Phí dịch vụ (Internet + Rác + Xe)
-    // dueDate: '' // <-- ĐÃ XÓA (sẽ tự tính)
-  });
+    electricityRate: 3500,   // đ/kWh
+    waterRate: 60000,        // đ/người
+    internetPricePlan1: 50000,  // đ/phòng
+    internetPricePlan2: 100000, // đ/phòng
+    trashPrice: 40000,          // đ/phòng
+    parkingPerVehicle: 100000,  // đ/xe
+    defaultInternetPlan: 1 as InternetPlan,
+    defaultParkingCount: 0
+  })
 
   // Payment modal states
   const [paymentData, setPaymentData] = useState({
@@ -490,7 +578,6 @@ export default function Payments() {
       title: 'Xác nhận thêm chi phí phát sinh',
       message: `Bạn có chắc chắn muốn thêm chi phí phát sinh "${newCharge.description}" với số tiền ${newCharge.amount.toLocaleString('vi-VN')}đ không?`,
       onConfirm: () => {
-        // === BẮT ĐẦU CẬP NHẬT STATE ===
         const chargeToAdd: AdditionalCharge = {
           id: `charge-${Date.now()}`,
           description: newCharge.description,
@@ -504,8 +591,6 @@ export default function Payments() {
               const newAdditionalCharges = [...(payment.additionalCharges || []), chargeToAdd];
               const newTotalAmount = payment.totalAmount + chargeToAdd.amount;
               const newRemainingAmount = payment.remainingAmount + chargeToAdd.amount;
-
-              // Nếu hóa đơn đã 'paid' trước đó, chuyển lại thành 'partial' vì có nợ mới
               const newStatus = payment.status === 'paid' ? 'partial' : payment.status;
 
               return {
@@ -519,7 +604,6 @@ export default function Payments() {
             return payment;
           })
         );
-        // === KẾT THÚC CẬP NHẬT STATE ===
 
         success({
           title: 'Thêm phát sinh thành công',
@@ -552,7 +636,7 @@ export default function Payments() {
       return;
     }
 
-    if (!selectedPaymentForPayment) return; // Kiểm tra an toàn
+    if (!selectedPaymentForPayment) return;
 
     if (paymentData.amount > selectedPaymentForPayment.remainingAmount) {
       error({
@@ -566,14 +650,11 @@ export default function Payments() {
       title: 'Xác nhận thu tiền',
       message: `Bạn có chắc chắn muốn thu ${paymentData.amount.toLocaleString('vi-VN')}đ từ "${selectedPaymentForPayment.tenantName}" không?`,
       onConfirm: () => {
-        // === BẮT ĐẦU CẬP NHẬT STATE ===
         setPayments(prevPayments =>
           prevPayments.map(payment => {
             if (payment.id === selectedPaymentForPayment.id) {
               const newPaidAmount = payment.paidAmount + paymentData.amount;
               const newRemainingAmount = payment.totalAmount - newPaidAmount;
-
-              // Nếu nợ còn lại <= 0, chuyển status thành 'paid'
               const newStatus = newRemainingAmount <= 0 ? 'paid' : 'partial';
 
               return {
@@ -581,14 +662,13 @@ export default function Payments() {
                 paidAmount: newPaidAmount,
                 remainingAmount: newRemainingAmount,
                 status: newStatus,
-                paidDate: paymentData.date, // Cập nhật ngày trả
-                paymentMethod: paymentData.method // Cập nhật phương thức
+                paidDate: paymentData.date,
+                paymentMethod: paymentData.method
               };
             }
             return payment;
           })
         );
-        // === KẾT THÚC CẬP NHẬT STATE ===
 
         success({
           title: 'Thu tiền thành công',
@@ -679,6 +759,40 @@ export default function Payments() {
     ));
   };
 
+  const handleAddCustomCommonCharge = () => {
+    if (!newCommonCharge.description || newCommonCharge.amount <= 0) {
+      error({
+        title: 'Lỗi thêm phí phát sinh',
+        message: 'Vui lòng nhập mô tả và số tiền hợp lệ!'
+      });
+      return;
+    }
+
+    const charge: CommonCharge = {
+      id: `cc-${Date.now()}`,
+      description: newCommonCharge.description.trim(),
+      amount: newCommonCharge.amount,
+      selected: true, // mặc định chọn sẵn vì bạn “chọn thêm”
+    };
+
+    setCommonCharges(prev => [...prev, charge]);
+
+    success({
+      title: 'Đã thêm phí phát sinh',
+      message: `${charge.description} - ${charge.amount.toLocaleString('vi-VN')}đ`
+    });
+
+    setNewCommonCharge({ description: '', amount: 0 });
+  };
+
+  const handleRemoveCommonCharge = (chargeId: string) => {
+    setCommonCharges(prev => prev.filter(c => c.id !== chargeId));
+    success({
+      title: 'Đã xoá phí phát sinh',
+      message: 'Mục phí đã được xoá khỏi danh sách'
+    });
+  };
+
   const getFilteredRooms = () => {
     if (selectedBuilding === 'all') {
       return bulkRooms;
@@ -692,20 +806,34 @@ export default function Payments() {
   };
 
   const calculateBulkTotal = () => {
-    const selectedRooms = bulkRooms.filter(room => room.selected);
-    const selectedCharges = commonCharges.filter(charge => charge.selected);
+    const planPrice = (plan: InternetPlan) =>
+      plan === 1 ? bulkSettings.internetPricePlan1 : bulkSettings.internetPricePlan2;
+
+    const selectedRooms = bulkRooms.filter(r => r.selected);
+    const selectedCharges = commonCharges.filter(c => c.selected);
+    const addOn = selectedCharges.reduce((s, c) => s + c.amount, 0);
 
     return selectedRooms.reduce((total, room) => {
       const electricityAmount = room.electricityUsage * bulkSettings.electricityRate;
       const waterAmount = room.waterUsage * bulkSettings.waterRate;
-      const chargesAmount = selectedCharges.reduce((sum, charge) => sum + charge.amount, 0);
 
-      return total + room.rentAmount + electricityAmount + waterAmount + bulkSettings.serviceAmount + chargesAmount;
+      const internetPlan = room.internetPlan ?? bulkSettings.defaultInternetPlan;
+      const internetAmount = planPrice(internetPlan);
+
+      const trashAmount = room.trashIncluded === false ? 0 : bulkSettings.trashPrice;
+
+      const parkingCount = room.parkingCount ?? bulkSettings.defaultParkingCount;
+      const parkingAmount = parkingCount * bulkSettings.parkingPerVehicle;
+
+      const serviceTotal = internetAmount + trashAmount + parkingAmount;
+      return total + room.rentAmount + electricityAmount + waterAmount + serviceTotal + addOn;
     }, 0);
   };
 
+
   const handleCreateBulkInvoices = () => {
     const selectedRooms = bulkRooms.filter(room => room.selected);
+    setCommonCharges(defaultCommonCharges.map(c => ({ ...c, selected: false })));
 
     if (selectedRooms.length === 0) {
       error({
@@ -715,76 +843,85 @@ export default function Payments() {
       return;
     }
 
-    // Tự động tính hạn thanh toán là ngày 5 tháng sau
     const [year, month] = bulkSettings.month.split('-').map(Number);
-    const dueDate = new Date(year, month, 5).toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const dueDate = new Date(year, month, 5).toISOString().split('T')[0];
     const dueDateString = new Date(dueDate).toLocaleDateString('vi-VN');
 
     showConfirm({
       title: 'Xác nhận tạo hóa đơn hàng loạt',
       message: `Bạn có chắc chắn muốn tạo ${selectedRooms.length} hóa đơn (Hạn nộp: ${dueDateString}) không?`,
       onConfirm: () => {
-        // --- LOGIC THÊM MỚI BẮT ĐẦU TỪ ĐÂY ---
-        const selectedCharges = commonCharges.filter(charge => charge.selected);
+        const planPrice = (plan: InternetPlan) =>
+          plan === 1 ? bulkSettings.internetPricePlan1 : bulkSettings.internetPricePlan2;
+        const selectedCharges: CommonCharge[] = commonCharges.filter(c => c.selected);
 
-        // 1. Tạo các đối tượng Payment mới
         const newPayments: Payment[] = selectedRooms.map((room, index) => {
           const electricityAmount = room.electricityUsage * bulkSettings.electricityRate;
-          const waterAmount = room.waterUsage * bulkSettings.waterRate; // waterUsage là số người
+          const waterAmount = room.waterUsage * bulkSettings.waterRate;
 
-          // Lấy phí dịch vụ cố định (Internet + Rác + Xe) từ cài đặt
-          // (Chúng ta sẽ dùng giá trị này thay vì tính toán chi tiết trong mock)
-          const serviceAmount = bulkSettings.serviceAmount;
+          const internetPlan = room.internetPlan ?? bulkSettings.defaultInternetPlan;
+          const internetAmount = planPrice(internetPlan);
 
-          // Tạo các khoản phí phát sinh từ "commonCharges"
-          const newAdditionalCharges: AdditionalCharge[] = selectedCharges.map((charge, chargeIndex) => ({
-            id: `bc-${room.id}-${chargeIndex}`,
-            description: charge.description,
-            amount: charge.amount,
+          const trashAmount = room.trashIncluded === false ? 0 : bulkSettings.trashPrice;
+
+          const parkingCount = room.parkingCount ?? bulkSettings.defaultParkingCount;
+          const parkingAmount = parkingCount * bulkSettings.parkingPerVehicle;
+
+          const newAdditionalCharges: AdditionalCharge[] = selectedCharges.map((c: CommonCharge, i: number) => ({
+            id: `bc-${room.id}-${i}`,
+            description: c.description,
+            amount: c.amount,
             date: new Date().toISOString().split('T')[0]
           }));
+          const additionalAmount = newAdditionalCharges.reduce((s, c) => s + c.amount, 0);
 
-          const additionalAmount = newAdditionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
-          const totalAmount = room.rentAmount + electricityAmount + waterAmount + serviceAmount + additionalAmount;
+          const totalAmount =
+            room.rentAmount + electricityAmount + waterAmount +
+            internetAmount + trashAmount + parkingAmount +
+            additionalAmount;
 
           return {
-            id: `inv-${Date.now()}-${index}`, // ID mới
+            id: `inv-${Date.now()}-${index}`,
             tenantName: room.tenantName,
             room: room.room,
+            building: room.building,
             month: bulkSettings.month,
             rentAmount: room.rentAmount,
+
             electricityUsage: room.electricityUsage,
-            electricityAmount: electricityAmount,
+            electricityAmount,
+
             waterUsage: room.waterUsage,
-            waterAmount: waterAmount,
-            serviceAmount: serviceAmount,
+            waterAmount,
+
+            internetPlan,
+            internetAmount,
+            trashAmount,
+            parkingCount,
+            parkingAmount,
+
             additionalCharges: newAdditionalCharges,
-            totalAmount: totalAmount,
+            totalAmount,
             paidAmount: 0,
             remainingAmount: totalAmount,
-            dueDate: dueDate,
+            dueDate,
             paidDate: undefined,
-            status: 'pending' as 'pending',
+            status: 'pending',
             paymentMethod: undefined
           };
         });
-
-        // 2. Cập nhật state chính
-        setPayments(prevPayments => [...prevPayments, ...newPayments]);
-        // --- LOGIC THÊM MỚI KẾT THÚC ---
+        setPayments(prevPayments => [...newPayments, ...prevPayments]);
 
         const invoiceCount = selectedRooms.length;
-        const totalAmount = calculateBulkTotal(); // Hàm này chỉ để tính tổng tiền cho thông báo
+        const totalAmount = calculateBulkTotal();
 
         success({
           title: 'Tạo hóa đơn hàng loạt thành công',
           message: `Đã tạo ${invoiceCount} hóa đơn với tổng giá trị ${totalAmount.toLocaleString('vi-VN')}đ`
         });
         setShowBulkModal(false);
-
-        // Reset selections (Reset về giá trị mặc định, không chỉ là bỏ chọn)
         setBulkRooms(prev => prev.map(room => ({ ...room, selected: false })));
-        setCommonCharges(defaultCommonCharges);
+        setCommonCharges(defaultCommonCharges.map(c => ({ ...c, selected: false })));
       }
     });
   };
@@ -799,43 +936,50 @@ export default function Payments() {
     }
 
     const [year, month] = newInvoice.month.split('-').map(Number);
-    const dueDate = new Date(year, month, 5).toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const dueDate = new Date(year, month, 5).toISOString().split('T')[0];
     const dueDateString = new Date(dueDate).toLocaleDateString('vi-VN');
 
     showConfirm({
       title: 'Xác nhận tạo hóa đơn',
       message: `Bạn có chắc chắn muốn tạo hóa đơn cho "${newInvoice.tenantName}" (Hạn nộp: ${dueDateString}) không?`,
       onConfirm: () => {
-        // --- LOGIC THÊM MỚI BẮT ĐẦU TỪ ĐÂY ---
         const totalAmount = calculateNewInvoiceTotal();
-        const electricityAmount = newInvoice.electricityUsage * 3500;
-        const waterAmount = newInvoice.waterUsage * 60000; // Giá theo người
-
-        // 1. Tạo đối tượng Payment mới
+        const electricityAmount = newInvoice.electricityUsage * bulkSettings.electricityRate;
+        const waterAmount = newInvoice.waterUsage * bulkSettings.waterRate;
+        const building =
+          (bulkRooms.find(r => r.room === newInvoice.room)?.building) ||
+          (mockBulkRooms.find(r => r.room === newInvoice.room)?.building) ||
+          '';
         const newPayment: Payment = {
-          id: `inv-${Date.now()}`, // ID mới
+          id: `inv-${Date.now()}`,
           tenantName: newInvoice.tenantName,
           room: newInvoice.room,
+          building,
           month: newInvoice.month,
           rentAmount: newInvoice.rentAmount,
+
           electricityUsage: newInvoice.electricityUsage,
-          electricityAmount: electricityAmount,
-          waterUsage: newInvoice.waterUsage, // Số người
-          waterAmount: waterAmount,
-          serviceAmount: newInvoice.serviceAmount,
+          electricityAmount,
+          waterUsage: newInvoice.waterUsage,
+          waterAmount,
+
+          // dịch vụ tách
+          internetPlan: newInvoice.internetPlan,
+          internetAmount: newInvoice.internetAmount,
+          trashAmount: newInvoice.trashAmount,
+          parkingCount: newInvoice.parkingCount,
+          parkingAmount: newInvoice.parkingAmount,
+
           additionalCharges: newInvoice.additionalCharges,
-          totalAmount: totalAmount,
+          totalAmount,
           paidAmount: 0,
           remainingAmount: totalAmount,
-          dueDate: dueDate,
+          dueDate,
           paidDate: undefined,
           status: 'pending',
           paymentMethod: undefined
         };
-
-        // 2. Cập nhật state chính
-        setPayments(prevPayments => [...prevPayments, newPayment]);
-        // --- LOGIC THÊM MỚI KẾT THÚC ---
+        setPayments(prevPayments => [newPayment, ...prevPayments]);
 
         success({
           title: 'Tạo hóa đơn thành công',
@@ -850,47 +994,60 @@ export default function Payments() {
           rentAmount: 0,
           electricityUsage: 0,
           waterUsage: 0,
-          serviceAmount: 0,
+
+          internetPlan: 1,
+          internetAmount: 0,
+          trashAmount: 0,
+          parkingCount: 0,
+          parkingAmount: 0,
+
           additionalCharges: [],
           notes: ''
         });
+
         setSearchRoomQuery('');
       }
     });
   };
 
   const calculateNewInvoiceTotal = () => {
-    const electricityAmount = newInvoice.electricityUsage * 3500;
-    const waterAmount = newInvoice.waterUsage * 60000;
-    const additionalAmount = newInvoice.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
-    return newInvoice.rentAmount + electricityAmount + waterAmount + newInvoice.serviceAmount + additionalAmount;
+    const electricityAmount = newInvoice.electricityUsage * bulkSettings.electricityRate;
+    const waterAmount = newInvoice.waterUsage * bulkSettings.waterRate;
+    const addOn = newInvoice.additionalCharges.reduce((s, c) => s + c.amount, 0);
+
+    return (
+      newInvoice.rentAmount +
+      electricityAmount +
+      waterAmount +
+      newInvoice.internetAmount +
+      newInvoice.trashAmount +
+      newInvoice.parkingAmount +
+      addOn
+    );
   };
 
-  // Đổi tên và dùng state 'searchRoomQuery'
+
   const filteredRoomsForInvoice = mockBulkRooms.filter((room: BulkInvoiceRoom) =>
     room.tenantName.toLowerCase().includes(searchRoomQuery.toLowerCase()) ||
     room.room.toLowerCase().includes(searchRoomQuery.toLowerCase())
   );
 
   const filteredPayments = filterStatus === 'all'
-    ? payments // <-- Sửa
-    : payments.filter(payment => payment.status === filterStatus); // <-- Sửa
+    ? payments
+    : payments.filter(payment => payment.status === filterStatus);
 
-  const totalRevenue = payments.reduce((sum, payment) => sum + payment.paidAmount, 0); // <-- Sửa
-  const totalPending = payments.reduce((sum, payment) => sum + payment.remainingAmount, 0); // <-- Sửa
+  const totalRevenue = payments.reduce((sum, payment) => sum + payment.paidAmount, 0);
+  const totalPending = payments.reduce((sum, payment) => sum + payment.remainingAmount, 0);
 
   const handleDeletePayment = (paymentId: string) => {
     const payment = payments.find(p => p.id === paymentId);
-    if (!payment) return; // Kiểm tra an toàn
+    if (!payment) return;
 
     showConfirm({
       title: 'Xác nhận xóa hóa đơn',
       message: `Bạn có chắc chắn muốn xóa hóa đơn của "${payment.tenantName}" không? Hành động này không thể hoàn tác.`,
       onConfirm: () => {
-        // === BẮT ĐẦU CẬP NHẬT STATE ===
         setPayments(prevPayments => prevPayments.filter(p => p.id !== paymentId));
-        // === KẾT THÚC CẬP NHẬT STATE ===
-
         success({
           title: 'Xóa hóa đơn thành công',
           message: `Đã xóa hóa đơn của ${payment.tenantName} thành công`
@@ -900,24 +1057,38 @@ export default function Payments() {
     });
   };
 
-  // Đổi tên hàm và logic
+  const planPrice = (plan: InternetPlan) =>
+    plan === 1 ? bulkSettings.internetPricePlan1 : bulkSettings.internetPricePlan2;
+
   const handleSelectRoomForInvoice = (room: BulkInvoiceRoom) => {
-    // Tự động điền tất cả thông tin từ phòng đã chọn
+    const internetPlan = room.internetPlan ?? bulkSettings.defaultInternetPlan;
+    const internetAmount = planPrice(internetPlan);
+    const trashAmount = room.trashIncluded === false ? 0 : bulkSettings.trashPrice;
+    const parkingCount = room.parkingCount ?? bulkSettings.defaultParkingCount;
+    const parkingAmount = parkingCount * bulkSettings.parkingPerVehicle;
+
     setNewInvoice({
-      ...newInvoice,
       tenantName: room.tenantName,
       room: room.room,
-      rentAmount: room.rentAmount || 0,
-      electricityUsage: room.electricityUsage || 0, // Tự động điền số điện
-      waterUsage: room.waterUsage || 0, // Tự động điền số người
-      // Lấy phí dịch vụ mặc định từ bulkSettings (giống như tạo hàng loạt)
-      serviceAmount: bulkSettings.serviceAmount || 0,
-      additionalCharges: [], // Reset phí phát sinh
-      notes: '' // Reset ghi chú
+      month: new Date().toISOString().slice(0, 7),
+      rentAmount: room.rentAmount,
+      electricityUsage: room.electricityUsage,
+      waterUsage: room.waterUsage,
+
+      internetPlan,
+      internetAmount,
+      trashAmount,
+      parkingCount,
+      parkingAmount,
+
+      additionalCharges: [],
+      notes: ''
     });
-    setSearchRoomQuery(`${room.tenantName} - ${room.room}`); // Dùng state mới
-    setShowRoomDropdown(false); // Dùng state mới
+
+    setSearchRoomQuery(`${room.tenantName} - ${room.room}`);
+    setShowRoomDropdown(false);
   };
+
 
   const handleAddTempCharge = () => {
     if (!tempCharge.description || tempCharge.amount <= 0) {
@@ -1118,7 +1289,7 @@ export default function Payments() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">{payment.tenantName}</div>
-                            <div className="text-sm text-gray-500">{payment.room}</div>
+                            <div className="text-sm text-gray-500">{payment.building} • {payment.room}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1391,8 +1562,23 @@ export default function Payments() {
                               <span className="font-medium text-gray-900">{bulkSettings.waterRate.toLocaleString('vi-VN')}đ / Người</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                              <span className="text-gray-700">Phí dịch vụ (Net, Rác, Xe):</span>
-                              <span className="font-medium text-gray-900">{bulkSettings.serviceAmount.toLocaleString('vi-VN')}đ / Phòng</span>
+                              <span className="text-gray-700">Phí rác:</span>
+                              <span className="font-medium text-gray-900">
+                                {bulkSettings.trashPrice.toLocaleString('vi-VN')}đ / Phòng
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-700">Phí mạng:</span>
+                              <span className="font-medium text-gray-900">
+                                Plan 1: {bulkSettings.internetPricePlan1.toLocaleString('vi-VN')}đ •
+                                Plan 2: {bulkSettings.internetPricePlan2.toLocaleString('vi-VN')}đ
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-700">Phí gửi xe:</span>
+                              <span className="font-medium text-gray-900">
+                                {bulkSettings.parkingPerVehicle.toLocaleString('vi-VN')}đ / Xe
+                              </span>
                             </div>
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-700">Hạn thanh toán:</span>
@@ -1401,10 +1587,11 @@ export default function Payments() {
                           </div>
                         </div>
 
-                        {/* Phí phát sinh (Thay cho Phí chung) */}
                         <div className="bg-orange-50 p-4 rounded-lg">
                           <h3 className="font-semibold text-gray-900 mb-4">Phí phát sinh (Tùy chọn)</h3>
-                          <div className="space-y-2">
+
+                          {/* Danh sách phí có thể chọn */}
+                          <div className="space-y-2 mb-4">
                             {commonCharges.map((charge) => (
                               <label key={charge.id} className="flex items-center space-x-2 cursor-pointer">
                                 <input
@@ -1414,9 +1601,60 @@ export default function Payments() {
                                   className="text-orange-600"
                                 />
                                 <span className="text-sm flex-1">{charge.description}</span>
-                                <span className="text-sm font-medium">{charge.amount.toLocaleString('vi-VN')}đ</span>
+                                <span className="text-sm font-medium mr-2">{charge.amount.toLocaleString('vi-VN')}đ</span>
+
+                                {/* Nút xoá mục phí */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleRemoveCommonCharge(charge.id);
+                                  }}
+                                  className="text-red-600 hover:text-red-800"
+                                  title="Xoá mục phí này"
+                                >
+                                  <i className="ri-delete-bin-line"></i>
+                                </button>
                               </label>
                             ))}
+                          </div>
+
+                          {/* Thêm phí phát sinh mới */}
+                          <div className="bg-white border rounded-lg p-3 space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả phí mới</label>
+                              <input
+                                type="text"
+                                value={newCommonCharge.description}
+                                onChange={(e) => setNewCommonCharge({ ...newCommonCharge, description: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                placeholder="Ví dụ: Vệ sinh máy lạnh, Sơn lại cửa..."
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền (VNĐ)</label>
+                                <input
+                                  type="number"
+                                  value={newCommonCharge.amount}
+                                  onChange={(e) => setNewCommonCharge({ ...newCommonCharge, amount: parseInt(e.target.value) || 0 })}
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  placeholder="0"
+                                  min={0}
+                                />
+                              </div>
+                              <div className="flex items-end">
+                                <button
+                                  type="button"
+                                  onClick={handleAddCustomCommonCharge}
+                                  disabled={!newCommonCharge.description || newCommonCharge.amount <= 0}
+                                  className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 disabled:bg-gray-300 whitespace-nowrap"
+                                >
+                                  <i className="ri-add-line mr-1"></i>
+                                  Thêm
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1548,48 +1786,86 @@ export default function Payments() {
                       {/* Left Column - Basic Info */}
                       <div className="space-y-6">
 
-                        {/* 1. Khối chọn phòng (Chỉ 1 lần) */}
+                        {/* 1. Khối chọn phòng (Chọn dãy -> Chọn phòng) */}
                         <div className="bg-green-50 p-4 rounded-lg">
                           <h3 className="font-semibold text-gray-900 mb-4">Chọn phòng *</h3>
-                          <div className="relative">
+
+                          {/* Chọn dãy trước */}
+                          <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Tìm kiếm phòng
+                              Chọn dãy
                             </label>
-                            <input
-                              type="text"
-                              value={searchRoomQuery}
+                            <select
+                              value={selectedBuildingForInvoice}
                               onChange={(e) => {
-                                setSearchRoomQuery(e.target.value);
-                                setShowRoomDropdown(true);
+                                const building = e.target.value;
+                                setSelectedBuildingForInvoice(building);
+
+                                // Reset thông tin phòng đã chọn trước đó
+                                setNewInvoice(prev => ({
+                                  ...prev,
+                                  tenantName: '',
+                                  room: '',
+                                  rentAmount: 0,
+                                  electricityUsage: 0,
+                                  waterUsage: 0,
+
+                                  // reset dịch vụ tách
+                                  internetPlan: bulkSettings.defaultInternetPlan,
+                                  internetAmount: 0,
+                                  trashAmount: 0,
+                                  parkingCount: bulkSettings.defaultParkingCount,
+                                  parkingAmount: 0,
+
+                                  additionalCharges: []
+                                }));
                               }}
-                              onFocus={() => setShowRoomDropdown(true)}
                               className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                              placeholder="Nhập tên khách hoặc số phòng..."
-                            />
-                            {showRoomDropdown && filteredRoomsForInvoice.length > 0 && (
-                              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                {filteredRoomsForInvoice.map((room) => (
-                                  <div
-                                    key={room.id}
-                                    onClick={() => handleSelectRoomForInvoice(room)}
-                                    className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                  >
-                                    <div className="font-medium text-gray-900">{room.tenantName}</div>
-                                    <div className="text-sm text-gray-600">
-                                      Phòng {room.room} • Dãy {room.building}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                            >
+                              <option value="">-- Chọn dãy --</option>
+                              {getBuildings().map((b) => (
+                                <option key={b} value={b}>{b}</option>
+                              ))}
+                            </select>
                           </div>
+
+                          {/* Chọn phòng sau khi đã chọn dãy */}
+                          <div className={`${!selectedBuildingForInvoice ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Chọn phòng (kèm tên khách)
+                            </label>
+                            <select
+                              value={newInvoice.room || ''}
+                              onChange={(e) => {
+                                const roomSelected = roomsBySelectedBuilding.find(r => r.room === e.target.value);
+                                if (roomSelected) {
+                                  // Tận dụng hàm có sẵn để fill đủ dữ liệu mức tiêu thụ & dịch vụ
+                                  handleSelectRoomForInvoice(roomSelected);
+                                }
+                              }}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                              disabled={!selectedBuildingForInvoice}
+                            >
+                              <option value="">-- Chọn phòng --</option>
+                              {roomsBySelectedBuilding.map((r) => (
+                                <option key={r.id} value={r.room}>
+                                  {r.room} • {r.tenantName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Thông tin phòng đã chọn */}
                           {newInvoice.tenantName && (
                             <div className="mt-3 p-3 bg-white rounded border">
                               <div className="font-medium text-gray-900">{newInvoice.tenantName}</div>
-                              <div className="text-sm text-gray-600">Phòng {newInvoice.room}</div>
+                              <div className="text-sm text-gray-600">
+                                Phòng {newInvoice.room} • Dãy {selectedBuildingForInvoice}
+                              </div>
                             </div>
                           )}
                         </div>
+
 
                         {/* 2. Khối tiêu thụ (Đã sửa ở bước trước) */}
                         <div className="bg-yellow-50 p-4 rounded-lg">
@@ -1617,29 +1893,37 @@ export default function Payments() {
                                 readOnly
                               />
                             </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Phí dịch vụ (VNĐ)</label>
-                              <input
-                                type="number"
-                                value={newInvoice.serviceAmount}
-                                onChange={(e) => setNewInvoice({ ...newInvoice, serviceAmount: parseInt(e.target.value) || 0 })}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                                placeholder="0"
-                              />
+                            <div className="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Internet</label>
+                                <input
+                                  type="text"
+                                  value={`${newInvoice.internetAmount.toLocaleString('vi-VN')}đ (Plan ${newInvoice.internetPlan})`}
+                                  readOnly
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Rác</label>
+                                <input
+                                  type="text"
+                                  value={`${newInvoice.trashAmount.toLocaleString('vi-VN')}đ`}
+                                  readOnly
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Gửi xe</label>
+                                <input
+                                  type="text"
+                                  value={`${newInvoice.parkingAmount.toLocaleString('vi-VN')}đ (${newInvoice.parkingCount} xe)`}
+                                  readOnly
+                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100"
+                                />
+                              </div>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* 3. Khối ghi chú (Đã sửa ở bước trước) */}
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <h3 className="font-semibold text-gray-900 mb-4">Ghi chú</h3>
-                          <textarea
-                            value={newInvoice.notes}
-                            onChange={(e) => setNewInvoice({ ...newInvoice, notes: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                            rows={3}
-                            placeholder="Ghi chú thêm về hóa đơn..."
-                          />
+                          </div>
                         </div>
                       </div>
 
@@ -1662,9 +1946,18 @@ export default function Payments() {
                               <span className="font-medium">{(newInvoice.waterUsage * 60000).toLocaleString('vi-VN')}đ</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Phí dịch vụ:</span>
-                              <span className="font-medium">{newInvoice.serviceAmount.toLocaleString('vi-VN')}đ</span>
+                              <span className="text-gray-600">Internet (Plan {newInvoice.internetPlan}):</span>
+                              <span className="font-medium">{newInvoice.internetAmount.toLocaleString('vi-VN')}đ</span>
                             </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Rác:</span>
+                              <span className="font-medium">{newInvoice.trashAmount.toLocaleString('vi-VN')}đ</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Gửi xe ({newInvoice.parkingCount} xe):</span>
+                              <span className="font-medium">{newInvoice.parkingAmount.toLocaleString('vi-VN')}đ</span>
+                            </div>
+
                             {newInvoice.additionalCharges.length > 0 && (
                               <div className="border-t pt-3">
                                 <div className="text-sm font-medium text-gray-700 mb-2">Chi phí phát sinh:</div>
@@ -1796,6 +2089,10 @@ export default function Payments() {
                             <span className="font-medium">{selectedPayment.room}</span>
                           </div>
                           <div className="flex justify-between">
+                            <span className="text-gray-600">Dãy:</span>
+                            <span className="font-medium">{selectedPayment.building}</span>
+                          </div>
+                          <div className="flex justify-between">
                             <span className="text-gray-600">Tháng:</span>
                             <span className="font-medium">
                               {new Date(selectedPayment.month).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit' })}
@@ -1841,13 +2138,23 @@ export default function Payments() {
                             <span className="font-medium">{selectedPayment.electricityAmount.toLocaleString('vi-VN')}đ</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Tiền nước ({newInvoice.waterUsage} người):</span>
-                            <span className="font-medium">{(newInvoice.waterUsage * 60000).toLocaleString('vi-VN')}đ</span>
+                            <span className="text-gray-600">Tiền nước ({selectedPayment.waterUsage} người):</span>
+                            <span className="font-medium">{selectedPayment.waterAmount.toLocaleString('vi-VN')}đ</span>
+                          </div>
+
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Internet (Plan {selectedPayment.internetPlan}):</span>
+                            <span className="font-medium">{selectedPayment.internetAmount.toLocaleString('vi-VN')}đ</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Phí dịch vụ:</span>
-                            <span className="font-medium">{selectedPayment.serviceAmount.toLocaleString('vi-VN')}đ</span>
+                            <span className="text-gray-600">Rác:</span>
+                            <span className="font-medium">{selectedPayment.trashAmount.toLocaleString('vi-VN')}đ</span>
                           </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Gửi xe ({selectedPayment.parkingCount} xe):</span>
+                            <span className="font-medium">{selectedPayment.parkingAmount.toLocaleString('vi-VN')}đ</span>
+                          </div>
+
                           {selectedPayment.additionalCharges && selectedPayment.additionalCharges.length > 0 && (
                             <div className="border-t pt-3">
                               <div className="text-sm font-medium text-gray-700 mb-2">Chi phí phát sinh:</div>
@@ -2000,9 +2307,6 @@ export default function Payments() {
                         >
                           <option value="cash">Tiền mặt</option>
                           <option value="transfer">Chuyển khoản</option>
-                          <option value="card">Thẻ</option>
-                          <option value="momo">MoMo</option>
-                          <option value="zalopay">ZaloPay</option>
                           <option value="other">Khác</option>
                         </select>
                       </div>

@@ -10,6 +10,7 @@ interface Contract {
   contractNumber: string;
   tenantName: string;
   room: string;
+  building: string;
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
   monthlyRent: number;
@@ -32,6 +33,7 @@ interface Tenant {
 interface Room {
   id: string;
   number: string;
+  building: string;
   monthlyRent: number;
   deposit: number;
   status: 'available' | 'occupied' | 'maintenance';
@@ -58,6 +60,7 @@ const mockContracts: Contract[] = [
     contractNumber: 'HD001',
     tenantName: 'Nguyễn Văn Hưng',
     room: 'A101',
+    building: 'Dãy A',
     startDate: '2025-01-01',
     endDate: '2025-12-31',
     monthlyRent: 2600000,
@@ -72,6 +75,7 @@ const mockContracts: Contract[] = [
     contractNumber: 'HD002',
     tenantName: 'Đỗ Thùy Dung',
     room: 'A202',
+    building: 'Dãy A',
     startDate: '2025-06-01',
     endDate: '2025-11-30',
     monthlyRent: 2600000,
@@ -86,6 +90,7 @@ const mockContracts: Contract[] = [
     contractNumber: 'HD003',
     tenantName: 'Võ Thị Ngọc Châu',
     room: 'A105',
+    building: 'Dãy A',
     startDate: '2025-04-15',
     endDate: '2025-10-15',
     monthlyRent: 2600000,
@@ -100,6 +105,7 @@ const mockContracts: Contract[] = [
     contractNumber: 'HD004',
     tenantName: 'Phan Tất Duy',
     room: 'A301',
+    building: 'Dãy A',
     startDate: '2025-03-01',
     endDate: '2025-08-10',
     monthlyRent: 2600000,
@@ -118,12 +124,12 @@ const mockTenants: Tenant[] = [
 ];
 
 const mockRooms: Room[] = [
-  { id: '1', number: 'A106', monthlyRent: 2600000, deposit: 2600000, status: 'available', area: 25, type: 'Phòng thường' },
-  { id: '2', number: 'Kiot B', monthlyRent: 2700000, deposit: 2700000, status: 'available', area: 25, type: 'Phòng kiot' },
-  { id: '3', number: 'A301', monthlyRent: 2600000, deposit: 2600000, status: 'available', area: 25, type: 'Phòng ban công' },
-  { id: '4', number: 'A207', monthlyRent: 2600000, deposit: 2600000, status: 'available', area: 26, type: 'Phòng góc' },
-  { id: '5', number: 'A1', monthlyRent: 2600000, deposit: 2600000, status: 'available', area: 26, type: 'Phòng trệt' },
-  { id: '6', number: 'A406', monthlyRent: 2500000, deposit: 2500000, status: 'available', area: 26, type: 'Phòng tầng thượng' },
+  { id: '1', number: 'A106', building: 'Dãy A', monthlyRent: 2600000, deposit: 2600000, status: 'available', area: 25, type: 'Phòng thường' },
+  { id: '2', number: 'Kiot B', building: 'Dãy B', monthlyRent: 2700000, deposit: 2700000, status: 'available', area: 25, type: 'Phòng kiot' },
+  { id: '3', number: 'A301', building: 'Dãy A', monthlyRent: 2600000, deposit: 2600000, status: 'available', area: 25, type: 'Phòng ban công' },
+  { id: '4', number: 'A207', building: 'Dãy A', monthlyRent: 2600000, deposit: 2600000, status: 'available', area: 26, type: 'Phòng góc' },
+  { id: '5', number: 'A1', building: 'Dãy A', monthlyRent: 2600000, deposit: 2600000, status: 'available', area: 26, type: 'Phòng trệt' },
+  { id: '6', number: 'A406', building: 'Dãy A', monthlyRent: 2500000, deposit: 2500000, status: 'available', area: 26, type: 'Phòng tầng thượng' },
 ];
 
 const mockServices: Service[] = [
@@ -222,6 +228,7 @@ export default function Contracts() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | Contract['status']>('all');
+  const [filterBuilding, setFilterBuilding] = useState<'all' | string>('all');
   const [keyword, setKeyword] = useState('');
 
   // master lists
@@ -234,6 +241,7 @@ export default function Contracts() {
   const [showTenantDropdown, setShowTenantDropdown] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [showRoomDropdown, setShowRoomDropdown] = useState(false);
+  const [selectedBuildingForCreate, setSelectedBuildingForCreate] = useState<string>('');
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [newContract, setNewContract] = useState({
     contractNumber: '',
@@ -285,15 +293,19 @@ export default function Contracts() {
   const computedContracts = useMemo(() => contracts.map(c => ({ ...c, status: getComputedStatus(c) } as Contract)), [contracts]);
 
   const filteredContracts = useMemo(() => {
-    const base = filterStatus === 'all' ? computedContracts : computedContracts.filter(c => c.status === filterStatus);
+    let base = filterStatus === 'all' ? computedContracts : computedContracts.filter(c => c.status === filterStatus);
+    if (filterBuilding !== 'all') {
+      base = base.filter(c => c.building === filterBuilding);
+    }
     const q = keyword.trim().toLowerCase();
     if (!q) return base;
     return base.filter(c =>
       c.contractNumber.toLowerCase().includes(q) ||
       c.tenantName.toLowerCase().includes(q) ||
-      c.room.toLowerCase().includes(q)
+      c.room.toLowerCase().includes(q) ||
+      c.building.toLowerCase().includes(q)
     );
-  }, [computedContracts, filterStatus, keyword]);
+  }, [computedContracts, filterStatus, keyword, filterBuilding]);
 
   const filteredTenants = useMemo(() => {
     const q = tenantSearch.trim().toLowerCase();
@@ -305,7 +317,12 @@ export default function Contracts() {
     );
   }, [tenantSearch]);
 
+  const buildings = useMemo(() => Array.from(new Set(mockRooms.map(r => r.building))).sort(), []);
   const availableRooms = useMemo(() => mockRooms.filter(r => r.status === 'available'), []);
+  const availableRoomsBySelectedBuilding = useMemo(
+    () => availableRooms.filter(r => !selectedBuildingForCreate || r.building === selectedBuildingForCreate),
+    [availableRooms, selectedBuildingForCreate]
+  );
 
   // ====== selection handlers ======
   const handleTenantSelect = (tenant: Tenant) => {
@@ -328,6 +345,7 @@ export default function Contracts() {
   const resetContractForm = () => {
     setSelectedTenant(null);
     setSelectedRoom(null);
+    setSelectedBuildingForCreate('');
     setTenantSearch('');
     setSelectedServiceIds([]);
     setNewContract({ contractNumber: '', signedDate: new Date().toISOString().split('T')[0], startDate: '', endDate: '', customDeposit: 0, notes: '' });
@@ -499,6 +517,7 @@ export default function Contracts() {
           contractNumber: newContract.contractNumber,
           tenantName: selectedTenant.name,
           room: selectedRoom.number,
+          building: selectedRoom.building,
           startDate: newContract.startDate,
           endDate: newContract.endDate,
           monthlyRent: selectedRoom.monthlyRent,
@@ -614,6 +633,10 @@ export default function Contracts() {
                   <option value="expired">Hết hạn</option>
                   <option value="terminated">Đã chấm dứt</option>
                 </select>
+                <select value={filterBuilding} onChange={(e) => setFilterBuilding(e.target.value as any)} className="border border-gray-300 rounded-lg px-3 py-2 pr-8">
+                  <option value="all">Tất cả dãy</option>
+                  {buildings.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
                 <input
                   type="text"
                   value={keyword}
@@ -632,6 +655,7 @@ export default function Contracts() {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hợp đồng</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách thuê</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dãy</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phòng</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thời hạn</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiền thuê</th>
@@ -650,6 +674,9 @@ export default function Contracts() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{contract.tenantName}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{contract.building}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{contract.room}</div>
@@ -730,6 +757,7 @@ export default function Contracts() {
                   <h3 className="font-semibold text-gray-900 mb-3">Thông tin khách thuê & phòng</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between"><span className="text-gray-600">Tên khách thuê:</span><span className="font-medium">{selectedContract.tenantName}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Dãy:</span><span className="font-medium">{selectedContract.building}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Phòng:</span><span className="font-medium">{selectedContract.room}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Tiền thuê:</span><span className="font-medium text-green-600">{selectedContract.monthlyRent.toLocaleString('vi-VN')}đ/tháng</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Tiền cọc:</span><span className="font-medium text-blue-600">{selectedContract.deposit.toLocaleString('vi-VN')}đ</span></div>
@@ -796,25 +824,75 @@ export default function Contracts() {
                   </div>
 
                   {/* Room Selection */}
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phòng *</label>
-                    <button onClick={() => setShowRoomDropdown(!showRoomDropdown)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-left flex justify-between items-center">
-                      <span>{selectedRoom ? `${selectedRoom.number} - ${selectedRoom.type}` : 'Chọn phòng'}</span>
-                      <i className="ri-arrow-down-s-line"></i>
-                    </button>
-                    {showRoomDropdown && (
-                      <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-y-auto">
-                        {availableRooms.map((room: Room) => (
-                          <div key={room.id} onClick={() => handleRoomSelect(room)} className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100">
-                            <div className="font-medium">{room.number} - {room.type}</div>
-                            <div className="text-sm text-gray-500">{room.area}m² • {room.monthlyRent.toLocaleString('vi-VN')}đ/tháng</div>
-                            <div className="flex items-center mt-1">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoomStatusColor(room.status)}`}>{getRoomStatusText(room.status)}</span>
-                            </div>
-                          </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Building */}
+                    <div className="relative">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Dãy *</label>
+                      <select
+                        value={selectedBuildingForCreate}
+                        onChange={(e) => {
+                          setSelectedBuildingForCreate(e.target.value);
+                          setSelectedRoom(null); // đổi dãy thì reset phòng
+                        }}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
+                      >
+                        <option value="">Chọn dãy</option>
+                        {buildings.map((b) => (
+                          <option key={b} value={b}>{b}</option>
                         ))}
-                      </div>
-                    )}
+                      </select>
+                    </div>
+
+                    {/* Room (filtered by building) */}
+                    <div className="relative">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phòng *</label>
+                      <button
+                        disabled={!selectedBuildingForCreate}
+                        onClick={() => selectedBuildingForCreate && setShowRoomDropdown(!showRoomDropdown)}
+                        className={`w-full border rounded-lg px-3 py-2 text-left flex justify-between items-center ${selectedBuildingForCreate ? 'border-gray-300' : 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                          }`}
+                        title={!selectedBuildingForCreate ? 'Hãy chọn dãy trước' : 'Chọn phòng'}
+                      >
+                        <span>
+                          {selectedRoom
+                            ? `${selectedRoom.number} - ${selectedRoom.type}`
+                            : selectedBuildingForCreate
+                              ? 'Chọn phòng'
+                              : 'Chọn dãy trước'}
+                        </span>
+                        <i className="ri-arrow-down-s-line"></i>
+                      </button>
+                      {showRoomDropdown && selectedBuildingForCreate && (
+                        <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-lg mt-1 max-h-60 overflow-y-auto">
+                          {availableRoomsBySelectedBuilding.length === 0 && (
+                            <div className="p-3 text-sm text-gray-500">Không có phòng trống trong {selectedBuildingForCreate}</div>
+                          )}
+                          {availableRoomsBySelectedBuilding.map((room: Room) => (
+                            <div
+                              key={room.id}
+                              onClick={() => {
+                                handleRoomSelect(room);
+                                setShowRoomDropdown(false);
+                              }}
+                              className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100"
+                            >
+                              <div className="font-medium">
+                                {room.number} - {room.type}
+                              </div>
+                              <div className="text-xs text-gray-600 mb-1">{room.building}</div>
+                              <div className="text-sm text-gray-500">
+                                {room.area}m² • {room.monthlyRent.toLocaleString('vi-VN')}đ/tháng
+                              </div>
+                              <div className="flex items-center mt-1">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoomStatusColor(room.status)}`}>
+                                  {getRoomStatusText(room.status)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Room Details */}
@@ -822,6 +900,7 @@ export default function Contracts() {
                     <div className="bg-blue-50 p-4 rounded-lg">
                       <h4 className="font-medium text-gray-900 mb-2">Thông tin phòng</h4>
                       <div className="space-y-1 text-sm">
+                        <div className="flex justify-between"><span>Dãy:</span><span className="font-medium">{selectedRoom.building}</span></div>
                         <div className="flex justify-between"><span>Tiền thuê:</span><span className="font-medium">{selectedRoom.monthlyRent.toLocaleString('vi-VN')}đ/tháng</span></div>
                         <div className="flex justify-between"><span>Tiền cọc:</span><span className="font-medium">{selectedRoom.deposit.toLocaleString('vi-VN')}đ</span></div>
                         <div className="flex justify-between"><span>Điện:</span><span className="font-medium">{mockServices.find(s => s.name === 'Điện')?.price.toLocaleString('vi-VN')}đ/kWh</span></div>

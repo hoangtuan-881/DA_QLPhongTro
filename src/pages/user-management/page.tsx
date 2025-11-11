@@ -108,7 +108,7 @@ export default function UserManagement() {
           createdAt: new Date().toISOString().split('T')[0],
           lastLogin: ''
         };
-        setUsers([...users, user]);
+        setUsers((prev) => [user, ...prev]);
         setShowAddModal(false);
         success({ title: `Đã tạo tài khoản cho ${formData.fullName} thành công!` });
       }

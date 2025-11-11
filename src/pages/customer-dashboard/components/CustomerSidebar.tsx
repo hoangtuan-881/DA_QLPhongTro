@@ -33,7 +33,13 @@ export default function CustomerSidebar({ isOpen, onClose, activeTab, setActiveT
       path: '/customer-dashboard',
       isDashboard: true
     },
-    // Đã xóa mục 'services' (Dịch vụ) ở đây
+    {
+      id: 'violations',
+      icon: 'ri-error-warning-line', // Icon cho vi phạm
+      label: 'Báo cáo vi phạm',
+      path: '/customer-dashboard',
+      isDashboard: true
+    },
     {
       id: 'maintenance',
       icon: 'ri-tools-line',

@@ -7,6 +7,7 @@ import ConfirmDialog from '../../components/base/ConfirmDialog';
 interface MaintenanceRequest {
   id: string;
   tenantName: string;
+  building: string;
   room: string;
   title: string;
   description: string;
@@ -28,6 +29,7 @@ const mockMaintenanceRequests: MaintenanceRequest[] = [
   {
     id: '1',
     tenantName: 'Nguyễn Văn An',
+    building: 'Dãy A',
     room: 'A101',
     title: 'Điều hòa không lạnh',
     description: 'Điều hòa chạy nhưng không thổi khí lạnh, có thể do thiếu gas',
@@ -44,6 +46,7 @@ const mockMaintenanceRequests: MaintenanceRequest[] = [
   {
     id: '2',
     tenantName: 'Trần Thị Bé',
+    building: 'Dãy A',
     room: 'A202',
     title: 'Vòi nước bồn rửa bát bị rỉ',
     description: 'Vòi nước trong bếp bị rỉ nước liên tục',
@@ -57,6 +60,7 @@ const mockMaintenanceRequests: MaintenanceRequest[] = [
   {
     id: '3',
     tenantName: 'Phạm Thị Dung',
+    building: 'Dãy A',
     room: 'A301',
     title: 'Ổ cắm điện bị cháy',
     description: 'Ổ cắm điện gần giường bị cháy, có mùi khét',
@@ -71,6 +75,7 @@ const mockMaintenanceRequests: MaintenanceRequest[] = [
   {
     id: '4',
     tenantName: 'Lê Văn Bảy',
+    building: 'Dãy A',
     room: 'A105',
     title: 'Cửa tủ quần áo bị lệch',
     description: 'Cửa tủ quần áo bị lệch, không đóng được',
@@ -89,6 +94,7 @@ const mockMaintenanceRequests: MaintenanceRequest[] = [
   {
     id: '5',
     tenantName: 'Đỗ Minh Quân',
+    building: 'Dãy A',
     room: 'B207',
     title: 'Quạt trần rung mạnh',
     description: 'Quạt trần kêu và rung khi bật số cao',
@@ -103,6 +109,7 @@ const mockMaintenanceRequests: MaintenanceRequest[] = [
   {
     id: '6',
     tenantName: 'Võ Thị Hạnh',
+    building: 'Dãy A',
     room: 'B305',
     title: 'Khe cửa ra vào kẹt',
     description: 'Cửa ra vào bị kẹt, khó đóng mở',
@@ -119,6 +126,7 @@ const mockMaintenanceRequests: MaintenanceRequest[] = [
   {
     id: '7',
     tenantName: 'Trịnh Nhật Tân',
+    building: 'Dãy A',
     room: 'C102',
     title: 'Ghế phòng khách lung lay',
     description: 'Một chân ghế bị lỏng ốc',
@@ -132,6 +140,7 @@ const mockMaintenanceRequests: MaintenanceRequest[] = [
   {
     id: '8',
     tenantName: 'Phạm Hồng Ân',
+    building: 'Dãy A',
     room: 'C210',
     title: 'Rò rỉ ống nước lavabo',
     description: 'Nước rò rỉ nhẹ dưới lavabo, sàn ẩm ướt',
@@ -176,6 +185,7 @@ export default function Maintenance() {
     description: string;
     category: string;
     priority: string;
+    building: string;
     room: string;
     reportedBy: string;
     contactInfo: string;
@@ -185,6 +195,7 @@ export default function Maintenance() {
     description: '',
     category: 'electrical',
     priority: 'medium',
+    building: '',
     room: '',
     reportedBy: '',
     contactInfo: '',
@@ -205,10 +216,10 @@ export default function Maintenance() {
   const { success, error, warning, info } = useToast();
 
   const handleCreateRequest = () => {
-    if (!newRequest.title || !newRequest.description || !newRequest.room || !newRequest.reportedBy) {
+    if (!newRequest.title || !newRequest.description || !newRequest.room || !newRequest.reportedBy || !newRequest.building) {
       error({
         title: 'Lỗi tạo yêu cầu',
-        message: 'Vui lòng điền đầy đủ thông tin bắt buộc!'
+        message: 'Vui lòng điền đầy đủ (Tiêu đề, Mô tả, Dãy, Phòng, Người báo cáo)!'
       });
       return;
     }
@@ -222,6 +233,7 @@ export default function Maintenance() {
           {
             id: String(Date.now()),
             tenantName: newRequest.reportedBy || 'Khách thuê',
+            building: newRequest.building,
             room: newRequest.room,
             title: newRequest.title,
             description: newRequest.description,
@@ -235,7 +247,7 @@ export default function Maintenance() {
         ]);
         success({
           title: 'Tạo yêu cầu thành công',
-          message: `Đã tạo yêu cầu bảo trì "${newRequest.title}" cho phòng ${newRequest.room}`
+          message: `Đã tạo yêu cầu "${newRequest.title}" cho ${newRequest.building} - ${newRequest.room}`
         });
 
         setShowAddModal(false);
@@ -244,6 +256,7 @@ export default function Maintenance() {
           description: '',
           category: 'electrical',
           priority: 'medium',
+          building: '',
           room: '',
           reportedBy: '',
           contactInfo: '',
@@ -766,7 +779,7 @@ export default function Maintenance() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">{request.tenantName}</div>
-                            <div className="text-sm text-gray-500">{request.room}</div>
+                            <div className="text-sm text-gray-500">{request.building} - {request.room}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -854,19 +867,49 @@ export default function Maintenance() {
                     <h2 className="text-xl font-bold text-gray-900 mb-6">Tạo yêu cầu bảo trì mới</h2>
 
                     <form className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* HÀNG 1: DÃY, PHÒNG, NGƯỜI BÁO CÁO */}
+                      <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Khách thuê</label>
-                          <select className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
-                            <option value="">Chọn khách thuê</option>
-                            <option value="1">Nguyễn Văn An - P101</option>
-                            <option value="2">Trần Thị Bé - P202</option>
-                          </select>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Dãy trọ *</label>
+                          <input
+                            type="text"
+                            value={newRequest.building}
+                            onChange={(e) => setNewRequest({ ...newRequest, building: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                            placeholder="VD: Dãy A"
+                          />
                         </div>
                         <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Phòng *</label>
+                          <input
+                            type="text"
+                            value={newRequest.room}
+                            onChange={(e) => setNewRequest({ ...newRequest, room: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                            placeholder="VD: A101"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Người báo cáo *</label>
+                          <input
+                            type="text"
+                            value={newRequest.reportedBy}
+                            onChange={(e) => setNewRequest({ ...newRequest, reportedBy: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                            placeholder="Tên khách thuê"
+                          />
+                        </div>
+                      </div>
+
+                      {/* HÀNG 2: DANH MỤC, MỨC ĐỘ */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục</label>
-                          <select className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
-                            <option value="">Chọn danh mục</option>
+                          <select
+                            value={newRequest.category}
+                            onChange={(e) => setNewRequest({ ...newRequest, category: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
+                          >
                             <option value="electrical">Điện</option>
                             <option value="plumbing">Nước</option>
                             <option value="appliance">Thiết bị</option>
@@ -874,43 +917,46 @@ export default function Maintenance() {
                             <option value="other">Khác</option>
                           </select>
                         </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Mức độ ưu tiên</label>
-                          <select className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
+                          <select
+                            value={newRequest.priority}
+                            onChange={(e) => setNewRequest({ ...newRequest, priority: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
+                          >
                             <option value="low">Thấp</option>
                             <option value="medium">Trung bình</option>
                             <option value="high">Cao</option>
                             <option value="urgent">Khẩn cấp</option>
                           </select>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Ngày yêu cầu</label>
-                          <input type="date" className="w-full border border-gray-300 rounded-lg px-3 py-2" />
-                        </div>
                       </div>
 
+                      {/* HÀNG 3: TIÊU ĐỀ */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề</label>
-                        <input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2" placeholder="Mô tả ngắn gọn vấn đề" />
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề *</label>
+                        <input
+                          type="text"
+                          value={newRequest.title}
+                          onChange={(e) => setNewRequest({ ...newRequest, title: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          placeholder="Mô tả ngắn gọn vấn đề"
+                        />
                       </div>
 
+                      {/* HÀNG 4: MÔ TẢ */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết</label>
-                        <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={4} placeholder="Mô tả chi tiết vấn đề cần sửa chữa..."></textarea>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết *</label>
+                        <textarea
+                          value={newRequest.description}
+                          onChange={(e) => setNewRequest({ ...newRequest, description: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          rows={4}
+                          placeholder="Mô tả chi tiết vấn đề cần sửa chữa..."
+                        ></textarea>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Phân công cho</label>
-                        <select className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
-                          <option value="">Chọn nhân viên</option>
-                          <option value="1">Tuấn</option>
-                          <option value="2">My</option>
-                        </select>
-                      </div>
-
+                      {/* HÀNG 5: NÚT BẤM */}
                       <div className="flex gap-3 pt-4">
                         <button
                           type="button"
@@ -1080,8 +1126,9 @@ export default function Maintenance() {
                           <span className="font-medium ml-2">{selectedRequest.tenantName}</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Phòng:</span>
-                          <span className="font-medium ml-2">{selectedRequest.room}</span>
+                          {/* THAY ĐỔI DÒNG NÀY */}
+                          <span className="text-gray-600">Khu vực:</span>
+                          <span className="font-medium ml-2">{selectedRequest.building} - {selectedRequest.room}</span>
                         </div>
                       </div>
 

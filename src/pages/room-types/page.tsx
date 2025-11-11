@@ -70,16 +70,17 @@ export default function RoomTypes() {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const amenitiesText = formData.get('TienNghi') as string;
+    const donGia = parseFloat(formData.get('DonGiaCoBan') as string);
 
     const newData = {
       TenLoaiPhong: formData.get('TenLoaiPhong') as string,
       MoTa: formData.get('MoTa') as string,
-      DonGiaCoBan: parseFloat(formData.get('DonGiaCoBan') as string) || 0,
+      DonGiaCoBan: isNaN(donGia) ? 0 : donGia,
       DienTich: parseFloat(formData.get('DienTich') as string) || null,
       TienNghi: amenitiesText ? amenitiesText.split(',').map(item => item.trim()).filter(item => item) : [],
     };
 
-    if (!newData.TenLoaiPhong || !newData.DonGiaCoBan) {
+    if (!newData.TenLoaiPhong || newData.DonGiaCoBan === null) {
       toast.error({ title: 'Thiếu thông tin', message: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
@@ -119,16 +120,17 @@ export default function RoomTypes() {
 
     const formData = new FormData(e.target as HTMLFormElement);
     const amenitiesText = formData.get('TienNghi') as string;
+    const donGia = parseFloat(formData.get('DonGiaCoBan') as string);
 
     const updatedData = {
       TenLoaiPhong: formData.get('TenLoaiPhong') as string,
       MoTa: formData.get('MoTa') as string,
-      DonGiaCoBan: parseFloat(formData.get('DonGiaCoBan') as string) || 0,
+      DonGiaCoBan: isNaN(donGia) ? 0 : donGia,
       DienTich: parseFloat(formData.get('DienTich') as string) || null,
       TienNghi: amenitiesText ? amenitiesText.split(',').map(item => item.trim()).filter(item => item) : [],
     };
 
-    if (!updatedData.TenLoaiPhong || !updatedData.DonGiaCoBan) {
+    if (!updatedData.TenLoaiPhong || updatedData.DonGiaCoBan === null) {
       toast.error({ title: 'Thiếu thông tin', message: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }

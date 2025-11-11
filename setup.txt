@@ -1,0 +1,47 @@
+--- Setup: Run Backend (BE) ---
+1. download the following tools
+   [1] https://getcomposer.org/
+   [2] https://sourceforge.net/projects/xampp/files/XAMPP%20Windows/8.2.12/xampp-windows-x64-8.2.12-0-VS16-installer.exe
+   [3] https://www.postgresql.org/download/windows/
+   [4] https://www.pgadmin.org/download/pgadmin-4-windows/
+2. install the following tools
+   [1] XAMPP
+   (Optional) php -v
+   [2] PostgreSQL
+   (Optional) psql --version
+   [3] Composer
+   (Optional) php artisan --version
+   [4] pgAdmin
+3. cd <your_project_repository>
+4. in xampp -> apache -> config -> php.ini -> find [extension=zip] and remove [;] , find [extension=pdo_pgsql], [extension=pgsql] and remove [;]
+5. composer install
+   (Optional) composer --version
+   (Optional) composer diagnose
+6. create db in Postgre
+7. create .env (copy form .env.example and remove .example)
+8. update database configuration in .env 
+   DB_CONNECTION=pgsql
+   DB_HOST=127.0.0.1
+   DB_PORT=5432
+   DB_DATABASE=your_database_name   [QuanLyPhongTro] - database name created in PostgreSQL
+   DB_USERNAME=your_username        [postgres]       - PostgreSQL login username
+   DB_PASSWORD=your_password        [123]            - PostgreSQL account password
+
+9. php artisan key:generate
+10. php artisan migrate
+11. php artisan db:seed
+12. php artisan serve
+    (Optional) To delete the entire database and recreate it from scratch: php artisan migrate:fresh --seed 
+13. open browser and go to: http://localhost:8000
+
+--- Setup: Run Frontend (FE) ---
+1. download the following tools
+   [1] https://nodejs.org/en/download
+2. install the following tools
+   [1] Node.js®
+   (Optional) node -v
+   (Optional) npm -v
+3. cd <your_project_repository>
+4. npm install 
+5. npm run dev
+6. open browser and go to: http://localhost:3000

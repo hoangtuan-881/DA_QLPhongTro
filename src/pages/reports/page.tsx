@@ -8,7 +8,6 @@ export default function ReportsAnalytics() {
   const [selectedYear, setSelectedYear] = useState('2024');
   const [selectedMonth, setSelectedMonth] = useState('2024-03');
 
-  // ---------------- Mock data: giữ nguyên ----------------
   const roomStats = { total: 20, occupied: 17, vacant: 3, occupancyRate: 85 };
   const revenueData = { currentMonth: 68500000, lastMonth: 65200000, growth: 5.1, yearToDate: 756800000 };
 
@@ -22,8 +21,6 @@ export default function ReportsAnalytics() {
   ];
   const maxRevenue = Math.max(...monthlyRevenue.map((m) => m.revenue));
 
-  const expenseData = { electricity: 12500000, water: 3200000, maintenance: 5800000, cleaning: 2100000, other: 1900000 };
-
   const topRooms = [
     { room: '201', revenue: 4200000, tenant: 'Nguyễn Văn An' },
     { room: '203', revenue: 4000000, tenant: 'Trần Thị Bình' },
@@ -34,33 +31,29 @@ export default function ReportsAnalytics() {
 
   const recentTransactions = [
     { id: 1, type: 'payment', description: 'Thu tiền phòng 201 - Tháng 1', amount: 4200000, date: '2024-01-20' },
-    { id: 2, type: 'expense', description: 'Tiền điện tháng 1', amount: -12500000, date: '2024-01-19' },
     { id: 3, type: 'payment', description: 'Thu tiền phòng 203 - Tháng 1', amount: 4000000, date: '2024-01-18' },
-    { id: 4, type: 'expense', description: 'Sửa chữa điều hòa phòng 301', amount: -1200000, date: '2024-01-17' },
     { id: 5, type: 'payment', description: 'Thu tiền phòng 301 - Tháng 1', amount: 3800000, date: '2024-01-16' },
   ];
 
   interface ReportData {
     month: string;
     revenue: number;
-    expenses: number;
-    profit: number;
     occupancyRate: number;
     totalRooms: number;
     occupiedRooms: number;
     newTenants: number;
     terminatedContracts: number;
   }
+
   const mockReportData: ReportData[] = [
-    { month: '2024-01', revenue: 45000000, expenses: 8500000, profit: 36500000, occupancyRate: 85, totalRooms: 20, occupiedRooms: 17, newTenants: 3, terminatedContracts: 1 },
-    { month: '2024-02', revenue: 48000000, expenses: 9200000, profit: 38800000, occupancyRate: 90, totalRooms: 20, occupiedRooms: 18, newTenants: 2, terminatedContracts: 1 },
-    { month: '2024-03', revenue: 52000000, expenses: 10100000, profit: 41900000, occupancyRate: 95, totalRooms: 20, occupiedRooms: 19, newTenants: 4, terminatedContracts: 2 },
+    { month: '2024-01', revenue: 45000000, occupancyRate: 85, totalRooms: 20, occupiedRooms: 17, newTenants: 3, terminatedContracts: 1 },
+    { month: '2024-02', revenue: 48000000, occupancyRate: 90, totalRooms: 20, occupiedRooms: 18, newTenants: 2, terminatedContracts: 1 },
+    { month: '2024-03', revenue: 52000000, occupancyRate: 95, totalRooms: 20, occupiedRooms: 19, newTenants: 4, terminatedContracts: 2 },
   ];
   const currentData = mockReportData.find((d) => d.month === selectedMonth) || mockReportData[mockReportData.length - 1];
   const previousData = mockReportData[mockReportData.length - 2];
   const getGrowthRate = (current: number, previous: number) => (!previous ? '0.0' : (((current - previous) / previous) * 100).toFixed(1));
   const revenueGrowth = getGrowthRate(currentData.revenue, previousData?.revenue || 0);
-  const profitGrowth = getGrowthRate(currentData.profit, previousData?.profit || 0);
 
   const handleExport = () => {
     alert('Đang chuẩn bị xuất báo cáo (demo).');
@@ -71,8 +64,6 @@ export default function ReportsAnalytics() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(true)} />
-
-        {/* Header: tiêu đề + nút xuất báo cáo */}
         <div className="bg-white shadow-sm border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h1 className="text-xl font-semibold text-gray-900">Báo cáo & Thống kê</h1>
@@ -85,19 +76,16 @@ export default function ReportsAnalytics() {
           </div>
         </div>
 
-        {/* Nội dung chính */}
         <main className="flex-1 overflow-y-auto bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-            {/* Tabs theo kiểu trang Dịch vụ */}
             <div className="bg-white rounded-lg shadow-sm mb-6">
               <div className="border-b border-gray-200">
                 <nav className="-mb-px flex">
                   <button
                     onClick={() => setActiveTab('overview')}
                     className={`py-3 px-6 border-b-2 font-medium text-sm cursor-pointer ${activeTab === 'overview'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-indigo-500 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }`}
                   >
                     Thống kê
@@ -105,8 +93,8 @@ export default function ReportsAnalytics() {
                   <button
                     onClick={() => setActiveTab('reports')}
                     className={`py-3 px-6 border-b-2 font-medium text-sm cursor-pointer ${activeTab === 'reports'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-indigo-500 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }`}
                   >
                     Báo cáo
@@ -114,7 +102,6 @@ export default function ReportsAnalytics() {
                 </nav>
               </div>
 
-              {/* Filters theo từng tab (đặt ngay dưới tabs giống pattern Services) */}
               <div className="p-4">
                 {activeTab === 'overview' && (
                   <div className="flex flex-wrap gap-3 items-center">
@@ -147,10 +134,8 @@ export default function ReportsAnalytics() {
               </div>
             </div>
 
-            {/* ====== THỐNG KÊ (overview) ====== */}
             {activeTab === 'overview' && (
               <>
-                {/* Overview Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <div className="flex items-center">
@@ -207,9 +192,7 @@ export default function ReportsAnalytics() {
                   </div>
                 </div>
 
-                {/* Charts row */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                  {/* Revenue bar track */}
+                <div className="grid grid-cols-1 gap-8 mb-8">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="text-lg font-medium text-gray-900">Doanh thu theo tháng</h3>
@@ -241,45 +224,8 @@ export default function ReportsAnalytics() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Expense breakdown */}
-                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-6">Chi phí tháng này</h3>
-                    <div className="space-y-4">
-                      {[
-                        { label: 'Tiền điện', value: expenseData.electricity, dot: 'bg-yellow-500' },
-                        { label: 'Tiền nước', value: expenseData.water, dot: 'bg-blue-500' },
-                        { label: 'Bảo trì', value: expenseData.maintenance, dot: 'bg-red-500' },
-                        { label: 'Vệ sinh', value: expenseData.cleaning, dot: 'bg-green-500' },
-                        { label: 'Khác', value: expenseData.other, dot: 'bg-gray-500' },
-                      ].map((row) => (
-                        <div key={row.label} className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div className={`w-3 h-3 ${row.dot} rounded-full mr-3`} />
-                            <span className="text-sm text-gray-700">{row.label}</span>
-                          </div>
-                          <span className="text-sm font-medium text-gray-900">{(row.value / 1_000_000).toFixed(1)}M</span>
-                        </div>
-                      ))}
-                      <div className="border-t pt-3 mt-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-900">Tổng chi phí</span>
-                          <span className="text-sm font-semibold text-red-600">
-                            {(
-                              (expenseData.electricity +
-                                expenseData.water +
-                                expenseData.maintenance +
-                                expenseData.cleaning +
-                                expenseData.other) / 1_000_000
-                            ).toFixed(1)}M
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
-                {/* Top rooms + recent transactions */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-6">Top phòng doanh thu cao</h3>
@@ -302,7 +248,7 @@ export default function ReportsAnalytics() {
                   </div>
 
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-6">Giao dịch gần đây</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-6">Giao dịch thu tiền gần đây</h3>
                     <div className="space-y-4">
                       {recentTransactions.map((t) => (
                         <div key={t.id} className="flex items-center justify-between">
@@ -326,11 +272,9 @@ export default function ReportsAnalytics() {
               </>
             )}
 
-            {/* ====== BÁO CÁO (reports) ====== */}
             {activeTab === 'reports' && (
               <>
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                   <div className="bg-white rounded-lg shadow-sm p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -345,35 +289,6 @@ export default function ReportsAnalytics() {
                       </div>
                     </div>
                   </div>
-
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Chi phí</p>
-                        <p className="text-2xl font-bold text-gray-900">{currentData.expenses.toLocaleString('vi-VN')}đ</p>
-                        <p className="text-sm text-gray-500">{((currentData.expenses / currentData.revenue) * 100).toFixed(1)}% doanh thu</p>
-                      </div>
-                      <div className="p-2 bg-red-100 rounded-lg">
-                        <i className="ri-money-dollar-circle-line text-red-600 text-xl" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Lợi nhuận</p>
-                        <p className="text-2xl font-bold text-gray-900">{currentData.profit.toLocaleString('vi-VN')}đ</p>
-                        <p className={`text-sm ${parseFloat(profitGrowth) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {parseFloat(profitGrowth) >= 0 ? '+' : ''}{profitGrowth}% so với tháng trước
-                        </p>
-                      </div>
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <i className="ri-line-chart-line text-blue-600 text-xl" />
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="bg-white rounded-lg shadow-sm p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -388,7 +303,6 @@ export default function ReportsAnalytics() {
                   </div>
                 </div>
 
-                {/* Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                   <div className="bg-white rounded-lg shadow-sm p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Doanh thu theo tháng</h3>
@@ -423,30 +337,7 @@ export default function ReportsAnalytics() {
                   </div>
                 </div>
 
-                {/* Detail sections */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Tóm tắt tài chính</h3>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Tổng doanh thu</span>
-                        <span className="font-medium text-green-600">{currentData.revenue.toLocaleString('vi-VN')}đ</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Chi phí vận hành</span>
-                        <span className="font-medium text-red-600">{currentData.expenses.toLocaleString('vi-VN')}đ</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Lợi nhuận gộp</span>
-                        <span className="font-medium text-blue-600">{currentData.profit.toLocaleString('vi-VN')}đ</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-gray-600">Tỷ suất lợi nhuận</span>
-                        <span className="font-medium text-purple-600">{((currentData.profit / currentData.revenue) * 100).toFixed(1)}%</span>
-                      </div>
-                    </div>
-                  </div>
-
+                <div className="grid grid-cols-1 gap-8">
                   <div className="bg-white rounded-lg shadow-sm p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Chi tiết lấp đầy</h3>
                     <div className="space-y-4">
@@ -474,7 +365,6 @@ export default function ReportsAnalytics() {
                   </div>
                 </div>
 
-                {/* Monthly Comparison Table */}
                 <div className="bg-white rounded-lg shadow-sm mt-8 overflow-hidden">
                   <div className="px-6 py-4 border-b border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-900">So sánh theo tháng</h3>
@@ -485,8 +375,6 @@ export default function ReportsAnalytics() {
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tháng</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doanh thu</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chi phí</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lợi nhuận</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tỷ lệ lấp đầy</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách mới</th>
                         </tr>
@@ -501,12 +389,6 @@ export default function ReportsAnalytics() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-green-600 font-medium">{d.revenue.toLocaleString('vi-VN')}đ</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-red-600 font-medium">{d.expenses.toLocaleString('vi-VN')}đ</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-blue-600 font-medium">{d.profit.toLocaleString('vi-VN')}đ</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900">{d.occupancyRate}%</div>

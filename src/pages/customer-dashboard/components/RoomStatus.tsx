@@ -3,9 +3,9 @@ import { useState } from 'react';
 export default function RoomStatus() {
   const [roomDetails] = useState({
     roomNumber: 'A401', // Cập nhật từ contractInfo.roomNumber
-    floor: '4', // Cập nhật (suy ra từ A401)
+    building: '4', // Cập nhật (suy ra từ A401)
     area: '25m²', // Giữ nguyên (không có trong mock)
-    type: 'Studio', // Giữ nguyên (không có trong mock)
+    type: 'Phòng thường', // Giữ nguyên (không có trong mock)
     rentPrice: '2.500.000', // Cập nhật từ contractInfo.rentPrice
     deposit: '2.500.000', // Cập nhật (bằng rentPrice)
 
@@ -87,7 +87,7 @@ export default function RoomStatus() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Tầng:</span>
-              <span className="font-medium text-gray-900">Tầng {roomDetails.floor}</span>
+              <span className="font-medium text-gray-900">Tầng {roomDetails.building}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Diện tích:</span>

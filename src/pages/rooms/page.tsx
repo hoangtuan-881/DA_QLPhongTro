@@ -64,6 +64,7 @@ export interface Room {
     contractEnd: string;
   };
   members?: Member[];
+  thietBis?: ThietBiPhong[];
   services: {
     electricity: boolean;
     water: boolean;
@@ -91,6 +92,44 @@ export interface Member {
   vehicleNumber?: string;
   notes?: string;
 }
+
+// ===== EQUIPMENT MANAGEMENT SYSTEM =====
+// TODO Backend: Implement ThietBi API endpoints (see checklist at bottom of file)
+export type LoaiThietBi = 'NoiThat' | 'ThietBiDien' | 'DienTu' | 'AnToan' | 'Khac';
+
+export interface ThietBi {
+  MaThietBi: number;
+  TenThietBi: string;
+  MaThietBi_Code: string;
+  LoaiThietBi: LoaiThietBi;
+  MaDay: number;
+  MaPhong: number;
+  NgayMua: string;
+  GiaMua: number;
+  TinhTrang: 'Tot' | 'Binh_Thuong' | 'Kem' | 'Hu_Hong';
+  BaoTriLanCuoi?: string;
+  BaoTriLanSau?: string;
+  BaoHanh?: string;
+  GhiChu?: string;
+}
+
+export interface ThietBiPhong {
+  MaThietBi: number;
+  TenThietBi: string;
+  MaThietBi_Code: string;
+  LoaiThietBi: LoaiThietBi;
+  SoLuong: number;
+  GhiChu?: string;
+}
+
+export const danhSachThietBiMau: ThietBiPhong[] = [
+  { MaThietBi: 1, TenThietBi: 'Bình chữa cháy khí CO2 5kg', MaThietBi_Code: 'CC002', LoaiThietBi: 'AnToan', SoLuong: 1 },
+  { MaThietBi: 2, TenThietBi: 'Máy lạnh Midea Inverter 1HP', MaThietBi_Code: 'MAFA-09CDN8', LoaiThietBi: 'ThietBiDien', SoLuong: 1 },
+  { MaThietBi: 3, TenThietBi: 'Router Wifi Mercusys', MaThietBi_Code: 'MW302R', LoaiThietBi: 'DienTu', SoLuong: 1 },
+  { MaThietBi: 4, TenThietBi: 'Tủ quần áo', MaThietBi_Code: 'WD001', LoaiThietBi: 'NoiThat', SoLuong: 1 },
+  { MaThietBi: 5, TenThietBi: 'Bảng nội quy', MaThietBi_Code: 'NQ001', LoaiThietBi: 'Khac', SoLuong: 1 }
+];
+
 export const mockBuildings: Building[] = [
   { id: '1', name: 'Dãy A', address: '17/2A Nguyễn Hữu Tiến, Tây Thạnh', description: '17/2A Nguyễn Hữu Tiến, Tây Thạnh' },
   { id: '2', name: 'Dãy B', address: '17/2B Nguyễn Hữu Tiến, Tây Thạnh', description: 'Dãy phòng VIP' },
@@ -630,6 +669,10 @@ export default function Rooms() {
 
   // Change room states
   const [changeRoomData, setChangeRoomData] = useState<{ fromRoom: PhongTro | null; toRoom: string }>({ fromRoom: null, toRoom: '' });
+
+  // Equipment states (TODO Backend: Populate from API when available)
+  const [thietBisPhongMoi, setThietBisPhongMoi] = useState<ThietBiPhong[]>([]);
+  const [thietBisPhongDangSua, setThietBisPhongDangSua] = useState<ThietBiPhong[]>([]);
 
   // Grid/List view and bulk operations
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -1962,6 +2005,15 @@ export default function Rooms() {
                   >
                     Thành viên
                   </button>
+                  <button
+                    onClick={() => setDetailActiveTab('thietbi')}
+                    className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap cursor-pointer ${detailActiveTab === 'thietbi'
+                      ? 'border-indigo-600 text-indigo-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                  >
+                    Thiết bị
+                  </button>
                 </nav>
               </div>
 
@@ -2595,6 +2647,62 @@ export default function Rooms() {
                     </div>
                   </div>
                 )}
+
+                {detailActiveTab === 'thietbi' && (
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-4">Thiết bị của phòng</h3>
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-start">
+                          <i className="ri-information-line text-blue-600 text-xl mr-3 mt-0.5"></i>
+                          <div className="flex-1">
+                            <p className="text-sm text-blue-800 font-medium mb-1">Tính năng đang phát triển</p>
+                            <p className="text-sm text-blue-700">
+                              Quản lý thiết bị phòng sẽ được kích hoạt sau khi Backend implement API.
+                              <br />
+                              <span className="font-medium">TODO Backend:</span> Tạo bảng <code className="bg-blue-100 px-1 rounded">thiet_bi</code> và endpoints CRUD.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Preview UI - sẽ hoạt động sau khi có API */}
+                      <div className="opacity-50 pointer-events-none">
+                        <div className="border border-gray-200 rounded-lg p-4 mb-4">
+                          <h4 className="font-medium text-gray-700 mb-3">Danh sách thiết bị hiện có</h4>
+                          <div className="text-sm text-gray-500 italic text-center py-8 bg-gray-50 rounded">
+                            Chưa có dữ liệu từ Backend
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled
+                          className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-gray-400 cursor-not-allowed"
+                        >
+                          <i className="ri-add-line mr-2"></i>
+                          Thêm thiết bị (cần Backend API)
+                        </button>
+                      </div>
+
+                      {/* Danh sách thiết bị mẫu tham khảo */}
+                      <div className="bg-gray-50 rounded-lg p-4 mt-4">
+                        <h4 className="font-medium text-gray-700 mb-3">Danh sách thiết bị mẫu (tham khảo)</h4>
+                        <div className="space-y-2">
+                          {danhSachThietBiMau.map((tb) => (
+                            <div key={tb.MaThietBi} className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
+                              <div className="flex-1">
+                                <p className="font-medium text-sm">{tb.TenThietBi}</p>
+                                <p className="text-xs text-gray-500">Mã: {tb.MaThietBi_Code} | Loại: {tb.LoaiThietBi}</p>
+                              </div>
+                              <span className="text-sm text-gray-600">SL: {tb.SoLuong}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 mt-8 pt-6 border-t">
@@ -2767,3 +2875,136 @@ export default function Rooms() {
   );
 
 }
+
+/*
+ * ============================================================================
+ * BACKEND IMPLEMENTATION CHECKLIST - EQUIPMENT MANAGEMENT SYSTEM
+ * ============================================================================
+ *
+ * Frontend đã implement Equipment UI (tab "Thiết bị") và interfaces.
+ * Backend cần implement các bước sau để kích hoạt tính năng:
+ *
+ * ## 1. DATABASE SCHEMA
+ *
+ * ### Bảng: `thiet_bi`
+ * ```sql
+ * CREATE TABLE thiet_bi (
+ *   MaThietBi INT PRIMARY KEY AUTO_INCREMENT,
+ *   TenThietBi VARCHAR(255) NOT NULL,
+ *   MaThietBi_Code VARCHAR(50) UNIQUE,
+ *   LoaiThietBi ENUM('NoiThat', 'ThietBiDien', 'DienTu', 'AnToan', 'Khac'),
+ *   MaDay INT,
+ *   MaPhong INT,
+ *   NgayMua DATE,
+ *   GiaMua DECIMAL(15,2),
+ *   TinhTrang ENUM('Tot', 'Binh_Thuong', 'Kem', 'Hu_Hong'),
+ *   BaoTriLanCuoi DATE NULL,
+ *   BaoTriLanSau DATE NULL,
+ *   BaoHanh VARCHAR(255) NULL,
+ *   GhiChu TEXT NULL,
+ *   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ *   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ *   FOREIGN KEY (MaDay) REFERENCES day_tro(MaDay) ON DELETE CASCADE,
+ *   FOREIGN KEY (MaPhong) REFERENCES phong_tro(MaPhong) ON DELETE CASCADE
+ * );
+ * ```
+ *
+ * ## 2. MODEL (Laravel)
+ *
+ * File: `app/Models/ThietBi.php`
+ * - Relationships: `belongsTo(DayTro)`, `belongsTo(PhongTro)`
+ * - Casts: 'TienNghi' => 'array' (nếu cần)
+ * - fillable: [...all fields...]
+ *
+ * ## 3. REPOSITORY PATTERN
+ *
+ * ### Interface: `app/Repositories/ThietBi/ThietBiRepositoryInterface.php`
+ * ```php
+ * interface ThietBiRepositoryInterface {
+ *   public function getAll();
+ *   public function getById($id);
+ *   public function getByPhong($maPhong);
+ *   public function getByDay($maDay);
+ *   public function create(array $data);
+ *   public function update($id, array $data);
+ *   public function delete($id);
+ * }
+ * ```
+ *
+ * ### Implementation: `app/Repositories/ThietBi/ThietBiRepository.php`
+ *
+ * ## 4. SERVICE LAYER
+ *
+ * File: `app/Services/ThietBiService.php`
+ * - NEVER call Model directly
+ * - Use Repository for all data operations
+ *
+ * ## 5. RESOURCE (API Response)
+ *
+ * File: `app/Http/Resources/ThietBiResource.php`
+ * ```php
+ * return [
+ *   'MaThietBi' => $this->MaThietBi,
+ *   'TenThietBi' => $this->TenThietBi,
+ *   'MaThietBi_Code' => $this->MaThietBi_Code,
+ *   'LoaiThietBi' => $this->LoaiThietBi,
+ *   'SoLuong' => $this->SoLuong,
+ *   'GhiChu' => $this->GhiChu,
+ *   // NO timestamps in response
+ * ];
+ * ```
+ *
+ * ## 6. CONTROLLER
+ *
+ * File: `app/Http/Controllers/ThietBiController.php`
+ * - index() - GET /api/thiet-bi
+ * - show($id) - GET /api/thiet-bi/{id}
+ * - getByPhong($maPhong) - GET /api/phong-tro/{id}/thiet-bi
+ * - store(Request) - POST /api/thiet-bi
+ * - update(Request, $id) - PUT /api/thiet-bi/{id}
+ * - destroy($id) - DELETE /api/thiet-bi/{id}
+ *
+ * ## 7. ROUTES
+ *
+ * File: `routes/api.php`
+ * ```php
+ * Route::apiResource('thiet-bi', ThietBiController::class);
+ * Route::get('phong-tro/{id}/thiet-bi', [ThietBiController::class, 'getByPhong']);
+ * ```
+ *
+ * ## 8. UPDATE PhongTroResource
+ *
+ * Add to PhongTroResource:
+ * ```php
+ * 'thietBis' => ThietBiResource::collection($this->whenLoaded('thietBis'))
+ * ```
+ *
+ * ## 9. VALIDATION
+ *
+ * File: `app/Http/Requests/ThietBi/StoreThietBiRequest.php`
+ * - TenThietBi: required|string|max:255
+ * - MaThietBi_Code: nullable|string|max:50|unique:thiet_bi
+ * - LoaiThietBi: required|in:NoiThat,ThietBiDien,DienTu,AnToan,Khac
+ * - MaPhong: required|exists:phong_tro,MaPhong
+ * - etc.
+ *
+ * ## 10. FRONTEND UPDATES (After Backend Ready)
+ *
+ * - Remove "Tính năng đang phát triển" notice in rooms/page.tsx line 2655
+ * - Remove `opacity-50 pointer-events-none` from preview UI (line 2670)
+ * - Enable "Thêm thiết bị" button
+ * - Connect state to API:
+ *   - Fetch: `thietBiService.getByPhong(phongId)`
+ *   - Create: `thietBiService.create(data)`
+ *   - Update: `thietBiService.update(id, data)`
+ *   - Delete: `thietBiService.delete(id)`
+ *
+ * ============================================================================
+ * IMPORTANT RULES:
+ * - Backend MUST use Vietnamese naming (MaThietBi, TenThietBi, etc.)
+ * - Frontend will use data AS-IS, NO mapping
+ * - Follow Repository Pattern (Interface → Impl → Service → Controller)
+ * - NO timestamps in API responses
+ * - Use i18n for error messages: __('messages.thiet_bi.created')
+ * ============================================================================
+ */

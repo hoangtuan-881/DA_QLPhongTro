@@ -88,8 +88,8 @@ export default function UserMenu() {
             <p className="text-xs text-gray-500 mt-1">@{user?.TenDangNhap}</p>
             <div className="flex items-center mt-2">
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                <i className="ri-shield-user-line mr-1"></i>
                 {user?.TenQuyen}
+                <i className="ri-shield-user-line ml-1"></i>
               </span>
             </div>
           </div>
@@ -103,15 +103,6 @@ export default function UserMenu() {
             >
               <i className="ri-user-line mr-3 text-gray-500"></i>
               Thông tin cá nhân
-            </Link>
-
-            <Link
-              to="/settings"
-              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              <i className="ri-settings-3-line mr-3 text-gray-500"></i>
-              Cài đặt
             </Link>
           </div>
 

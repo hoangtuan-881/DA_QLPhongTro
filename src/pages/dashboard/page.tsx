@@ -13,7 +13,6 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
 
-  // Set page title
   useDocumentTitle('Trang chủ');
 
   return (
@@ -28,7 +27,7 @@ export default function Dashboard() {
             <div className="max-w-7xl mx-auto">
               <div className="mb-8">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                  Dashboard
+                  Tổng quan
                 </h1>
                 <p className="text-gray-600">
                   Chào mừng trở lại, {user?.nhanVien?.HoTen || user?.khachThue?.HoTen || user?.TenDangNhap}! 👋

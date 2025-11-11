@@ -13,48 +13,48 @@ const menuItems = [
     path: '/dashboard'
   },
   {
-    icon: 'ri-price-tag-3-line',
-    label: 'Loại phòng',
+    icon: 'ri-building-line',
+    label: 'Quản lý loại phòng',
     path: '/room-types'
   },
   {
-    icon: 'ri-building-line',
+    icon: 'ri-hotel-bed-line',
     label: 'Quản lý phòng',
     path: '/rooms'
   },
   {
     icon: 'ri-user-line',
-    label: 'Khách thuê',
+    label: 'Quản lý khách thuê',
     path: '/tenants'
   },
   {
     icon: 'ri-calendar-line',
-    label: 'Đặt phòng',
+    label: 'Quản lý đặt phòng',
     path: '/bookings'
   },
   {
     icon: 'ri-file-text-line',
-    label: 'Hợp đồng',
+    label: 'Quản lý hợp đồng',
     path: '/contracts'
   },
   {
     icon: 'ri-bank-card-line',
-    label: 'Thanh toán',
+    label: 'Quản lý thanh toán',
     path: '/payments'
   },
   {
     icon: 'ri-service-line',
-    label: 'Dịch vụ',
+    label: 'Quản lý dịch vụ',
     path: '/services'
   },
   {
     icon: 'ri-tools-line',
-    label: 'Bảo trì',
+    label: 'Quản lý bảo trì',
     path: '/maintenance'
   },
   {
     icon: 'ri-settings-line',
-    label: 'Thiết bị',
+    label: 'Quản lý thiết bị',
     path: '/equipment'
   },
   {
@@ -69,7 +69,7 @@ const menuItems = [
   },
   {
     icon: 'ri-notification-line',
-    label: 'Thông báo',
+    label: 'Quản lý thông báo',
     path: '/notifications'
   },
   {

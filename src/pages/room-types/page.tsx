@@ -9,13 +9,9 @@ import { getErrorMessage } from '../../lib/http-client';
 export default function RoomTypes() {
   const toast = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Data state
   const [roomTypes, setRoomTypes] = useState<LoaiPhong[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
-
-  // UI states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingRoomType, setEditingRoomType] = useState<LoaiPhong | null>(null);
@@ -65,21 +61,21 @@ export default function RoomTypes() {
     setRefreshKey(prev => prev + 1);
   };
 
-  // ===== Thêm loại phòng =====
   const handleAddRoomType = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const amenitiesText = formData.get('TienNghi') as string;
+    const donGia = parseFloat(formData.get('DonGiaCoBan') as string);
 
     const newData = {
       TenLoaiPhong: formData.get('TenLoaiPhong') as string,
       MoTa: formData.get('MoTa') as string,
-      DonGiaCoBan: parseFloat(formData.get('DonGiaCoBan') as string) || 0,
+      DonGiaCoBan: isNaN(donGia) ? 0 : donGia,
       DienTich: parseFloat(formData.get('DienTich') as string) || null,
       TienNghi: amenitiesText ? amenitiesText.split(',').map(item => item.trim()).filter(item => item) : [],
     };
 
-    if (!newData.TenLoaiPhong || !newData.DonGiaCoBan) {
+    if (!newData.TenLoaiPhong || newData.DonGiaCoBan === null) {
       toast.error({ title: 'Thiếu thông tin', message: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
@@ -107,7 +103,6 @@ export default function RoomTypes() {
     });
   };
 
-  // ===== Sửa loại phòng =====
   const handleEdit = (roomType: LoaiPhong) => {
     setEditingRoomType(roomType);
     setShowEditModal(true);
@@ -157,7 +152,6 @@ export default function RoomTypes() {
     });
   };
 
-  // ===== Xóa loại phòng =====
   const handleDeleteRoomType = (roomType: LoaiPhong) => {
     if (roomType.TongSoPhong > 0) {
       toast.error({
@@ -206,7 +200,6 @@ export default function RoomTypes() {
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
           <div className="max-w-7xl mx-auto">
-            {/* Header */}
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Quản lý loại phòng</h1>
@@ -221,7 +214,6 @@ export default function RoomTypes() {
               </button>
             </div>
 
-            {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex items-center">
@@ -277,14 +269,12 @@ export default function RoomTypes() {
               </div>
             </div>
 
-            {/* Loading State */}
             {loading && (
               <div className="flex justify-center items-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
               </div>
             )}
 
-            {/* Empty State */}
             {!loading && roomTypes.length === 0 && (
               <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -302,7 +292,6 @@ export default function RoomTypes() {
               </div>
             )}
 
-            {/* Room Types Grid */}
             {!loading && roomTypes.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {roomTypes.map((roomType) => (
@@ -393,7 +382,6 @@ export default function RoomTypes() {
         </main>
       </div>
 
-      {/* Add Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
@@ -484,7 +472,6 @@ export default function RoomTypes() {
         </div>
       )}
 
-      {/* Edit Modal */}
       {showEditModal && editingRoomType && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
@@ -575,7 +562,6 @@ export default function RoomTypes() {
         </div>
       )}
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}

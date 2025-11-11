@@ -5,6 +5,7 @@ import CustomerSidebar from './components/CustomerSidebar';
 import CustomerHeader from './components/CustomerHeader';
 import RoomStatus from './components/RoomStatus';
 import ContractInfo from './components/ContractInfo';
+import CustomerOverview from './components/CustomerOverview';
 
 export default function CustomerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,12 +24,7 @@ export default function CustomerDashboard() {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview':
-        return (
-          <div className="space-y-6">
-            <RoomStatus />
-            <ContractInfo />
-          </div>
-        );
+        return <CustomerOverview />;
       case 'room':
         return <RoomStatus />;
       case 'contract':

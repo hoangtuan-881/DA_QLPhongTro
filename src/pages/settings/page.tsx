@@ -154,8 +154,8 @@ export default function Settings() {
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition duration-200 whitespace-nowrap ${activeTab === tab.id
-                          ? 'bg-indigo-100 text-indigo-700'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        ? 'bg-indigo-100 text-indigo-700'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                         }`}
                     >
                       <i className={`${tab.icon} mr-3`}></i>
@@ -208,47 +208,6 @@ export default function Settings() {
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                             />
                           </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Múi giờ
-                            </label>
-                            <select
-                              value={settings.timezone}
-                              onChange={(e) => handleSettingChange('timezone', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-8"
-                            >
-                              <option value="Asia/Ho_Chi_Minh">Việt Nam (UTC+7)</option>
-                              <option value="Asia/Bangkok">Thái Lan (UTC+7)</option>
-                              <option value="Asia/Singapore">Singapore (UTC+8)</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Định dạng ngày
-                            </label>
-                            <select
-                              value={settings.dateFormat}
-                              onChange={(e) => handleSettingChange('dateFormat', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-8"
-                            >
-                              <option value="dd/MM/yyyy">dd/MM/yyyy</option>
-                              <option value="MM/dd/yyyy">MM/dd/yyyy</option>
-                              <option value="yyyy-MM-dd">yyyy-MM-dd</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Ngôn ngữ
-                            </label>
-                            <select
-                              value={settings.language}
-                              onChange={(e) => handleSettingChange('language', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-8"
-                            >
-                              <option value="vi">Tiếng Việt</option>
-                              <option value="en">English</option>
-                            </select>
-                          </div>
                         </div>
                         <div className="mt-6">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -263,7 +222,7 @@ export default function Settings() {
                         </div>
                         <div className="mt-6">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Địa chỉ
+                            Địa chỉ liên hệ trực tiếp
                           </label>
                           <textarea
                             value={settings.address}
@@ -285,7 +244,7 @@ export default function Settings() {
                           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                             <div>
                               <div className="font-medium text-gray-900">Thông báo email</div>
-                              <div className="text-sm text-gray-600">Gửi thông báo qua email cho các sự kiện quan trọng</div>
+                              <div className="text-sm text-gray-600">Gửi thông báo qua email</div>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
                               <input
@@ -299,8 +258,8 @@ export default function Settings() {
                           </div>
                           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                             <div>
-                              <div className="font-medium text-gray-900">Thông báo SMS</div>
-                              <div className="text-sm text-gray-600">Gửi tin nhắn SMS cho các cảnh báo khẩn cấp</div>
+                              <div className="font-medium text-gray-900">Thông báo ứng dụng</div>
+                              <div className="text-sm text-gray-600">Gửi thông báo qua ứng dụng</div>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
                               <input
@@ -333,19 +292,6 @@ export default function Settings() {
                               max="10"
                               value={settings.maxLoginAttempts}
                               onChange={(e) => handleSettingChange('maxLoginAttempts', parseInt(e.target.value))}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Thời gian hết hạn phiên (phút)
-                            </label>
-                            <input
-                              type="number"
-                              min="5"
-                              max="480"
-                              value={settings.sessionTimeout}
-                              onChange={(e) => handleSettingChange('sessionTimeout', parseInt(e.target.value))}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                             />
                           </div>

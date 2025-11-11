@@ -18,6 +18,7 @@ interface Rule {
 interface Violation {
   id: string;
   tenantName: string;
+  building: string;
   room: string;
   ruleTitle: string;
   description: string;
@@ -28,13 +29,13 @@ interface Violation {
   resolvedDate?: string;
   notes?: string;
 }
-type Tenant = { name: string; room: string };
+type Tenant = { name: string; room: string; building: string };
 
 const tenants: Tenant[] = [
-  { name: 'Đoàn Phan Khánh Huyền', room: 'A101' },
-  { name: 'Lê Trọng Tấn', room: 'A105' },
-  { name: 'Phạm Thị Huyền Yến', room: 'A301' },
-  { name: 'Hoàng Văn Kim', room: 'A203' },
+  { name: 'Đoàn Phan Khánh Huyền', room: 'A101', building: 'Dãy A' },
+  { name: 'Lê Trọng Tấn', room: 'A105', building: 'Dãy A' },
+  { name: 'Phạm Thị Huyền Yến', room: 'A301', building: 'Dãy A' },
+  { name: 'Hoàng Văn Kim', room: 'A203', building: 'Dãy B' },
 ];
 
 const mockRules: Rule[] = [
@@ -89,6 +90,7 @@ const mockViolations: Violation[] = [
   {
     id: '1',
     tenantName: 'Đoàn Phan Khánh Huyền',
+    building: 'Dãy A',
     room: 'A101',
     ruleTitle: 'Giờ giấc sinh hoạt',
     description: 'Mở nhạc to sau 23:00, ảnh hưởng đến phòng bên cạnh',
@@ -101,6 +103,7 @@ const mockViolations: Violation[] = [
   {
     id: '2',
     tenantName: 'Lê Trọng Tấn',
+    building: 'Dãy A',
     room: 'A105',
     ruleTitle: 'Vệ sinh chung',
     description: 'Vứt rác sai quy định',
@@ -113,6 +116,7 @@ const mockViolations: Violation[] = [
   {
     id: '3',
     tenantName: 'Phạm Thị Huyền Yến',
+    building: 'Dãy A',
     room: 'A301',
     ruleTitle: 'Thanh toán tiền thuê',
     description: 'Chậm thanh toán tiền thuê tháng 3/2024',
@@ -125,6 +129,7 @@ const mockViolations: Violation[] = [
   {
     id: '4',
     tenantName: 'Hoàng Văn Kim',
+    building: 'Dãy A',
     room: 'A203',
     ruleTitle: 'An toàn cháy nổ',
     description: 'Bắn pháo trong phòng',
@@ -175,6 +180,7 @@ export default function Rules() {
   const emptyViolationForm = {
     tenantName: '',
     room: '',
+    building: '',
     ruleTitle: '',
     description: '',
     severity: 'minor' as Violation['severity'],
@@ -363,7 +369,7 @@ export default function Rules() {
   const submitAddViolation = () => {
     // kiểm tra tối thiểu
     if (!violationForm.tenantName || !violationForm.room || !violationForm.ruleTitle || !violationForm.description || !violationForm.reportedBy) {
-      error({ title: 'Thiếu thông tin', message: 'Điền đủ: Khách thuê, Phòng, Nội quy, Mô tả, Người báo cáo.' });
+      error({ title: 'Thiếu thông tin', message: 'Điền đủ: Khách thuê, Nội quy, Mô tả, Người báo cáo.' }); // (Phòng và Dãy tự điền)
       return;
     }
     setConfirmDialog({
@@ -376,6 +382,7 @@ export default function Rules() {
           id: Date.now().toString(),
           tenantName: violationForm.tenantName,
           room: violationForm.room,
+          building: violationForm.building,
           ruleTitle: violationForm.ruleTitle,
           description: violationForm.description,
           severity: violationForm.severity,
@@ -730,7 +737,7 @@ export default function Rules() {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
                                 <div className="text-sm font-medium text-gray-900">{violation.tenantName}</div>
-                                <div className="text-sm text-gray-500">{violation.room}</div>
+                                <div className="text-sm text-gray-500">{violation.building} - {violation.room}</div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -905,6 +912,10 @@ export default function Rules() {
                   <div>
                     <span className="text-gray-600">Khách thuê:</span>
                     <span className="font-medium ml-2">{selectedViolation.tenantName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Dãy:</span>
+                    <span className="font-medium ml-2">{selectedViolation.building}</span>
                   </div>
                   <div>
                     <span className="text-gray-600">Phòng:</span>
@@ -1095,7 +1106,8 @@ export default function Rules() {
                         setViolationForm(v => ({
                           ...v,
                           tenantName: name,
-                          room: t?.room ?? '',  // <-- tự điền phòng theo tên
+                          room: t?.room ?? '',
+                          building: t?.building ?? '',
                         }));
                       }}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
@@ -1114,6 +1126,18 @@ export default function Rules() {
                       <input
                         type="text"
                         value={violationForm.room}
+                        readOnly
+                        className="w-full border border-gray-200 bg-gray-50 text-gray-700 rounded-lg px-3 py-2"
+                        placeholder="Chưa chọn khách thuê"
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Dãy trọ
+                      </label>
+                      <input
+                        type="text"
+                        value={violationForm.building}
                         readOnly
                         className="w-full border border-gray-200 bg-gray-50 text-gray-700 rounded-lg px-3 py-2"
                         placeholder="Chưa chọn khách thuê"

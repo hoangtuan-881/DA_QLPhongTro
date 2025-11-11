@@ -29,7 +29,7 @@ export const API_ENDPOINTS = {
   PHONG_TRO: '/admin/phong-tro',
 
   // Loai Phong (Room Types)
-  LOAI_PHONG: '/loai-phong',
+  LOAI_PHONG: '/admin/loai-phong',
 
   // Khach Thue (Tenants)
   KHACH_THUE: '/admin/khach-thue',
@@ -44,7 +44,7 @@ export const API_ENDPOINTS = {
   HOA_DON: '/hoa-don',
 
   // Dich Vu (Services)
-  DICH_VU: '/dich-vu',
+  DICH_VU: '/admin/dich-vu',
 
   // Dat Coc (Deposits)
   DAT_COC: '/dat-coc',
@@ -53,7 +53,7 @@ export const API_ENDPOINTS = {
   BAO_TRI: '/bao-tri',
 
   // Thiet Bi (Equipment)
-  THIET_BI: '/thiet-bi',
+  THIET_BI: '/admin/thiet-bi',
 
   // Quy Dinh (Rules)
   QUY_DINH: '/quy-dinh',

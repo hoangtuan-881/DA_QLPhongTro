@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import CustomerHeader from '../customer-dashboard/components/CustomerHeader';
-import CustomerSidebar from '../customer-dashboard/components/CustomerSidebar';
 
 export type Room = {
   id: number;
@@ -112,7 +110,6 @@ export const availableRooms: Room[] = [
 ];
 
 export default function AvailableRoomsPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
@@ -136,111 +133,105 @@ export default function AvailableRoomsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <CustomerSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className="min-h-screen bg-gray-50">
+      <main className="px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">Phòng còn trống</h1>
+            <p className="text-gray-600 mt-1">Danh sách các phòng có thể thuê</p>
+          </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <CustomerHeader onMenuClick={() => setSidebarOpen(true)} />
-
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">Phòng còn trống</h1>
-              <p className="text-gray-600 mt-1">Danh sách các phòng có thể thuê</p>
-            </div>
-
-            {/* Danh sách phòng */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {availableRooms.map((room) => (
-                <div key={room.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                  {/* Ảnh */}
-                  <div className="relative h-48 bg-gray-200">
-                    {room.images?.length ? (
-                      <img
-                        src={room.images[0]}
-                        alt={`Phòng ${room.number} - ${room.building}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <i className="ri-image-line text-gray-400 text-4xl"></i>
-                      </div>
-                    )}
-                    <div className="absolute top-4 left-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${room.status === 'Trống' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                          }`}
-                      >
-                        {room.status}
-                      </span>
+          {/* Danh sách phòng */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {availableRooms.map((room) => (
+              <div key={room.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                {/* Ảnh */}
+                <div className="relative h-48 bg-gray-200">
+                  {room.images?.length ? (
+                    <img
+                      src={room.images[0]}
+                      alt={`Phòng ${room.number} - ${room.building}`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <i className="ri-image-line text-gray-400 text-4xl"></i>
                     </div>
-                    <div className="absolute top-4 right-4">
-                      <span className="bg-black/60 text-white px-2 py-1 rounded text-xs">
-                        {room.images?.length || 0} ảnh
-                      </span>
-                    </div>
+                  )}
+                  <div className="absolute top-4 left-4">
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${room.status === 'Trống' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                    >
+                      {room.status}
+                    </span>
                   </div>
-
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Phòng {room.number}</h3>
-                        <p className="text-gray-600">
-                          {room.type} • {room.building}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-green-600">{formatPrice(room.price)} VNĐ</p>
-                        <p className="text-sm text-gray-500">/tháng</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <i className="ri-ruler-line mr-2"></i>
-                        Diện tích: {room.area}m²
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <i className="ri-money-dollar-circle-line mr-2"></i>
-                        Cọc: {formatPrice(room.deposit)} VNĐ
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <i className="ri-calendar-line mr-2"></i>
-                        Có thể vào: {room.status === 'Trống' ? 'Vào ngay hôm nay' : room.availableFrom}
-                      </div>
-                    </div>
-
-                    <p className="text-sm text-gray-700 mb-4 line-clamp-2">{room.description}</p>
-
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewDetail(room)}
-                        className="flex-1 px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
-                      >
-                        Xem chi tiết
-                      </button>
-                      <button
-                        onClick={() => handleDeposit(room)}
-                        className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                      >
-                        Đặt cọc
-                      </button>
-                    </div>
+                  <div className="absolute top-4 right-4">
+                    <span className="bg-black/60 text-white px-2 py-1 rounded text-xs">
+                      {room.images?.length || 0} ảnh
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {availableRooms.length === 0 && (
-              <div className="text-center py-12">
-                <i className="ri-search-line text-gray-400 text-6xl mb-4"></i>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy phòng nào</h3>
-                <p className="text-gray-600">Hiện tại không có phòng trống</p>
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Phòng {room.number}</h3>
+                      <p className="text-gray-600">
+                        {room.type} • {room.building}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-600">{formatPrice(room.price)} VNĐ</p>
+                      <p className="text-sm text-gray-500">/tháng</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <i className="ri-ruler-line mr-2"></i>
+                      Diện tích: {room.area}m²
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <i className="ri-money-dollar-circle-line mr-2"></i>
+                      Cọc: {formatPrice(room.deposit)} VNĐ
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <i className="ri-calendar-line mr-2"></i>
+                      Có thể vào: {room.status === 'Trống' ? 'Vào ngay hôm nay' : room.availableFrom}
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-700 mb-4 line-clamp-2">{room.description}</p>
+
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleViewDetail(room)}
+                      className="flex-1 px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+                    >
+                      Xem chi tiết
+                    </button>
+                    <button
+                      onClick={() => handleDeposit(room)}
+                      className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Đặt cọc
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
+            ))}
           </div>
-        </main>
-      </div>
+
+          {availableRooms.length === 0 && (
+            <div className="text-center py-12">
+              <i className="ri-search-line text-gray-400 text-6xl mb-4"></i>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy phòng nào</h3>
+              <p className="text-gray-600">Hiện tại không có phòng trống</p>
+            </div>
+          )}
+        </div>
+      </main>
 
       {/* Modal chi tiết phòng */}
       {showDetailModal && selectedRoom && (
@@ -275,15 +266,24 @@ export default function AvailableRoomsPage() {
                           </span>
                         }
                       />
-                      <Row label="Có thể vào" value={selectedRoom.status === 'Trống' ? 'Vào ngay hôm nay' : selectedRoom.availableFrom} />
+                      <Row
+                        label="Có thể vào"
+                        value={selectedRoom.status === 'Trống' ? 'Vào ngay hôm nay' : selectedRoom.availableFrom}
+                      />
                     </div>
                   </div>
 
                   <div className="bg-green-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-3">Chi phí</h4>
                     <div className="space-y-2">
-                      <Row label="Giá thuê" value={<span className="text-green-600 font-medium">{formatPrice(selectedRoom.price)} VNĐ/tháng</span>} />
-                      <Row label="Tiền cọc" value={<span className="text-orange-600 font-medium">{formatPrice(selectedRoom.deposit)} VNĐ</span>} />
+                      <Row
+                        label="Giá thuê"
+                        value={<span className="text-green-600 font-medium">{formatPrice(selectedRoom.price)} VNĐ/tháng</span>}
+                      />
+                      <Row
+                        label="Tiền cọc"
+                        value={<span className="text-orange-600 font-medium">{formatPrice(selectedRoom.deposit)} VNĐ</span>}
+                      />
                     </div>
                   </div>
 
@@ -339,7 +339,10 @@ export default function AvailableRoomsPage() {
               </div>
 
               <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-                <button onClick={() => setShowDetailModal(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                >
                   Đóng
                 </button>
                 <button
@@ -375,8 +378,14 @@ export default function AvailableRoomsPage() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <Row label="Phòng" value={selectedRoom.number} />
                     <Row label="Diện tích" value={`${selectedRoom.area}m²`} />
-                    <Row label="Giá thuê" value={<span className="text-green-600 font-medium">{formatPrice(selectedRoom.price)} VNĐ</span>} />
-                    <Row label="Tiền cọc" value={<span className="text-orange-600 font-medium">{formatPrice(selectedRoom.deposit)} VNĐ</span>} />
+                    <Row
+                      label="Giá thuê"
+                      value={<span className="text-green-600 font-medium">{formatPrice(selectedRoom.price)} VNĐ</span>}
+                    />
+                    <Row
+                      label="Tiền cọc"
+                      value={<span className="text-orange-600 font-medium">{formatPrice(selectedRoom.deposit)} VNĐ</span>}
+                    />
                   </div>
                 </div>
 
@@ -422,10 +431,17 @@ export default function AvailableRoomsPage() {
                 </div>
 
                 <div className="flex space-x-3 pt-4">
-                  <button type="button" onClick={() => setShowDepositModal(false)} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                  <button
+                    type="button"
+                    onClick={() => setShowDepositModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  >
                     Hủy
                   </button>
-                  <button type="submit" className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  >
                     Xác nhận đặt cọc
                   </button>
                 </div>
@@ -436,6 +452,7 @@ export default function AvailableRoomsPage() {
       )}
     </div>
   );
+
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {

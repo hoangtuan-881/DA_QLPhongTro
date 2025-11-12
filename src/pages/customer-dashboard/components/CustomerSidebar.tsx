@@ -54,13 +54,6 @@ export default function CustomerSidebar({ isOpen, onClose, activeTab, setActiveT
       path: '/customer-dashboard',
       isDashboard: true
     },
-    {
-      id: 'available-rooms',
-      icon: 'ri-search-line',
-      label: 'Phòng còn trống',
-      path: '/available-rooms',
-      isDashboard: false
-    },
   ];
 
   const handleDashboardTabClick = (tabId: string) => {

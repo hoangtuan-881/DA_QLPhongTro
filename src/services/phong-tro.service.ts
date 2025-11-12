@@ -69,6 +69,10 @@ class PhongTroService {
   async delete(id: number) {
     return httpClient.delete(`${API_ENDPOINTS.PHONG_TRO}/${id}`);
   }
+
+  async capNhatDayDu(id: number, data: PhongTroUpdateInput) {
+    return httpClient.put<PhongTro>(`${API_ENDPOINTS.PHONG_TRO}/${id}/cap-nhat-day-du`, data);
+  }
 }
 
 export default new PhongTroService();

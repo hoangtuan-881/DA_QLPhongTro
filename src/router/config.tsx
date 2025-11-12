@@ -25,7 +25,6 @@ const UserManagement = lazy(() => import('../pages/user-management/page'));
 const Settings = lazy(() => import('../pages/settings/page'));
 const CustomerDashboard = lazy(() => import('../pages/customer-dashboard/page'));
 const AvailableRooms = lazy(() => import('../pages/available-rooms/page'));
-const MaintenanceRequest = lazy(() => import('../pages/maintenance-request/page'));
 const Profile = lazy(() => import('../pages/profile/page'));
 const TestToast = lazy(() => import('../pages/test-toast/page'));
 const NotFound = lazy(() => import('../pages/NotFound'));
@@ -116,10 +115,6 @@ const routes: RouteObject[] = [
   {
     path: '/available-rooms',
     element: <AvailableRooms />
-  },
-  {
-    path: '/maintenance-request',
-    element: <ProtectedRoute><MaintenanceRequest /></ProtectedRoute>
   },
   {
     path: '/profile',

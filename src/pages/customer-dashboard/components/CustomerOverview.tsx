@@ -1,12 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-/**
- * Customer Overview
- * - Quick Actions (Repair request, Payment, Notifications, Violation report)
- * - Detailed last-month invoice breakdown
- */
-
 // ===== Mock helpers & data (replace with API calls) =====
 const currency = (n: number) => n.toLocaleString('vi-VN') + 'đ';
 
@@ -36,10 +30,22 @@ export default function CustomerOverview() {
     const [showViolationModal, setShowViolationModal] = useState(false);
 
     const [repairForm, setRepairForm] = useState({
-        type: 'routine',
+        title: '',
+        category: '',
         description: '',
+        priority: 'Trung bình' as 'Cao' | 'Trung bình' | 'Thấp',
         scheduledDate: '',
+        notes: '',
         photos: [] as File[],
+    });
+
+    // nếu bạn đang dùng toast/confirm như Violation:
+    const [confirmDialog, setConfirmDialog] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info' as 'info' | 'warning' | 'danger' | 'success',
+        onConfirm: () => { },
     });
 
     const [violationForm, setViolationForm] = useState({
@@ -87,20 +93,62 @@ export default function CustomerOverview() {
     const dueDate = new Date(firstOfThisMonth); // thường hạn thanh toán ngày 05 của tháng hiện tại
     dueDate.setDate(5);
 
+    const handleRepairFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setRepairForm((f) => ({ ...f, photos: e.target.files ? Array.from(e.target.files) : [] }));
+    };
+
+    const resetRepairForm = () => {
+        setRepairForm({
+            title: '',
+            category: '',
+            description: '',
+            priority: 'Trung bình',
+            scheduledDate: '',
+            notes: '',
+            photos: [],
+        });
+    };
+
+    const doSubmitRepair = async () => {
+        // TODO: nếu có API thì gọi ở đây. Ví dụ:
+        // await api.createMaintenanceRequest({
+        //   ...repairForm,
+        //   images: repairForm.photos, // hoặc upload trước rồi gửi URL
+        // });
+
+        setShowRepairModal(false);
+        resetRepairForm();
+        // nếu bạn có useToast như Violation: success({ title: 'Đã gửi yêu cầu sửa chữa!' });
+        alert('Đã gửi yêu cầu sửa chữa!');
+    };
+
+    const handleSubmitRepair = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!repairForm.title || !repairForm.category || !repairForm.description) {
+            // nếu có toast error thì dùng, không thì alert
+            alert('Vui lòng điền Tiêu đề, Danh mục và Mô tả.');
+            return;
+        }
+
+        // Giống Violation: bật confirm dialog trước khi gửi
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Xác nhận gửi yêu cầu',
+            message: `Gửi yêu cầu sửa chữa: "${repairForm.title}"?`,
+            type: 'info',
+            onConfirm: () => {
+                doSubmitRepair();
+                setConfirmDialog((d) => ({ ...d, isOpen: false }));
+            },
+        });
+    };
     // ===== Render =====
     return (
         <div className="flex h-screen bg-gray-50">
             <div className="flex-1 flex flex-col overflow-hidden">
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
                     <div className="max-w-7xl mx-auto space-y-6">
-                        {/* Title */}
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-900">Tổng quan</h1>
-                                <p className="text-gray-600">Xin chào {MOCK_TENANT.name}! Phòng {MOCK_TENANT.room} • {MOCK_TENANT.block}</p>
-                            </div>
-                        </div>
-
                         {/* Quick Actions */}
                         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <button
@@ -130,21 +178,6 @@ export default function CustomerOverview() {
                                 <h3 className="mt-3 font-semibold text-gray-900">Thanh toán</h3>
                                 <p className="text-sm text-gray-600">Xem & thanh toán hóa đơn</p>
                             </button>
-
-                            <Link
-                                to="/customer/notifications"
-                                className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm hover:shadow text-left group"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="p-2 rounded-lg bg-yellow-50">
-                                        <i className="ri-notification-3-line text-yellow-600 text-xl" />
-                                    </div>
-                                    <i className="ri-arrow-right-line text-gray-300 group-hover:text-yellow-500" />
-                                </div>
-                                <h3 className="mt-3 font-semibold text-gray-900">Thông báo</h3>
-                                <p className="text-sm text-gray-600">Tin mới từ BQL</p>
-                            </Link>
-
                             <button
                                 onClick={() => setShowViolationModal(true)}
                                 className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm hover:shadow cursor-pointer text-left group"
@@ -263,60 +296,138 @@ export default function CustomerOverview() {
             </div>
 
             {/* === Repair Modal === */}
+            {/* === Repair Modal (giống phong cách Violation) === */}
             {showRepairModal && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4">
-                        <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowRepairModal(false)} />
-                        <div className="relative bg-white rounded-lg max-w-lg w-full p-6">
-                            <div className="flex justify-between items-center mb-4">
+                    <div className="flex min-h-screen items-center justify-center px-4">
+                        <div className="fixed inset-0 bg-black/50" onClick={() => setShowRepairModal(false)} />
+                        <div className="relative w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+                            <div className="mb-6 flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-gray-900">Tạo yêu cầu sửa chữa</h3>
                                 <button className="text-gray-400 hover:text-gray-600" onClick={() => setShowRepairModal(false)}>
                                     <i className="ri-close-line text-xl" />
                                 </button>
                             </div>
 
-                            <div className="space-y-3">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Loại yêu cầu</label>
-                                    <select
-                                        value={repairForm.type}
-                                        onChange={(e) => setRepairForm({ ...repairForm, type: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
-                                    >
-                                        <option value="routine">Bảo trì</option>
-                                        <option value="repair">Sửa chữa</option>
-                                        <option value="replacement">Thay thế</option>
-                                    </select>
+                            <form className="space-y-6" onSubmit={handleSubmitRepair}>
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Tiêu đề *</label>
+                                        <input
+                                            type="text"
+                                            value={repairForm.title}
+                                            onChange={(e) => setRepairForm({ ...repairForm, title: e.target.value })}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                            placeholder="VD: Máy lạnh tầng 3 kém lạnh"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Danh mục *</label>
+                                        <select
+                                            value={repairForm.category}
+                                            onChange={(e) => setRepairForm({ ...repairForm, category: e.target.value })}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-8 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                            required
+                                        >
+                                            <option value="">Chọn danh mục</option>
+                                            <option value="Điện">Điện</option>
+                                            <option value="Hệ thống nước">Hệ thống nước</option>
+                                            <option value="Điện lạnh">Điện lạnh</option>
+                                            <option value="Nội thất">Nội thất</option>
+                                            <option value="Khác">Khác</option>
+                                        </select>
+                                    </div>
                                 </div>
+
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết *</label>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">Mô tả chi tiết *</label>
                                     <textarea
                                         rows={4}
                                         value={repairForm.description}
                                         onChange={(e) => setRepairForm({ ...repairForm, description: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                                        placeholder="Mô tả sự cố, vị trí, thời điểm..."
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="Trình bày rõ tình trạng, tần suất, vị trí..."
+                                        required
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày mong muốn</label>
-                                    <input
-                                        type="date"
-                                        value={repairForm.scheduledDate}
-                                        onChange={(e) => setRepairForm({ ...repairForm, scheduledDate: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                                    />
-                                </div>
-                            </div>
 
-                            <div className="flex gap-3 mt-5 pt-4 border-t">
-                                <button className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200" onClick={() => setShowRepairModal(false)}>Hủy</button>
-                                <button className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700" onClick={() => { setShowRepairModal(false); alert('Đã gửi yêu cầu sửa chữa!'); }}>Gửi yêu cầu</button>
-                            </div>
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Mức độ *</label>
+                                        <select
+                                            value={repairForm.priority}
+                                            onChange={(e) =>
+                                                setRepairForm({ ...repairForm, priority: e.target.value as 'Cao' | 'Trung bình' | 'Thấp' })
+                                            }
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-8 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                            required
+                                        >
+                                            <option value="Thấp">Thấp</option>
+                                            <option value="Trung bình">Trung bình</option>
+                                            <option value="Cao">Cao</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Ngày mong muốn</label>
+                                        <input
+                                            type="date"
+                                            value={repairForm.scheduledDate}
+                                            onChange={(e) => setRepairForm({ ...repairForm, scheduledDate: e.target.value })}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Hình ảnh minh họa</label>
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            onChange={handleRepairFileChange}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                        />
+                                        <p className="mt-1 text-xs text-gray-500">Bạn có thể chọn nhiều ảnh</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Ghi chú</label>
+                                        <textarea
+                                            rows={2}
+                                            value={repairForm.notes}
+                                            onChange={(e) => setRepairForm({ ...repairForm, notes: e.target.value })}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                            placeholder="Thông tin bổ sung (không bắt buộc)"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <div className="flex gap-3">
+                                        <button
+                                            type="button"
+                                            className="flex-1 rounded-lg bg-gray-100 px-4 py-2 text-gray-800 hover:bg-gray-200"
+                                            onClick={() => setShowRepairModal(false)}
+                                        >
+                                            Hủy
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+                                        >
+                                            Gửi yêu cầu
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
             )}
+
 
             {/* === Pay Modal (stub) === */}
             {showPayModal && (

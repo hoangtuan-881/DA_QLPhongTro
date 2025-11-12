@@ -6,6 +6,9 @@ import CustomerHeader from './components/CustomerHeader';
 import RoomStatus from './components/RoomStatus';
 import ContractInfo from './components/ContractInfo';
 import CustomerOverview from './components/CustomerOverview';
+import CustomerViolationReport from './components/CustomerViolationReport';
+import CustomerInvoices from './components/CustomerInvoices';
+import MaintenanceRequest from './components/CustomerMaintenceRequest';
 
 export default function CustomerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -29,8 +32,14 @@ export default function CustomerDashboard() {
         return <RoomStatus />;
       case 'contract':
         return <ContractInfo />;
+      case 'violations':
+        return <CustomerViolationReport />;
+      case 'invoices':
+        return <CustomerInvoices />;
+      case 'maintenance':
+        return <MaintenanceRequest />;
       default:
-        return <RoomStatus />;
+        return <CustomerOverview />;
     }
   };
 

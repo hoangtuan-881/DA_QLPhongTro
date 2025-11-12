@@ -27,6 +27,13 @@ export default function CustomerSidebar({ isOpen, onClose, activeTab, setActiveT
       isDashboard: true
     },
     {
+      id: 'invoices',
+      icon: 'ri-bill-line',
+      label: 'Hóa đơn',
+      path: '/customer-dashboard',
+      isDashboard: true
+    },
+    {
       id: 'contract',
       icon: 'ri-file-text-line',
       label: 'Hợp đồng',
@@ -35,8 +42,8 @@ export default function CustomerSidebar({ isOpen, onClose, activeTab, setActiveT
     },
     {
       id: 'violations',
-      icon: 'ri-error-warning-line', // Icon cho vi phạm
-      label: 'Báo cáo vi phạm',
+      icon: 'ri-error-warning-line',
+      label: 'Nội quy và vi phạm',
       path: '/customer-dashboard',
       isDashboard: true
     },
@@ -44,8 +51,8 @@ export default function CustomerSidebar({ isOpen, onClose, activeTab, setActiveT
       id: 'maintenance',
       icon: 'ri-tools-line',
       label: 'Yêu cầu sửa chữa',
-      path: '/maintenance-request',
-      isDashboard: false
+      path: '/customer-dashboard',
+      isDashboard: true
     },
     {
       id: 'available-rooms',

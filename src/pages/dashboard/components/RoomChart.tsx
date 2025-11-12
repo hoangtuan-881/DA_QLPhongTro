@@ -1,16 +1,16 @@
 
 export default function RoomChart() {
   const roomData = [
-    { floor: 'Tầng 1', total: 12, occupied: 10, vacant: 2 },
-    { floor: 'Tầng 2', total: 12, occupied: 11, vacant: 1 },
-    { floor: 'Tầng 3', total: 12, occupied: 9, vacant: 3 },
-    { floor: 'Tầng 4', total: 12, occupied: 12, vacant: 0 }
+    { floor: 'Dãy 1', total: 12, occupied: 10, vacant: 2 },
+    { floor: 'Dãy 2', total: 12, occupied: 11, vacant: 1 },
+    { floor: 'Dãy 3', total: 12, occupied: 9, vacant: 3 },
+    { floor: 'Dãy 4', total: 12, occupied: 12, vacant: 0 }
   ];
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Tình trạng phòng theo tầng</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Tình trạng phòng theo dãy</h3>
         <div className="flex items-center space-x-4 text-sm">
           <div className="flex items-center">
             <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
@@ -31,7 +31,7 @@ export default function RoomChart() {
               <span className="text-sm text-gray-500">{floor.occupied}/{floor.total}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
-              <div 
+              <div
                 className="bg-green-500 h-3 rounded-full transition-all duration-300"
                 style={{ width: `${(floor.occupied / floor.total) * 100}%` }}
               ></div>

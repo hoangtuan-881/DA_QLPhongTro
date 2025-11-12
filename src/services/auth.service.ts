@@ -137,9 +137,6 @@ class AuthService {
       // Clear all auth data from localStorage
       localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.USER);
-
-      // Redirect to login page
-      window.location.href = '/login';
     }
   }
 

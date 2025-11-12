@@ -4,11 +4,13 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
 
 export default function UserMenu() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -40,6 +42,7 @@ export default function UserMenu() {
         title: 'Đăng xuất thành công',
         message: 'Hẹn gặp lại bạn!'
       });
+      navigate('/login');
     } catch (error: any) {
       toast.error({
         title: 'Lỗi đăng xuất',

@@ -1,6 +1,7 @@
 
 import { lazy } from 'react';
 import { type RouteObject } from "react-router-dom"
+import ProtectedRoute from './ProtectedRoute';
 
 // Lazy load components
 const Home = lazy(() => import('../pages/home/page'));
@@ -50,67 +51,67 @@ const routes: RouteObject[] = [
   },
   {
     path: '/dashboard',
-    element: <Dashboard />
+    element: <ProtectedRoute><Dashboard /></ProtectedRoute>
   },
   {
     path: '/room-types',
-    element: <RoomTypes />
+    element: <ProtectedRoute><RoomTypes /></ProtectedRoute>
   },
   {
     path: '/rooms',
-    element: <Rooms />
+    element: <ProtectedRoute><Rooms /></ProtectedRoute>
   },
   {
     path: '/tenants',
-    element: <Tenants />
+    element: <ProtectedRoute><Tenants /></ProtectedRoute>
   },
   {
     path: '/bookings',
-    element: <Bookings />
+    element: <ProtectedRoute><Bookings /></ProtectedRoute>
   },
   {
     path: '/contracts',
-    element: <Contracts />
+    element: <ProtectedRoute><Contracts /></ProtectedRoute>
   },
   {
     path: '/payments',
-    element: <Payments />
+    element: <ProtectedRoute><Payments /></ProtectedRoute>
   },
   {
     path: '/services',
-    element: <Services />
+    element: <ProtectedRoute><Services /></ProtectedRoute>
   },
   {
     path: '/maintenance',
-    element: <Maintenance />
+    element: <ProtectedRoute><Maintenance /></ProtectedRoute>
   },
   {
     path: '/equipment',
-    element: <Equipment />
+    element: <ProtectedRoute><Equipment /></ProtectedRoute>
   },
   {
     path: '/reports',
-    element: <Reports />
+    element: <ProtectedRoute><Reports /></ProtectedRoute>
   },
   {
     path: '/rules',
-    element: <Rules />
+    element: <ProtectedRoute><Rules /></ProtectedRoute>
   },
   {
     path: '/notifications',
-    element: <Notifications />
+    element: <ProtectedRoute><Notifications /></ProtectedRoute>
   },
   {
     path: '/user-management',
-    element: <UserManagement />
+    element: <ProtectedRoute><UserManagement /></ProtectedRoute>
   },
   {
     path: '/settings',
-    element: <Settings />
+    element: <ProtectedRoute><Settings /></ProtectedRoute>
   },
   {
     path: '/customer-dashboard',
-    element: <CustomerDashboard />
+    element: <ProtectedRoute><CustomerDashboard /></ProtectedRoute>
   },
   {
     path: '/available-rooms',
@@ -118,11 +119,11 @@ const routes: RouteObject[] = [
   },
   {
     path: '/maintenance-request',
-    element: <MaintenanceRequest />
+    element: <ProtectedRoute><MaintenanceRequest /></ProtectedRoute>
   },
   {
     path: '/profile',
-    element: <Profile />
+    element: <ProtectedRoute><Profile /></ProtectedRoute>
   },
   {
     path: '/test-toast',

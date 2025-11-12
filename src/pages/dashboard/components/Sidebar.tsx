@@ -1,5 +1,5 @@
 
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -85,7 +85,6 @@ const menuItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const location = useLocation();
   const navigate = useNavigate();
 
   const handleHomeClick = () => {
@@ -126,18 +125,20 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <nav className="flex-1 mt-6 px-3 overflow-y-auto pb-20">
           {menuItems.map((item) => (
-            <Link
+            <NavLink
               key={item.path}
               to={item.path}
-              className={`flex items-center px-3 py-3 mb-1 text-sm font-medium rounded-lg transition-colors ${location.pathname === item.path
-                ? 'bg-indigo-50 text-indigo-700 border-r-2 border-indigo-700'
-                : 'text-gray-700 hover:bg-gray-50'
-                }`}
+              className={({ isActive }) =>
+                `flex items-center px-3 py-3 mb-1 text-sm font-medium rounded-lg transition-colors ${isActive
+                  ? 'bg-indigo-50 text-indigo-700 border-r-2 border-indigo-700'
+                  : 'text-gray-700 hover:bg-gray-50'
+                }`
+              }
               onClick={() => onClose()}
             >
               <i className={`${item.icon} text-lg mr-3`}></i>
               {item.label}
-            </Link>
+            </NavLink>
           ))}
         </nav>
 

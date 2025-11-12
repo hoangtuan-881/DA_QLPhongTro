@@ -1,18 +1,13 @@
-// Tên file: src/pages/customer-dashboard/components/CustomerViolationReport.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-// --- Dữ liệu mẫu ---
-
-// 1. Các nội quy chung (ví dụ)
 const mockRules = [
     { id: '1', title: 'Giờ giấc sinh hoạt', description: 'Không gây tiếng ồn sau 22:00 và trước 6:00 hàng ngày.' },
     { id: '2', title: 'Vệ sinh chung', description: 'Giữ gìn vệ sinh khu vực chung, không vứt rác bừa bãi.' },
     { id: '3', title: 'Khách thăm', description: 'Khách thăm phải đăng ký và không được ở qua đêm.' },
     { id: '4', title: 'An toàn cháy nổ', description: 'Không nấu ăn trong phòng, không sử dụng thiết bị dễ cháy nổ.' },
-    { id: '5', title: 'Khác', description: 'Các vấn đề khác không thuộc danh mục trên.' }, // Thêm mô tả cho mục "Khác"
+    { id: '5', title: 'Khác', description: 'Các vấn đề khác không thuộc danh mục trên.' },
 ];
 
-// 2. Lịch sử vi phạm của khách thuê này
 const mockViolations = [
     {
         id: 'v1',
@@ -34,7 +29,14 @@ const mockViolations = [
     },
 ];
 
-// --- Các hàm helper (tương tự trang admin) ---
+type Severity = 'minor' | 'moderate' | 'serious' | 'critical';
+
+const CURRENT_TENANT = {
+    tenantName: 'Nguyễn Văn A',
+    room: 'A101',
+    building: 'Dãy A',
+};
+
 const getSeverityColor = (severity: string) => {
     switch (severity) {
         case 'minor': return 'bg-green-100 text-green-800';
@@ -70,62 +72,92 @@ const getStatusText = (status: string) => {
     }
 };
 
-
-// --- Component ---
 export default function CustomerViolationReport() {
     const [violations] = useState(mockViolations);
     const [rules] = useState(mockRules);
 
-    // --- STATE VÀ LOGIC CHO MODAL (ĐÃ DI CHUYỂN VÀO ĐÂY) ---
+    // Modal state
     const [showReportModal, setShowReportModal] = useState(false);
+
+    // Form “giống Overview – phía khách”
     const [reportedRoom, setReportedRoom] = useState('');
     const [ruleId, setRuleId] = useState('');
     const [description, setDescription] = useState('');
     const [incidentTime, setIncidentTime] = useState('');
 
-    const resetForm = () => {
-        setReportedRoom('');
-        setRuleId('');
-        setDescription('');
-        setIncidentTime('');
-    };
+    // Form “gửi lên” (tự prefill thông tin khách)
+    const [violationForm, setViolationForm] = useState({
+        tenantName: '',
+        room: '',
+        building: '',
+        ruleTitle: '',
+        severity: 'minor' as Severity,
+        reportDate: new Date().toISOString().slice(0, 10),
+        description: '',
+    });
 
-    const handleSubmitReport = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!reportedRoom || !ruleId || !description) {
-            alert('Vui lòng điền đủ thông tin: Phòng, Nội quy và Mô tả.');
+    useEffect(() => {
+        setViolationForm(v => ({
+            ...v,
+            tenantName: CURRENT_TENANT.tenantName,
+            room: CURRENT_TENANT.room,
+            building: CURRENT_TENANT.building,
+        }));
+    }, []);
+
+    const submitAddViolation = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+
+        // sync rule + description từ các input ở modal
+        const pickedRuleTitle = rules.find(r => r.id === ruleId)?.title || '';
+        const mergedForm = {
+            ...violationForm,
+            ruleTitle: pickedRuleTitle,
+            description,
+            // incidentTime có thể gửi kèm nếu backend nhận
+            incidentTime,
+            // reportedRoom là phòng bị bạn report (khác phòng bạn)
+            reportedRoom,
+        };
+
+        if (!mergedForm.ruleTitle || !mergedForm.description || !reportedRoom) {
+            alert('Vui lòng nhập: Phòng bị báo cáo, Nội quy và Mô tả.');
             return;
         }
 
-        const reportData = {
-            reportedRoom,
-            ruleTitle: rules.find(r => r.id === ruleId)?.title,
-            description,
-            incidentTime,
-        };
+        const ok = confirm(`Xác nhận gửi báo cáo vi phạm cho phòng ${reportedRoom}?`);
+        if (!ok) return;
 
-        console.log('Gửi báo cáo:', reportData);
-        // (Trong ứng dụng thật, bạn sẽ gọi API ở đây)
+        // TODO: gọi API thật
+        // await api.createCustomerViolation(mergedForm);
 
-        // Đóng modal và hiển thị thông báo (demo)
-        setShowReportModal(false);
-        alert(`Đã gửi báo cáo cho phòng ${reportData.reportedRoom} về hành vi "${reportData.ruleTitle}".`);
-        resetForm();
+        setShowReportModal(false); // ✅ đúng state
+        alert('Đã gửi báo cáo vi phạm!');
+
+        // reset input người dùng (giữ info khách)
+        setRuleId('');
+        setDescription('');
+        setIncidentTime('');
+        setReportedRoom('');
+        setViolationForm(v => ({
+            ...v,
+            ruleTitle: '',
+            severity: 'minor',
+            reportDate: new Date().toISOString().slice(0, 10),
+            description: '',
+        }));
     };
-    // --- KẾT THÚC LOGIC MODAL ---
-
 
     return (
         <>
             <div className="space-y-6">
-                {/* 1. Lịch sử vi phạm */}
+                {/* Lịch sử vi phạm */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                             <i className="ri-history-line text-indigo-600 mr-2"></i>
                             Lịch sử vi phạm của bạn
                         </h3>
-                        {/* Cập nhật onClick */}
                         <button
                             onClick={() => setShowReportModal(true)}
                             className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm font-medium flex items-center"
@@ -170,7 +202,7 @@ export default function CustomerViolationReport() {
                     )}
                 </div>
 
-                {/* 2. Danh sách nội quy chung */}
+                {/* Nội quy chung */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                         <i className="ri-file-list-3-line text-indigo-600 mr-2"></i>
@@ -186,104 +218,143 @@ export default function CustomerViolationReport() {
                 </div>
             </div>
 
-            {/* --- JSX CỦA MODAL (ĐÃ DI CHUYỂN VÀO ĐÂY) --- */}
+            {/* Modal – style giống Overview */}
             {showReportModal && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="flex items-center justify-center min-h-screen px-4">
-                        {/* Overlay */}
                         <div
-                            className="fixed inset-0 bg-black bg-opacity-50"
+                            className="fixed inset-0 bg-black/50"
                             onClick={() => setShowReportModal(false)}
-                        ></div>
+                        />
 
-                        {/* Nội dung Modal */}
-                        <div className="relative bg-white rounded-lg max-w-lg w-full p-6 z-10">
+                        <div
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="violation-modal-title"
+                            className="relative bg-white rounded-lg max-w-2xl w-full p-6 z-10 shadow-xl"
+                        >
                             <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-xl font-bold text-gray-900">Báo cáo vi phạm</h2>
+                                <h2 id="violation-modal-title" className="text-xl font-bold text-gray-900">
+                                    Báo cáo vi phạm
+                                </h2>
                                 <button
                                     onClick={() => setShowReportModal(false)}
                                     className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                                    aria-label="Đóng"
+                                    title="Đóng"
                                 >
-                                    <i className="ri-close-line text-xl"></i>
+                                    <i className="ri-close-line text-xl" />
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSubmitReport} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Phòng bị báo cáo *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={reportedRoom}
-                                        onChange={(e) => setReportedRoom(e.target.value)}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                                        placeholder="VD: A102 (Phòng bạn nghe thấy ồn ào)"
-                                    />
+                            <form onSubmit={submitAddViolation} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* Thông tin KHÁCH – hiển thị chỉ đọc */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Khách thuê</label>
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={violationForm.tenantName}
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 text-gray-700 px-3 py-2"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Phòng</label>
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={violationForm.room}
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 text-gray-700 px-3 py-2"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Dãy trọ</label>
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={violationForm.building}
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 text-gray-700 px-3 py-2"
+                                        />
+                                    </div>
+
+                                    {/* Phòng bị báo cáo – khách nhập */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Phòng bị báo cáo *</label>
+                                        <input
+                                            type="text"
+                                            value={reportedRoom}
+                                            onChange={(e) => setReportedRoom(e.target.value)}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                            placeholder="VD: A102 (phòng vi phạm)"
+                                            required
+                                        />
+                                    </div>
+
+                                    {/* Nội quy vi phạm – khách chọn */}
+                                    <div className="col-span-2 sm:col-span-1">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nội quy bị vi phạm *</label>
+                                        <select
+                                            value={ruleId}
+                                            onChange={(e) => setRuleId(e.target.value)}
+                                            className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-8 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                            required
+                                        >
+                                            <option value="">Chọn nội quy</option>
+                                            {rules.map(rule => (
+                                                <option key={rule.id} value={rule.id}>{rule.title}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
 
+                                {/* Thời gian */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Nội quy bị vi phạm *
-                                    </label>
-                                    <select
-                                        value={ruleId}
-                                        onChange={(e) => setRuleId(e.target.value)}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
-                                    >
-                                        <option value="">Chọn nội quy</option>
-                                        {rules.map(rule => (
-                                            <option key={rule.id} value={rule.id}>{rule.title}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Thời gian xảy ra (Nếu có)
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Thời gian xảy ra (nếu có)</label>
                                     <input
                                         type="datetime-local"
                                         value={incidentTime}
                                         onChange={(e) => setIncidentTime(e.target.value)}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
                                     />
                                 </div>
 
+                                {/* Mô tả */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Mô tả chi tiết *
-                                    </label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết *</label>
                                     <textarea
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
                                         rows={4}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                                        placeholder="Mô tả rõ hành vi, thời gian, và mức độ ảnh hưởng..."
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="Mô tả rõ hành vi, thời gian, mức độ ảnh hưởng..."
+                                        required
                                     />
                                 </div>
 
-                                <div className="flex gap-3 pt-4 border-t border-gray-200">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowReportModal(false)}
-                                        className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
-                                    >
-                                        Hủy
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
-                                    >
-                                        Gửi báo cáo
-                                    </button>
+                                <div className="border-t pt-4">
+                                    <div className="flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowReportModal(false)}
+                                            className="flex-1 rounded-lg bg-gray-100 px-4 py-2 text-gray-800 hover:bg-gray-200"
+                                        >
+                                            Hủy
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+                                        >
+                                            Gửi báo cáo
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
+
                         </div>
                     </div>
                 </div>
             )}
-            {/* --- KẾT THÚC JSX MODAL --- */}
         </>
     );
 }

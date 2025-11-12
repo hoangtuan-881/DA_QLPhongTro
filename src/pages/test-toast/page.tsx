@@ -16,7 +16,7 @@ export default function TestToastPage() {
     title: '',
     message: '',
     type: 'info',
-    onConfirm: () => {}
+    onConfirm: () => { }
   });
 
   const handleSuccessToast = () => {
@@ -129,8 +129,8 @@ export default function TestToastPage() {
       ),
       type: 'danger',
       onConfirm: () => {
-        toast.success({ 
-          title: 'Thao tác hoàn thành!', 
+        toast.success({
+          title: 'Thao tác hoàn thành!',
           message: 'Đã xử lý thành công 15 bản ghi và thông báo 25 người dùng',
           duration: 6000
         });
@@ -156,7 +156,7 @@ export default function TestToastPage() {
                 <i className="ri-check-circle-line mr-2"></i>
                 Success Toast
               </button>
-              
+
               <button
                 onClick={handleErrorToast}
                 className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer"
@@ -164,7 +164,7 @@ export default function TestToastPage() {
                 <i className="ri-error-warning-line mr-2"></i>
                 Error Toast
               </button>
-              
+
               <button
                 onClick={handleWarningToast}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer"
@@ -172,7 +172,7 @@ export default function TestToastPage() {
                 <i className="ri-alert-line mr-2"></i>
                 Warning Toast
               </button>
-              
+
               <button
                 onClick={handleInfoToast}
                 className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer"
@@ -194,7 +194,7 @@ export default function TestToastPage() {
                 <i className="ri-stack-line mr-2"></i>
                 Nhiều Toast cùng lúc
               </button>
-              
+
               <button
                 onClick={handleShortToast}
                 className="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer"
@@ -202,7 +202,7 @@ export default function TestToastPage() {
                 <i className="ri-time-line mr-2"></i>
                 Toast ngắn (2s)
               </button>
-              
+
               <button
                 onClick={handleLongToast}
                 className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer"
@@ -224,7 +224,7 @@ export default function TestToastPage() {
                 <i className="ri-delete-bin-line mr-2"></i>
                 Danger Dialog
               </button>
-              
+
               <button
                 onClick={handleWarningConfirm}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer"
@@ -232,7 +232,7 @@ export default function TestToastPage() {
                 <i className="ri-alert-line mr-2"></i>
                 Warning Dialog
               </button>
-              
+
               <button
                 onClick={handleInfoConfirm}
                 className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer"
@@ -240,7 +240,7 @@ export default function TestToastPage() {
                 <i className="ri-question-line mr-2"></i>
                 Info Dialog
               </button>
-              
+
               <button
                 onClick={handleComplexConfirm}
                 className="bg-gray-700 hover:bg-gray-800 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap cursor-pointer"
@@ -261,21 +261,21 @@ export default function TestToastPage() {
                   toast.success(&#123; title: 'Thành công!', message: 'Dữ liệu đã được lưu' &#125;);
                 </code>
               </div>
-              
+
               <div className="bg-white p-4 rounded border-l-4 border-red-500">
                 <h3 className="font-semibold text-gray-800 mb-2">Error Toast:</h3>
                 <code className="text-red-600">
                   toast.error(&#123; title: 'Lỗi!', message: 'Không thể kết nối server' &#125;);
                 </code>
               </div>
-              
+
               <div className="bg-white p-4 rounded border-l-4 border-yellow-500">
                 <h3 className="font-semibold text-gray-800 mb-2">Warning Toast:</h3>
                 <code className="text-yellow-600">
                   toast.warning(&#123; title: 'Cảnh báo!', message: 'Kiểm tra lại thông tin' &#125;);
                 </code>
               </div>
-              
+
               <div className="bg-white p-4 rounded border-l-4 border-blue-500">
                 <h3 className="font-semibold text-gray-800 mb-2">Info Toast:</h3>
                 <code className="text-blue-600">
@@ -292,7 +292,7 @@ export default function TestToastPage() {
               <div className="bg-white p-4 rounded border-l-4 border-red-500">
                 <h3 className="font-semibold text-gray-800 mb-2">Danger Dialog (Xóa dữ liệu):</h3>
                 <code className="text-red-600 block whitespace-pre-wrap">
-{`setConfirmDialog({
+                  {`setConfirmDialog({
   show: true,
   title: 'Xóa dữ liệu',
   message: 'Bạn có chắc chắn muốn xóa?',
@@ -301,11 +301,11 @@ export default function TestToastPage() {
 });`}
                 </code>
               </div>
-              
+
               <div className="bg-white p-4 rounded border-l-4 border-yellow-500">
                 <h3 className="font-semibold text-gray-800 mb-2">Warning Dialog (Cảnh báo):</h3>
                 <code className="text-yellow-600 block whitespace-pre-wrap">
-{`setConfirmDialog({
+                  {`setConfirmDialog({
   show: true,
   title: 'Cảnh báo',
   message: 'Thay đổi có thể ảnh hưởng dữ liệu khác',
@@ -314,11 +314,11 @@ export default function TestToastPage() {
 });`}
                 </code>
               </div>
-              
+
               <div className="bg-white p-4 rounded border-l-4 border-blue-500">
                 <h3 className="font-semibold text-gray-800 mb-2">Info Dialog (Xác nhận):</h3>
                 <code className="text-blue-600 block whitespace-pre-wrap">
-{`setConfirmDialog({
+                  {`setConfirmDialog({
   show: true,
   title: 'Xác nhận',
   message: 'Bạn có muốn lưu thông tin?',
@@ -331,7 +331,7 @@ export default function TestToastPage() {
               <div className="bg-white p-4 rounded border-l-4 border-gray-500">
                 <h3 className="font-semibold text-gray-800 mb-2">Complex Message (JSX):</h3>
                 <code className="text-gray-600 block whitespace-pre-wrap">
-{`message: (
+                  {`message: (
   <div>
     <p>Nội dung phức tạp:</p>
     <ul>

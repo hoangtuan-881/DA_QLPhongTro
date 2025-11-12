@@ -1,4 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { useToast } from '../../../hooks/useToast';
+
 
 // ===== Mock helpers & data (replace with API calls) =====
 const currency = (n: number) => n.toLocaleString('vi-VN') + 'đ';
@@ -37,6 +39,7 @@ export default function CustomerOverview() {
     const [showRepairModal, setShowRepairModal] = useState(false);
     const [showPayModal, setShowPayModal] = useState(false);
     const [showViolationModal, setShowViolationModal] = useState(false);
+    const toast = useToast();
 
     useEffect(() => {
         if (showViolationModal) {
@@ -145,15 +148,14 @@ export default function CustomerOverview() {
         setShowRepairModal(false);
         resetRepairForm();
         // nếu bạn có useToast như Violation: success({ title: 'Đã gửi yêu cầu sửa chữa!' });
-        alert('Đã gửi yêu cầu sửa chữa!');
+        toast.success({ title: 'Thành công', message: 'Đã gửi yêu cầu sửa chữa!' });
     };
 
     const handleSubmitRepair = (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!repairForm.title || !repairForm.category || !repairForm.description) {
-            // nếu có toast error thì dùng, không thì alert
-            alert('Vui lòng điền Tiêu đề, Danh mục và Mô tả.');
+            toast.warning({ title: 'Cảnh báo', message: 'Vui lòng điền Tiêu đề, Danh mục và Mô tả.' });
             return;
         }
 
@@ -172,7 +174,7 @@ export default function CustomerOverview() {
 
     const submitAddViolation = () => {
         if (!violationForm.ruleTitle || !violationForm.description) {
-            alert('Vui lòng chọn Nội quy và nhập Mô tả.');
+            toast.warning({ title: 'Cảnh báo', message: 'Vui lòng chọn Nội quy và nhập Mô tả.' });
             return;
         }
         // TODO: gọi API nếu có, ví dụ:
@@ -187,7 +189,7 @@ export default function CustomerOverview() {
             severity: 'minor',
             reportDate: new Date().toISOString().slice(0, 10),
         }));
-        alert('Đã gửi báo cáo vi phạm!');
+        toast.success({ title: 'Thành công', message: 'Đã gửi báo cáo vi phạm!' });
     };
 
     // ===== Render =====
@@ -476,37 +478,63 @@ export default function CustomerOverview() {
             )}
 
 
-            {/* === Pay Modal (stub) === */}
             {showPayModal && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="flex items-center justify-center min-h-screen px-4">
-                        <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowPayModal(false)} />
+                        <div className="fixed inset-0 bg-black/50" onClick={() => setShowPayModal(false)} />
                         <div className="relative bg-white rounded-lg max-w-md w-full p-6">
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-semibold text-gray-900">Thanh toán hóa đơn</h3>
+                                <h3 className="text-lg font-semibold text-gray-900">Quét mã QR để thanh toán</h3>
                                 <button className="text-gray-400 hover:text-gray-600" onClick={() => setShowPayModal(false)}>
                                     <i className="ri-close-line text-xl" />
                                 </button>
                             </div>
-                            <p className="text-sm text-gray-600">Số tiền cần thanh toán: <span className="font-semibold text-gray-900">{currency(totals.totalDue)}</span></p>
-                            <div className="mt-3 space-y-3">
-                                <label className="flex items-center gap-2">
-                                    <input type="radio" name="method" defaultChecked />
-                                    <span>Chuyển khoản ngân hàng</span>
-                                </label>
-                                <label className="flex items-center gap-2">
-                                    <input type="radio" name="method" />
-                                    <span>Tiền mặt tại văn phòng</span>
-                                </label>
+
+                            <p className="text-sm text-gray-600 mb-4">
+                                Số tiền cần thanh toán:&nbsp;
+                                <span className="font-semibold text-gray-900">{currency(totals.totalDue)}</span>
+                            </p>
+
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                {/* Đặt ảnh QR tĩnh tại public/qr-payment.png hoặc đổi đường dẫn tuỳ bạn */}
+                                <img
+                                    src="/qr-payment.png"
+                                    alt="QR thanh toán"
+                                    className="w-full h-auto rounded-md"
+                                />
                             </div>
+
+                            <ul className="mt-4 text-xs text-gray-500 space-y-1">
+                                <li>• Mở app ngân hàng bất kỳ và quét mã QR.</li>
+                                <li>• Kiểm tra số tiền & nội dung chuyển khoản trước khi xác nhận.</li>
+                            </ul>
+
                             <div className="flex gap-3 mt-5 pt-4 border-t">
-                                <button className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200" onClick={() => setShowPayModal(false)}>Đóng</button>
-                                <button className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700" onClick={() => { setShowPayModal(false); alert('Thanh toán thành công (mô phỏng)!'); }}>Xác nhận</button>
+                                <button
+                                    className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
+                                    onClick={() => setShowPayModal(false)}
+                                >
+                                    Đóng
+                                </button>
+                                <button
+                                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                                    onClick={() => {
+                                        setShowPayModal(false);
+                                        toast.success({
+                                            title: 'Đã ghi nhận!',
+                                            message: 'Vui lòng chờ BQL xác nhận giao dịch.'
+                                        });
+                                    }}
+                                >
+                                    Đã chuyển khoản
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
+
+
 
             {/* === Quick Violation Report === */}
             {showViolationModal && (
@@ -624,9 +652,6 @@ export default function CustomerOverview() {
                     </div>
                 </div>
             )}
-
-
-
         </div>
     );
 }

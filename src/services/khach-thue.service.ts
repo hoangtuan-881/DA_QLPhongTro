@@ -42,7 +42,7 @@ export type KhachThueUpdateInput = Partial<
 
 class KhachThueService {
   async getAll(signal?: AbortSignal) {
-    return httpClient.get<KhachThue[]>(API_ENDPOINTS.KHACH_THUE, { signal });
+    return httpClient.get<{ data: KhachThue[] }>(API_ENDPOINTS.KHACH_THUE, { signal });
   }
 
   async getById(id: number, signal?: AbortSignal) {

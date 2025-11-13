@@ -4,13 +4,16 @@ import Header from '../dashboard/components/Header';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
 import ToastContainer from '../../components/base/ToastContainer';
 import { useToast } from '../../hooks/useToast';
+import { useAuth } from '../../contexts/AuthContext';
 import noiQuyService, { type NoiQuy } from '../../services/noi-quy.service';
 import viPhamService, { type ViPham, type ViPhamCreate, type ViPhamUpdate } from '../../services/vi-pham.service';
+import khachThueService, { type KhachThueListItem } from '../../services/khach-thue.service';
 import { getErrorMessage } from '../../lib/http-client';
 
 export default function Rules() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'rules' | 'violations'>('rules');
+  const { user } = useAuth();
 
   // NoiQuy state
   const [noiQuys, setNoiQuys] = useState<NoiQuy[]>([]);
@@ -23,6 +26,10 @@ export default function Rules() {
   const [loadingViolations, setLoadingViolations] = useState(false);
   const [violationRefreshKey, setViolationRefreshKey] = useState(0);
   const [selectedViolation, setSelectedViolation] = useState<ViPham | null>(null);
+
+  // Tenant state for form
+  const [allTenants, setAllTenants] = useState<KhachThueListItem[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
 
 
   const { success, error, warning, info } = useToast();
@@ -110,7 +117,46 @@ export default function Rules() {
 
   // ===== Form Add Violation
   const [showAddViolationModal, setShowAddViolationModal] = useState(false);
-  // ... state for violation form will be added if needed
+  const [isSubmittingViolation, setIsSubmittingViolation] = useState(false);
+  const emptyViolationForm: ViPhamCreate = {
+    MaKhachThue: 0,
+    MaNoiQuy: 0,
+    MoTa: '',
+    MucDo: 'nhe',
+    NgayBaoCao: new Date().toISOString().split('T')[0],
+    GhiChu: '',
+  };
+  const [violationForm, setViolationForm] = useState<ViPhamCreate>(emptyViolationForm);
+  const resetViolationForm = () => {
+    setViolationForm(emptyViolationForm);
+  };
+
+  // Fetch tenants when "Add Violation" modal is opened
+  useEffect(() => {
+    if (!showAddViolationModal || allTenants.length > 0) return;
+
+    const controller = new AbortController();
+    const fetchTenants = async () => {
+      setLoadingTenants(true);
+      try {
+        const response = await khachThueService.getAll(controller.signal);
+        if (!controller.signal.aborted) {
+          const tenantsWithRooms = response.data.data.filter(t => t.MaPhong);
+          setAllTenants(tenantsWithRooms);
+        }
+      } catch (err) {
+        error({ title: 'Lỗi tải danh sách khách thuê', message: getErrorMessage(err) });
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingTenants(false);
+        }
+      }
+    };
+
+    fetchTenants();
+    return () => controller.abort();
+  }, [showAddViolationModal, allTenants.length, error]);
+
 
   // ===== Helpers (chips text/color)
   const getCategoryColor = (category: string) => {
@@ -257,9 +303,30 @@ export default function Rules() {
 
   // ===== Violation Actions
   const openAddViolation = () => {
-    // This would need to fetch tenants list if not already available
+    resetViolationForm();
     setShowAddViolationModal(true);
   };
+
+  const handleViolationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (violationForm.MaKhachThue === 0 || violationForm.MaNoiQuy === 0 || !violationForm.MoTa) {
+      error({ title: 'Thiếu thông tin', message: 'Vui lòng điền đầy đủ các trường bắt buộc.' });
+      return;
+    }
+
+    setIsSubmittingViolation(true);
+    try {
+      await viPhamService.create(violationForm);
+      success({ title: 'Thành công', message: 'Đã báo cáo vi phạm.' });
+      setShowAddViolationModal(false);
+      refreshViPhamData();
+    } catch (err) {
+      error({ title: 'Lỗi', message: getErrorMessage(err) });
+    } finally {
+      setIsSubmittingViolation(false);
+    }
+  };
+
 
   const handleUpdateViolationStatus = async (violation: ViPham, newStatus: ViPham['TrangThai']) => {
     const statusText = getStatusText(newStatus);
@@ -471,14 +538,14 @@ export default function Rules() {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
                                 <div className="text-sm font-medium text-gray-900">{violation.khachThue.HoTen}</div>
-                                <div className="text-sm text-gray-500">{violation.khachThue.phongTro.dayTro.TenDay} - {violation.khachThue.phongTro.TenPhong}</div>
+                                <div className="text-sm text-gray-500">{violation.khachThue.phongTro?.dayTro?.TenDay} - {violation.khachThue.phongTro?.TenPhong}</div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getSeverityColor(violation.MucDo)}`}>{getSeverityText(violation.MucDo)}</span></td>
                             <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(violation.TrangThai)}`}>{getStatusText(violation.TrangThai)}</span></td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">{violation.NgayBaoCao}</div>
-                              <div className="text-sm text-gray-500">Bởi: {violation.NguoiBaoCao}</div>
+                              <div className="text-sm text-gray-500">Bởi: {violation.nguoiBaoCao?.HoTen}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <div className="flex items-center space-x-2">
@@ -542,10 +609,91 @@ export default function Rules() {
           </div>
         </div>
       )}
+
+      {showAddViolationModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowAddViolationModal(false)}></div>
+            <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Báo cáo vi phạm</h2>
+              {loadingTenants ? <div className="text-center p-8">Đang tải danh sách khách thuê...</div> : (
+                <form className="space-y-4" onSubmit={handleViolationSubmit}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Khách thuê vi phạm *</label>
+                      <select
+                        value={violationForm.MaKhachThue}
+                        onChange={e => setViolationForm(v => ({ ...v, MaKhachThue: Number(e.target.value) }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
+                      >
+                        <option value={0}>Chọn khách thuê</option>
+                        {allTenants.map(t => (
+                          <option key={t.MaKhachThue} value={t.MaKhachThue}>
+                            {t.HoTen} ({t.TenPhong})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nội quy vi phạm *</label>
+                      <select
+                        value={violationForm.MaNoiQuy}
+                        onChange={e => setViolationForm(v => ({ ...v, MaNoiQuy: Number(e.target.value) }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
+                        <option value={0}>Chọn nội quy</option>
+                        {noiQuys.map(r => <option key={r.MaNoiQuy} value={r.MaNoiQuy}>{r.TieuDe}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Mức độ *</label>
+                      <select
+                        value={violationForm.MucDo}
+                        onChange={e => setViolationForm(v => ({ ...v, MucDo: e.target.value as ViPhamCreate['MucDo'] }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8">
+                        <option value="nhe">Nhẹ</option>
+                        <option value="vua">Vừa</option>
+                        <option value="nghiem_trong">Nghiêm trọng</option>
+                        <option value="rat_nghiem_trong">Rất nghiêm trọng</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày vi phạm *</label>
+                      <input
+                        type="date"
+                        value={violationForm.NgayBaoCao}
+                        onChange={e => setViolationForm(v => ({ ...v, NgayBaoCao: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả vi phạm *</label>
+                    <textarea
+                      value={violationForm.MoTa}
+                      onChange={e => setViolationForm(v => ({ ...v, MoTa: e.target.value }))}
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      placeholder="Mô tả chi tiết hành vi vi phạm..."
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button type="button" onClick={() => setShowAddViolationModal(false)} className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 cursor-pointer whitespace-nowrap">Hủy</button>
+                    <button type="submit" disabled={isSubmittingViolation} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap disabled:opacity-50">{isSubmittingViolation ? 'Đang gửi...' : 'Báo cáo vi phạm'}</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <ConfirmDialog isOpen={confirmDialog.show} title={confirmDialog.title} message={confirmDialog.message} type={confirmDialog.type} onConfirm={confirmDialog.onConfirm} onClose={() => setConfirmDialog(d => ({ ...d, show: false }))} />
       <ToastContainer />
     </div>
   );
 }
-
-

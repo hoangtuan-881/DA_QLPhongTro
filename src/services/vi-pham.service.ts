@@ -19,20 +19,27 @@ interface KhachThue {
     phongTro: PhongTro;
 }
 
+// Based on NhanVienResource
+interface NhanVien {
+    MaNV: number;
+    HoTen: string;
+}
+
+
 export interface ViPham {
     MaViPham: number;
     MoTa: string;
     MucDo: 'nhe' | 'vua' | 'nghiem_trong' | 'rat_nghiem_trong';
     TrangThai: 'da_bao_cao' | 'da_canh_cao' | 'da_giai_quyet';
     NgayBaoCao: string;
-    NguoiBaoCao: string;
+    nguoiBaoCao: NhanVien | KhachThue | null;
     NgayGiaiQuyet: string | null;
     GhiChu: string | null;
     noiQuy: NoiQuy;
     khachThue: KhachThue;
 }
 
-export type ViPhamCreate = Omit<ViPham, 'MaViPham' | 'TrangThai' | 'NgayGiaiQuyet' | 'noiQuy' | 'khachThue'> & {
+export type ViPhamCreate = Omit<ViPham, 'MaViPham' | 'TrangThai' | 'NgayGiaiQuyet' | 'noiQuy' | 'khachThue' | 'nguoiBaoCao'> & {
     MaNoiQuy: number;
     MaKhachThue: number;
 };

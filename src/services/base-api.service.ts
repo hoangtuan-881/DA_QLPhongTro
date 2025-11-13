@@ -97,8 +97,8 @@ export class BaseApiService<T = any> {
   /**
    * Custom POST request to a specific path
    */
-  async customPost<R = any>(path: string, data?: any): Promise<AxiosResponse<ApiResponse<R>>> {
-    return httpClient.post(`${this.endpoint}${path}`, data);
+  async customPost<R = any>(path: string, data?: any, signal?: AbortSignal): Promise<AxiosResponse<ApiResponse<R>>> {
+    return httpClient.post(`${this.endpoint}${path}`, data, { signal });
   }
 
   /**

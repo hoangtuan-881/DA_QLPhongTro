@@ -1,160 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
-
-interface MaintenanceRequest {
-  id: string;
-  tenantName: string;
-  building: string;
-  room: string;
-  title: string;
-  description: string;
-  category: 'electrical' | 'plumbing' | 'appliance' | 'furniture' | 'other';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  requestDate: string;
-  assignedTo?: string;
-  scheduledDate?: string;
-  completedDate?: string;
-  notes?: string;
-  images?: string[];
-  progress?: number;
-  actualCost?: number;
-}
-
-const mockMaintenanceRequests: MaintenanceRequest[] = [
-  // 1) Đang xử lý (in_progress) — đã phân công, ngày phân công là hôm nay
-  {
-    id: '1',
-    tenantName: 'Nguyễn Văn An',
-    building: 'Dãy A',
-    room: 'A101',
-    title: 'Điều hòa không lạnh',
-    description: 'Điều hòa chạy nhưng không thổi khí lạnh, có thể do thiếu gas',
-    category: 'appliance',
-    priority: 'high',
-    status: 'in_progress',
-    requestDate: '2024-03-15',
-    assignedTo: 'Tuấn',
-    scheduledDate: '2025-11-05', // ngày phân công hiển thị dưới tên
-    notes: 'Đã kiểm tra, cần nạp gas'
-  },
-
-  // 2) Chờ xử lý (pending) — chưa phân công
-  {
-    id: '2',
-    tenantName: 'Trần Thị Bé',
-    building: 'Dãy A',
-    room: 'A202',
-    title: 'Vòi nước bồn rửa bát bị rỉ',
-    description: 'Vòi nước trong bếp bị rỉ nước liên tục',
-    category: 'plumbing',
-    priority: 'medium',
-    status: 'pending',
-    requestDate: '2024-03-18'
-  },
-
-  // 3) Chờ xử lý (pending) — khẩn cấp, chưa phân công
-  {
-    id: '3',
-    tenantName: 'Phạm Thị Dung',
-    building: 'Dãy A',
-    room: 'A301',
-    title: 'Ổ cắm điện bị cháy',
-    description: 'Ổ cắm điện gần giường bị cháy, có mùi khét',
-    category: 'electrical',
-    priority: 'urgent',
-    status: 'pending',
-    requestDate: '2024-03-20',
-    notes: 'Ưu tiên kiểm tra trong ngày'
-  },
-
-  // 4) Hoàn thành (completed) — có ngày hoàn thành
-  {
-    id: '4',
-    tenantName: 'Lê Văn Bảy',
-    building: 'Dãy A',
-    room: 'A105',
-    title: 'Cửa tủ quần áo bị lệch',
-    description: 'Cửa tủ quần áo bị lệch, không đóng được',
-    category: 'furniture',
-    priority: 'low',
-    status: 'completed',
-    requestDate: '2024-03-10',
-    assignedTo: 'My',
-    scheduledDate: '2024-03-12',   // ngày phân công trước đó
-    completedDate: '2024-03-12',
-    notes: 'Đã sửa chữa bản lề cửa',
-    images: ['completed_cabinet_1.jpg', 'completed_cabinet_2.jpg']
-  },
-
-  // 5) Đã hủy (cancelled) — hủy trước khi phân công (KHÔNG có assignedTo)
-  {
-    id: '5',
-    tenantName: 'Đỗ Minh Quân',
-    building: 'Dãy A',
-    room: 'B207',
-    title: 'Quạt trần rung mạnh',
-    description: 'Quạt trần kêu và rung khi bật số cao',
-    category: 'appliance',
-    priority: 'medium',
-    status: 'cancelled',
-    requestDate: '2024-04-02',
-    notes: 'Khách tự xử lý, yêu cầu hủy'
-  },
-
-  // 6) Đang xử lý (in_progress) — danh mục other, high
-  {
-    id: '6',
-    tenantName: 'Võ Thị Hạnh',
-    building: 'Dãy A',
-    room: 'B305',
-    title: 'Khe cửa ra vào kẹt',
-    description: 'Cửa ra vào bị kẹt, khó đóng mở',
-    category: 'other',
-    priority: 'high',
-    status: 'in_progress',
-    requestDate: '2024-04-05',
-    assignedTo: 'My',
-    scheduledDate: '2025-11-05',
-    notes: 'Đang chờ thay ron cửa'
-  },
-
-  // 7) Chờ xử lý (pending) — danh mục furniture, low
-  {
-    id: '7',
-    tenantName: 'Trịnh Nhật Tân',
-    building: 'Dãy A',
-    room: 'C102',
-    title: 'Ghế phòng khách lung lay',
-    description: 'Một chân ghế bị lỏng ốc',
-    category: 'furniture',
-    priority: 'low',
-    status: 'pending',
-    requestDate: '2025-10-28'
-  },
-
-  // 8) Hoàn thành (completed) — có ảnh hoàn thành, ghi chú
-  {
-    id: '8',
-    tenantName: 'Phạm Hồng Ân',
-    building: 'Dãy A',
-    room: 'C210',
-    title: 'Rò rỉ ống nước lavabo',
-    description: 'Nước rò rỉ nhẹ dưới lavabo, sàn ẩm ướt',
-    category: 'plumbing',
-    priority: 'medium',
-    status: 'completed',
-    requestDate: '2025-10-20',
-    assignedTo: 'Tuấn',
-    scheduledDate: '2025-10-21',
-    completedDate: '2025-10-21',
-    notes: 'Đã thay phớt, test 30 phút không rò',
-    images: ['lavabo_before.jpg', 'lavabo_after.jpg']
-  }
-];
+import maintenanceService, {
+  type MaintenanceRequest,
+  type MaintenanceRequestCreate,
+  type MaintenanceRequestAssign,
+  type MaintenanceRequestUpdateStatus
+} from '../../services/maintenance.service';
+import khachThueService, { type KhachThueListItem } from '../../services/khach-thue.service';
+import nhanVienService, { type NhanVienListItem } from '../../services/nhan-vien.service';
+import { getErrorMessage } from '../../lib/http-client';
 
 export default function Maintenance() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -167,7 +24,17 @@ export default function Maintenance() {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [requests, setRequests] = useState<MaintenanceRequest[]>(mockMaintenanceRequests);
+
+  const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [requestRefreshKey, setRequestRefreshKey] = useState(0);
+
+  const [allTenants, setAllTenants] = useState<KhachThueListItem[]>([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
+
+  const [allNhanViens, setAllNhanViens] = useState<NhanVienListItem[]>([]);
+  const [loadingNhanViens, setLoadingNhanViens] = useState(false);
+
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -180,357 +47,111 @@ export default function Maintenance() {
     onConfirm: () => { }
   });
 
-  const [newRequest, setNewRequest] = useState<{
-    title: string;
-    description: string;
-    category: string;
-    priority: string;
-    building: string;
-    room: string;
-    reportedBy: string;
-    contactInfo: string;
-    images: string[];
+  const [newRequest, setNewRequest] = useState<MaintenanceRequestCreate>({
+    MaKhachThue: 0,
+    TieuDe: '',
+    MoTa: '',
+    PhanLoai: 'electrical',
+    MucDoUuTien: 'medium',
+    GhiChu: '',
+    ChiPhiThucTe: undefined,
+    HinhAnhMinhChung: []
+  });
+
+  const [assignData, setAssignData] = useState<{
+    MaNhanVienPhanCong: number | null;
+    GhiChu: string;
   }>({
-    title: '',
-    description: '',
-    category: 'electrical',
-    priority: 'medium',
-    building: '',
-    room: '',
-    reportedBy: '',
-    contactInfo: '',
-    images: []
+    MaNhanVienPhanCong: null,
+    GhiChu: ''
   });
 
-  const [assignData, setAssignData] = useState({
-    technician: '',
-    notes: ''
-  });
-
-  const [updateData, setUpdateData] = useState({
-    status: '',
-    notes: '',
-    completionImages: [] as string[]
+  const [updateData, setUpdateData] = useState<MaintenanceRequestUpdateStatus>({
+    TrangThai: 'pending',
+    GhiChu: '',
+    ChiPhiThucTe: undefined,
+    HinhAnhMinhChung: []
   });
 
   const { success, error, warning, info } = useToast();
 
-  const handleCreateRequest = () => {
-    if (!newRequest.title || !newRequest.description || !newRequest.room || !newRequest.reportedBy || !newRequest.building) {
-      error({
-        title: 'Lỗi tạo yêu cầu',
-        message: 'Vui lòng điền đầy đủ (Tiêu đề, Mô tả, Dãy, Phòng, Người báo cáo)!'
-      });
-      return;
-    }
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Xác nhận tạo yêu cầu',
-      message: `Bạn có chắc chắn muốn tạo yêu cầu bảo trì "${newRequest.title}" cho phòng ${newRequest.room} không?`,
-      onConfirm: () => {
-        setRequests(prev => [
-          {
-            id: String(Date.now()),
-            tenantName: newRequest.reportedBy || 'Khách thuê',
-            building: newRequest.building,
-            room: newRequest.room,
-            title: newRequest.title,
-            description: newRequest.description,
-            category: newRequest.category as MaintenanceRequest['category'],
-            priority: newRequest.priority as MaintenanceRequest['priority'],
-            status: 'pending',
-            requestDate: new Date().toISOString(),
-            notes: ''
-          },
-          ...prev
-        ]);
-        success({
-          title: 'Tạo yêu cầu thành công',
-          message: `Đã tạo yêu cầu "${newRequest.title}" cho ${newRequest.building} - ${newRequest.room}`
-        });
-
-        setShowAddModal(false);
-        setNewRequest({
-          title: '',
-          description: '',
-          category: 'electrical',
-          priority: 'medium',
-          building: '',
-          room: '',
-          reportedBy: '',
-          contactInfo: '',
-          images: []
-        });
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
-      }
-    });
-  };
-
-  const handleAssignTechnician = () => {
-    if (!assignData.technician) {
-      error({
-        title: 'Lỗi phân công',
-        message: 'Vui lòng chọn kỹ thuật viên!'
-      });
-      return;
-    }
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Xác nhận phân công',
-      message: `Bạn có chắc chắn muốn phân công "${assignData.technician}" xử lý yêu cầu "${selectedRequest?.title}" không?`,
-      onConfirm: () => {
-        if (selectedRequest) {
-          setRequests(prev =>
-            prev.map(r =>
-              r.id === selectedRequest.id
-                ? {
-                  ...r,
-                  assignedTo: assignData.technician,
-                  status: 'in_progress',
-                  scheduledDate: new Date().toISOString(), // <-- NGÀY PHÂN CÔNG (hiện tại)
-                }
-                : r
-            )
-          );
+  // ===== Data Fetching =====
+  useEffect(() => {
+    const controller = new AbortController();
+    const fetchRequests = async () => {
+      setLoadingRequests(true);
+      try {
+        const response = await maintenanceService.getAll(controller.signal);
+        if (!controller.signal.aborted) {
+          setRequests(response.data.data || []);
         }
-        if (selectedRequest) {
-          setRequests(prev => prev.map(r =>
-            r.id === selectedRequest.id
-              ? { ...r, assignedTo: assignData.technician, status: 'in_progress' }
-              : r
-          ));
+      } catch (err: any) {
+        if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
+          error({ title: 'Lỗi tải yêu cầu bảo trì', message: getErrorMessage(err) });
         }
-        success({
-          title: 'Phân công thành công',
-          message: `Đã phân công ${assignData.technician} xử lý yêu cầu "${selectedRequest?.title}"`
-        });
-
-        setShowAssignModal(false);
-        setSelectedRequest(null);
-        setAssignData({
-          technician: '',
-          notes: ''
-        });
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
-      }
-    });
-  };
-
-  const handleUpdateStatus = () => {
-    if (!updateData.status) {
-
-      // Cấm hủy nếu không phải pending
-      if (updateData.status === 'cancelled' && selectedRequest?.status !== 'pending') {
-        error({
-          title: 'Không thể hủy',
-          message: 'Chỉ được hủy khi yêu cầu đang ở trạng thái Chờ xử lý.'
-        });
-        return;
-      }
-      error({
-        title: 'Lỗi cập nhật',
-        message: 'Vui lòng chọn trạng thái mới!'
-      });
-      return;
-    }
-
-    const statusText = updateData.status === 'in_progress' ? 'đang thực hiện' :
-      updateData.status === 'completed' ? 'hoàn thành' :
-        updateData.status === 'cancelled' ? 'đã hủy' :
-          updateData.status === 'on_hold' ? 'tạm dừng' : updateData.status;
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Xác nhận cập nhật trạng thái',
-      message: `Bạn có chắc chắn muốn cập nhật trạng thái yêu cầu "${selectedRequest?.title}" thành "${statusText}" không?`,
-      onConfirm: () => {
-        if (selectedRequest) {
-          setRequests(prev => prev.map(r =>
-            r.id === selectedRequest.id
-              ? {
-                ...r,
-                status: updateData.status as MaintenanceRequest['status'],
-                completedDate: updateData.status === 'completed' ? new Date().toISOString() : r.completedDate
-              }
-              : r
-          ));
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingRequests(false);
         }
-        if (updateData.status === 'completed') {
-          success({
-            title: 'Hoàn thành bảo trì',
-            message: `Đã hoàn thành yêu cầu bảo trì "${selectedRequest?.title}" thành công`
-          });
-        } else if (updateData.status === 'cancelled') {
-          warning({
-            title: 'Hủy yêu cầu bảo trì',
-            message: `Đã hủy yêu cầu bảo trì "${selectedRequest?.title}"`
-          });
-        } else {
-          success({
-            title: 'Cập nhật trạng thái thành công',
-            message: `Đã cập nhật trạng thái yêu cầu "${selectedRequest?.title}" thành ${statusText}`
-          });
+      }
+    };
+
+    fetchRequests();
+    return () => controller.abort();
+  }, [requestRefreshKey, error]);
+
+  const refreshRequestsData = () => setRequestRefreshKey(prev => prev + 1);
+
+  // Fetch tenants when "Add Request" modal is opened
+  useEffect(() => {
+    if (!showAddModal || allTenants.length > 0) return;
+
+    const controller = new AbortController();
+    const fetchTenants = async () => {
+      setLoadingTenants(true);
+      try {
+        const response = await khachThueService.getAll(controller.signal);
+        if (!controller.signal.aborted) {
+          const tenantsWithRooms = response.data.data.filter(t => t.MaPhong);
+          setAllTenants(tenantsWithRooms);
         }
-
-        setShowUpdateModal(false);
-        setSelectedRequest(null);
-        setUpdateData({
-          status: '',
-          notes: '',
-          completionImages: []
-        });
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
-      }
-    });
-  };
-
-  const handleDeleteRequest = (requestId: string) => {
-    const request = requests.find(r => r.id === requestId);
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Xác nhận xóa yêu cầu',
-      message: `Bạn có chắc chắn muốn xóa yêu cầu bảo trì "${request?.title}" không? Hành động này không thể hoàn tác.`,
-      onConfirm: () => {
-        setRequests(prev => prev.filter(r => r.id !== requestId));
-        error({
-          title: 'Xóa yêu cầu thành công',
-          message: `Đã xóa yêu cầu bảo trì "${request?.title}" thành công`
-        });
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
-      }
-    });
-  };
-
-  const handleViewDetail = (request: MaintenanceRequest) => {
-    setSelectedRequest(request);
-    setShowDetailModal(true);
-  };
-
-  const handleAssign = (request: MaintenanceRequest) => {
-    setSelectedRequest(request);
-    setShowAssignModal(true);
-  };
-
-  const handleUpdate = (request: MaintenanceRequest) => {
-    setSelectedRequest(request);
-    setUpdateData({
-      status: request.status,
-      notes: '',
-      completionImages: []
-    });
-    setShowUpdateModal(true);
-  };
-
-  const handleQuickStatusChange = (requestId: string, newStatus: string) => {
-    const request = requests.find(r => r.id === requestId);
-    const statusText = newStatus === 'in_progress' ? 'đang thực hiện' :
-      newStatus === 'completed' ? 'hoàn thành' :
-        newStatus === 'cancelled' ? 'đã hủy' : newStatus;
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Xác nhận thay đổi trạng thái',
-      message: `Bạn có chắc chắn muốn thay đổi trạng thái yêu cầu "${request?.title}" thành "${statusText}" không?`,
-      onConfirm: () => {
-        if (!request) return;
-
-        if (newStatus === 'cancelled' && request.status !== 'pending') {
-          error({
-            title: 'Không thể hủy',
-            message: 'Chỉ được hủy khi yêu cầu đang ở trạng thái Chờ xử lý.'
-          });
-          setConfirmDialog({ ...confirmDialog, isOpen: false });
-          return;
+      } catch (err) {
+        error({ title: 'Lỗi tải danh sách khách thuê', message: getErrorMessage(err) });
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingTenants(false);
         }
+      }
+    };
 
-        setRequests(prev => prev.map(r =>
-          r.id === requestId
-            ? {
-              ...r,
-              status: newStatus as MaintenanceRequest['status'],
-              completedDate: newStatus === 'completed' ? new Date().toISOString() : r.completedDate
-            }
-            : r
-        ));
-        if (newStatus === 'completed') {
-          success({
-            title: 'Hoàn thành bảo trì',
-            message: `Đã đánh dấu hoàn thành yêu cầu "${request?.title}"`
-          });
-        } else if (newStatus === 'cancelled') {
-          warning({
-            title: 'Hủy yêu cầu bảo trì',
-            message: `Đã hủy yêu cầu bảo trì "${request?.title}"`
-          });
-        } else {
-          info({
-            title: 'Cập nhật trạng thái',
-            message: `Đã cập nhật trạng thái yêu cầu "${request?.title}" thành ${statusText}`
-          });
+    fetchTenants();
+    return () => controller.abort();
+  }, [showAddModal, allTenants.length, error]);
+
+  // Fetch nhanviens when "Assign" modal is opened
+  useEffect(() => {
+    if (!showAssignModal || allNhanViens.length > 0) return;
+
+    const controller = new AbortController();
+    const fetchNhanViens = async () => {
+      setLoadingNhanViens(true);
+      try {
+        const response = await nhanVienService.getAll(controller.signal);
+        if (!controller.signal.aborted) {
+          setAllNhanViens(response.data.data || []);
         }
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
-      }
-    });
-  };
-
-  const handleBulkAction = (action: string, selectedIds: string[]) => {
-    if (selectedIds.length === 0) {
-      error({
-        title: 'Lỗi thao tác hàng loạt',
-        message: 'Vui lòng chọn ít nhất một yêu cầu!'
-      });
-      return;
-    }
-
-    const actionText = action === 'assign' ? 'phân công' :
-      action === 'complete' ? 'hoàn thành' :
-        action === 'cancel' ? 'hủy' : action;
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Xác nhận thao tác hàng loạt',
-      message: `Bạn có chắc chắn muốn ${actionText} ${selectedIds.length} yêu cầu đã chọn không?`,
-      onConfirm: () => {
-        if (action === 'complete') {
-          success({
-            title: 'Thao tác hàng loạt thành công',
-            message: `Đã hoàn thành ${selectedIds.length} yêu cầu bảo trì`
-          });
-        } else if (action === 'cancel') {
-          warning({
-            title: 'Thao tác hàng loạt thành công',
-            message: `Đã hủy ${selectedIds.length} yêu cầu bảo trì`
-          });
-        } else {
-          success({
-            title: 'Thao tác hàng loạt thành công',
-            message: `Đã ${actionText} ${selectedIds.length} yêu cầu thành công`
-          });
+      } catch (err) {
+        error({ title: 'Lỗi tải danh sách nhân viên', message: getErrorMessage(err) });
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingNhanViens(false);
         }
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
       }
-    });
-  };
+    };
 
-  const handleSendNotification = (requestId: string, type: 'tenant' | 'technician') => {
-    const request = mockMaintenanceRequests.find(r => r.id === requestId);
-    const recipientText = type === 'tenant' ? 'khách thuê' : 'kỹ thuật viên';
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Xác nhận gửi thông báo',
-      message: `Bạn có chắc chắn muốn gửi thông báo về yêu cầu "${request?.title}" cho ${recipientText} không?`,
-      onConfirm: () => {
-        success({
-          title: 'Gửi thông báo thành công',
-          message: `Đã gửi thông báo về yêu cầu "${request?.title}" cho ${recipientText}`
-        });
-        setConfirmDialog({ ...confirmDialog, isOpen: false });
-      }
-    });
-  };
+    fetchNhanViens();
+    return () => controller.abort();
+  }, [showAssignModal, allNhanViens.length, error]);
 
   const getCategoryColor = (category: string) => {
     switch (category) {

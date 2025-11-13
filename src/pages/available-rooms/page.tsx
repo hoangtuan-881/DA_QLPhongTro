@@ -1,136 +1,68 @@
-import { useState } from 'react';
-
-export type Room = {
-  id: number;
-  number: string;
-  building: string;
-  area: number;
-  type: string;
-  price: number;
-  deposit: number;
-  description: string;
-  amenities: string[];
-  services: { name: string; price: number; unit: string }[];
-  nearbyFacilities: string[];
-  images: string[];
-  status: 'Trống' | 'Sắp trống';
-  availableFrom: string; // YYYY-MM-DD
-};
-
-// DỮ LIỆU DÙNG CHUNG CHO HOME + TRANG NÀY
-export const availableRooms: Room[] = [
-  {
-    id: 1,
-    number: 'B205',
-    building: 'A',
-    area: 25,
-    type: 'Phòng ban công',
-    price: 2_600_000,
-    deposit: 2_600_000,
-    description: 'Phòng studio rộng rãi, đầy đủ nội thát, view đẹp',
-    amenities: ['Điều hòa', 'Tủ lạnh', 'Giường', 'Tủ quần áo', 'Bàn học', 'Wifi'],
-    services: [
-      { name: 'Điện', price: 3500, unit: 'đ/kwh' },
-      { name: 'Nước', price: 60000, unit: 'đ/người' },
-      { name: 'Rác', price: 40000, unit: 'đ/phòng' },
-      { name: 'Gửi xe', price: 100000, unit: 'đ/xe' },
-      { name: 'Internet', price: 50000, unit: 'đ/phòng' },
-    ],
-    nearbyFacilities: ['Siêu thị Co.opmart (200m)', 'Trường ĐH Kinh tế (500m)', 'Bệnh viện (300m)', 'Ngân hàng Vietcombank (150m)'],
-    images: ['/images/room1_1.jpg', '/images/room1_2.jpg', '/images/room1_3.jpg'],
-    status: 'Trống',
-    availableFrom: '2024-12-15',
-  },
-  {
-    id: 2,
-    number: 'A301',
-    building: 'B',
-    area: 25,
-    type: 'Phòng thường',
-    price: 2_600_000,
-    deposit: 2_600_000,
-    description: 'Phòng tiêu chuẩn, thoáng mát, gần trung tâm',
-    amenities: ['Điều hòa', 'Giường', 'Tủ quần áo', 'Bàn học'],
-    services: [
-      { name: 'Điện', price: 3500, unit: 'đ/kwh' },
-      { name: 'Nước', price: 60000, unit: 'đ/người' },
-      { name: 'Rác', price: 40000, unit: 'đ/phòng' },
-      { name: 'Gửi xe', price: 100000, unit: 'đ/xe' },
-      { name: 'Internet', price: 50000, unit: 'đ/phòng' },
-    ],
-    nearbyFacilities: ['Chợ Bến Thành (1km)', 'Trung tâm thương mại (800m)', 'Trạm xe buýt (100m)'],
-    images: ['/images/room2_1.jpg', '/images/room2_2.jpg'],
-    status: 'Trống',
-    availableFrom: '2024-12-20',
-  },
-  {
-    id: 3,
-    number: 'B201',
-    building: 'C',
-    area: 35,
-    type: 'Phòng góc',
-    price: 2_600_000,
-    deposit: 2_600_000,
-    description: 'Phòng tiêu chuẩn, thoáng mát, gần trung tâm',
-    amenities: ['Điều hòa', 'Tủ lạnh', 'Máy giặt riêng', 'Giường King', 'Tủ quần áo', 'Bàn làm việc', 'Ban công'],
-    services: [
-      { name: 'Điện', price: 3500, unit: 'đ/kwh' },
-      { name: 'Nước', price: 60000, unit: 'đ/người' },
-      { name: 'Rác', price: 40000, unit: 'đ/phòng' },
-      { name: 'Gửi xe', price: 100000, unit: 'đ/xe' },
-      { name: 'Internet', price: 50000, unit: 'đ/phòng' },
-    ],
-    nearbyFacilities: ['Metro Thanh Xuân (300m)', 'Vincom Center (400m)', 'Công viên Cầu Giấy (200m)', 'Starbucks (250m)'],
-    images: ['/images/room3_1.jpg', '/images/room3_2.jpg', '/images/room3_3.jpg', '/images/room3_4.jpg'],
-    status: 'Sắp trống',
-    availableFrom: '2025-01-01',
-  },
-  {
-    id: 4,
-    number: 'A404',
-    building: 'D',
-    area: 25,
-    type: 'Phòng góc',
-    price: 2_600_000,
-    deposit: 2_600_000,
-    description: 'Phòng tiêu chuẩn, thoáng mát, gần trung tâm',
-    amenities: ['Điều hòa', 'Tủ lạnh mini', 'Giường', 'Góc bếp nhỏ', 'Tủ quần áo'],
-    services: [
-      { name: 'Điện', price: 3500, unit: 'đ/kwh' },
-      { name: 'Nước', price: 60000, unit: 'đ/người' },
-      { name: 'Rác', price: 40000, unit: 'đ/phòng' },
-      { name: 'Gửi xe', price: 100000, unit: 'đ/xe' },
-      { name: 'Internet', price: 50000, unit: 'đ/phòng' },
-    ],
-    nearbyFacilities: ['Đại học Bách Khoa (600m)', 'Big C (500m)', 'Café Highlands (300m)'],
-    images: ['/images/room4_1.jpg', '/images/room4_2.jpg'],
-    status: 'Trống',
-    availableFrom: '2024-12-18',
-  },
-];
+import { useState, useEffect } from 'react';
+import phongTroService, { PhongTro, getStatusText, getStatusColor, mapTrangThaiToStatus } from '../../services/phong-tro.service';
+import { getErrorMessage } from '../../lib/http-client';
+import { useToast } from '../../hooks/useToast';
 
 export default function AvailableRoomsPage() {
+  const [phongTros, setPhongTros] = useState<PhongTro[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [selectedPhong, setSelectedPhong] = useState<PhongTro | null>(null);
+  const toast = useToast();
 
-  const formatPrice = (n: number) => n.toLocaleString('vi-VN');
+  // Fetch phòng trống từ API
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const handleViewDetail = (room: Room) => {
-    setSelectedRoom(room);
+    const fetchPhongTrong = async () => {
+      try {
+        const response = await phongTroService.getByTrangThai('Trống', controller.signal);
+        if (!controller.signal.aborted) {
+          setPhongTros(response.data.data || []);
+          setLoading(false);
+        }
+      } catch (error: any) {
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          toast.error({ title: 'Lỗi tải dữ liệu', message: getErrorMessage(error) });
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchPhongTrong();
+    return () => controller.abort();
+  }, []);
+
+  const formatPrice = (n: number | null) => (n || 0).toLocaleString('vi-VN');
+
+  const handleViewDetail = (phong: PhongTro) => {
+    setSelectedPhong(phong);
     setShowDetailModal(true);
   };
 
-  const handleDeposit = (room: Room) => {
-    setSelectedRoom(room);
+  const handleDeposit = (phong: PhongTro) => {
+    setSelectedPhong(phong);
     setShowDepositModal(true);
   };
 
   const handleSubmitDeposit = (e: React.FormEvent) => {
     e.preventDefault();
+    toast.success({ title: 'Thành công', message: 'Đặt cọc phòng thành công! Chúng tôi sẽ liên hệ bạn sớm.' });
     setShowDepositModal(false);
-    setSelectedRoom(null);
+    setSelectedPhong(null);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="text-gray-600 mt-4">Đang tải danh sách phòng...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -138,92 +70,89 @@ export default function AvailableRoomsPage() {
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Phòng còn trống</h1>
-            <p className="text-gray-600 mt-1">Danh sách các phòng có thể thuê</p>
+            <p className="text-gray-600 mt-1">Danh sách các phòng có thể thuê ({phongTros.length} phòng)</p>
           </div>
 
           {/* Danh sách phòng */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {availableRooms.map((room) => (
-              <div key={room.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                {/* Ảnh */}
-                <div className="relative h-48 bg-gray-200">
-                  {room.images?.length ? (
-                    <img
-                      src={room.images[0]}
-                      alt={`Phòng ${room.number} - ${room.building}`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <i className="ri-image-line text-gray-400 text-4xl"></i>
+            {phongTros.map((phong) => {
+              const status = mapTrangThaiToStatus(phong.TrangThai);
+              return (
+                <div key={phong.MaPhong} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  {/* Ảnh placeholder */}
+                  <div className="relative h-48 bg-gray-200">
+                    {phong.HinhAnh ? (
+                      <img
+                        src={phong.HinhAnh}
+                        alt={`Phòng ${phong.TenPhong}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <i className="ri-image-line text-gray-400 text-4xl"></i>
+                      </div>
+                    )}
+                    <div className="absolute top-4 left-4">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(status)}`}>
+                        {getStatusText(status)}
+                      </span>
                     </div>
-                  )}
-                  <div className="absolute top-4 left-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${room.status === 'Trống' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}
-                    >
-                      {room.status}
-                    </span>
                   </div>
-                  <div className="absolute top-4 right-4">
-                    <span className="bg-black/60 text-white px-2 py-1 rounded text-xs">
-                      {room.images?.length || 0} ảnh
-                    </span>
+
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Phòng {phong.TenPhong}</h3>
+                        <p className="text-gray-600">
+                          {phong.TenLoaiPhong || 'Phòng tiêu chuẩn'} • {phong.TenDay || 'Dãy A'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-green-600">{formatPrice(phong.DonGiaCoBan)} VNĐ</p>
+                        <p className="text-sm text-gray-500">/tháng</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <i className="ri-ruler-line mr-2"></i>
+                        Diện tích: {phong.DienTich ? `${phong.DienTich}m²` : 'Chưa cập nhật'}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <i className="ri-money-dollar-circle-line mr-2"></i>
+                        Cọc: {formatPrice(phong.GiaThueHienTai || phong.DonGiaCoBan)} VNĐ
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <i className="ri-calendar-line mr-2"></i>
+                        Có thể vào: Vào ngay hôm nay
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-gray-700 mb-4 line-clamp-2">
+                      {phong.MoTa || 'Phòng trọ tiện nghi, đầy đủ nội thất, phù hợp sinh viên và người đi làm.'}
+                    </p>
+
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleViewDetail(phong)}
+                        className="flex-1 px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+                      >
+                        Xem chi tiết
+                      </button>
+                      <button
+                        onClick={() => handleDeposit(phong)}
+                        className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        Đặt cọc
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Phòng {room.number}</h3>
-                      <p className="text-gray-600">
-                        {room.type} • {room.building}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-green-600">{formatPrice(room.price)} VNĐ</p>
-                      <p className="text-sm text-gray-500">/tháng</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <i className="ri-ruler-line mr-2"></i>
-                      Diện tích: {room.area}m²
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <i className="ri-money-dollar-circle-line mr-2"></i>
-                      Cọc: {formatPrice(room.deposit)} VNĐ
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <i className="ri-calendar-line mr-2"></i>
-                      Có thể vào: {room.status === 'Trống' ? 'Vào ngay hôm nay' : room.availableFrom}
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-gray-700 mb-4 line-clamp-2">{room.description}</p>
-
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleViewDetail(room)}
-                      className="flex-1 px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
-                    >
-                      Xem chi tiết
-                    </button>
-                    <button
-                      onClick={() => handleDeposit(room)}
-                      className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      Đặt cọc
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          {availableRooms.length === 0 && (
+          {phongTros.length === 0 && (
             <div className="text-center py-12">
               <i className="ri-search-line text-gray-400 text-6xl mb-4"></i>
               <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy phòng nào</h3>
@@ -234,12 +163,12 @@ export default function AvailableRoomsPage() {
       </main>
 
       {/* Modal chi tiết phòng */}
-      {showDetailModal && selectedRoom && (
+      {showDetailModal && selectedPhong && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-900">Phòng {selectedRoom.number}</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Phòng {selectedPhong.TenPhong}</h3>
                 <button onClick={() => setShowDetailModal(false)} className="text-gray-400 hover:text-gray-600">
                   <i className="ri-close-line text-xl"></i>
                 </button>
@@ -251,25 +180,19 @@ export default function AvailableRoomsPage() {
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-3">Thông tin cơ bản</h4>
                     <div className="space-y-2">
-                      <Row label="Số phòng" value={selectedRoom.number} />
-                      <Row label="Dãy" value={String(selectedRoom.building)} />
-                      <Row label="Loại phòng" value={selectedRoom.type} />
-                      <Row label="Diện tích" value={`${selectedRoom.area}m²`} />
+                      <Row label="Số phòng" value={selectedPhong.TenPhong} />
+                      <Row label="Dãy" value={selectedPhong.TenDay || 'Chưa cập nhật'} />
+                      <Row label="Loại phòng" value={selectedPhong.TenLoaiPhong || 'Phòng tiêu chuẩn'} />
+                      <Row label="Diện tích" value={selectedPhong.DienTich ? `${selectedPhong.DienTich}m²` : 'Chưa cập nhật'} />
                       <Row
                         label="Trạng thái"
                         value={
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs ${selectedRoom.status === 'Trống' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                              }`}
-                          >
-                            {selectedRoom.status}
+                          <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(mapTrangThaiToStatus(selectedPhong.TrangThai))}`}>
+                            {getStatusText(mapTrangThaiToStatus(selectedPhong.TrangThai))}
                           </span>
                         }
                       />
-                      <Row
-                        label="Có thể vào"
-                        value={selectedRoom.status === 'Trống' ? 'Vào ngay hôm nay' : selectedRoom.availableFrom}
-                      />
+                      <Row label="Có thể vào" value="Vào ngay hôm nay" />
                     </div>
                   </div>
 
@@ -278,62 +201,63 @@ export default function AvailableRoomsPage() {
                     <div className="space-y-2">
                       <Row
                         label="Giá thuê"
-                        value={<span className="text-green-600 font-medium">{formatPrice(selectedRoom.price)} VNĐ/tháng</span>}
+                        value={<span className="text-green-600 font-medium">{formatPrice(selectedPhong.DonGiaCoBan)} VNĐ/tháng</span>}
                       />
                       <Row
                         label="Tiền cọc"
-                        value={<span className="text-orange-600 font-medium">{formatPrice(selectedRoom.deposit)} VNĐ</span>}
+                        value={<span className="text-orange-600 font-medium">{formatPrice(selectedPhong.GiaThueHienTai || selectedPhong.DonGiaCoBan)} VNĐ</span>}
                       />
                     </div>
                   </div>
 
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-3">Mô tả</h4>
-                    <p className="text-gray-700">{selectedRoom.description}</p>
+                    <p className="text-gray-700">
+                      {selectedPhong.MoTa || 'Phòng trọ tiện nghi, đầy đủ nội thất, phù hợp sinh viên và người đi làm.'}
+                    </p>
                   </div>
                 </div>
 
                 {/* Phải */}
                 <div className="space-y-4">
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-3">Tiện nghi</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {selectedRoom.amenities.map((amenity, i) => (
-                        <div key={i} className="flex items-center text-sm text-gray-700">
-                          <i className="ri-check-line text-green-600 mr-2"></i>
-                          {amenity}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-orange-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-3">Dịch vụ</h4>
-                    <div className="space-y-2 text-sm">
-                      {selectedRoom.services.map((s, i) => (
-                        <div key={i} className="flex justify-between">
-                          <span className="flex items-center text-gray-700">
+                  {selectedPhong.TienNghi && selectedPhong.TienNghi.length > 0 && (
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-3">Tiện nghi</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {selectedPhong.TienNghi.map((amenity, i) => (
+                          <div key={i} className="flex items-center text-sm text-gray-700">
                             <i className="ri-check-line text-green-600 mr-2"></i>
-                            {s.name}
-                          </span>
-                          <span className="font-medium text-gray-900">
-                            {typeof s.price === 'number' ? `${formatPrice(s.price)} ${s.unit}` : `${s.price} ${s.unit}`}
-                          </span>
-                        </div>
-                      ))}
+                            {amenity}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {selectedPhong.dichVuDangKy && selectedPhong.dichVuDangKy.length > 0 && (
+                    <div className="bg-orange-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-3">Dịch vụ</h4>
+                      <div className="space-y-2 text-sm">
+                        {selectedPhong.dichVuDangKy.map((dv, i) => (
+                          <div key={i} className="flex justify-between">
+                            <span className="flex items-center text-gray-700">
+                              <i className="ri-check-line text-green-600 mr-2"></i>
+                              {dv.loaiDichVu?.TenDichVu || 'Dịch vụ'}
+                            </span>
+                            <span className="font-medium text-gray-900">
+                              {formatPrice(dv.DonGiaApDung)} {dv.loaiDichVu?.DonViTinh || 'VNĐ'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-3">Tiện ích xung quanh</h4>
-                    <div className="space-y-2 text-sm">
-                      {selectedRoom.nearbyFacilities.map((f: string, i: number) => (
-                        <div key={i} className="flex items-center text-gray-700">
-                          <i className="ri-map-pin-line text-indigo-600 mr-2"></i>
-                          {f}
-                        </div>
-                      ))}
-                    </div>
+                    <h4 className="font-medium text-gray-900 mb-3">Liên hệ</h4>
+                    <p className="text-sm text-gray-700">
+                      Để biết thêm thông tin chi tiết, vui lòng liên hệ ban quản lý hoặc đặt cọc để được tư vấn trực tiếp.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -348,7 +272,7 @@ export default function AvailableRoomsPage() {
                 <button
                   onClick={() => {
                     setShowDetailModal(false);
-                    handleDeposit(selectedRoom);
+                    handleDeposit(selectedPhong);
                   }}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                 >
@@ -361,12 +285,12 @@ export default function AvailableRoomsPage() {
       )}
 
       {/* Modal đặt cọc */}
-      {showDepositModal && selectedRoom && (
+      {showDepositModal && selectedPhong && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Đặt cọc phòng {selectedRoom.number}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Đặt cọc phòng {selectedPhong.TenPhong}</h3>
                 <button onClick={() => setShowDepositModal(false)} className="text-gray-400 hover:text-gray-600">
                   <i className="ri-close-line text-xl"></i>
                 </button>
@@ -376,15 +300,15 @@ export default function AvailableRoomsPage() {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="font-medium text-gray-900 mb-3">Thông tin phòng</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <Row label="Phòng" value={selectedRoom.number} />
-                    <Row label="Diện tích" value={`${selectedRoom.area}m²`} />
+                    <Row label="Phòng" value={selectedPhong.TenPhong} />
+                    <Row label="Diện tích" value={selectedPhong.DienTich ? `${selectedPhong.DienTich}m²` : 'N/A'} />
                     <Row
                       label="Giá thuê"
-                      value={<span className="text-green-600 font-medium">{formatPrice(selectedRoom.price)} VNĐ</span>}
+                      value={<span className="text-green-600 font-medium">{formatPrice(selectedPhong.DonGiaCoBan)} VNĐ</span>}
                     />
                     <Row
                       label="Tiền cọc"
-                      value={<span className="text-orange-600 font-medium">{formatPrice(selectedRoom.deposit)} VNĐ</span>}
+                      value={<span className="text-orange-600 font-medium">{formatPrice(selectedPhong.GiaThueHienTai || selectedPhong.DonGiaCoBan)} VNĐ</span>}
                     />
                   </div>
                 </div>
@@ -401,7 +325,6 @@ export default function AvailableRoomsPage() {
                   <input
                     type="date"
                     required
-                    min={selectedRoom.availableFrom}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
@@ -452,7 +375,6 @@ export default function AvailableRoomsPage() {
       )}
     </div>
   );
-
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {

@@ -103,8 +103,10 @@ export default function Rooms() {
     const fetchPhongTros = async () => {
       try {
         const response = await phongTroService.getAll(controller.signal);
+
         if (!controller.signal.aborted) {
-          setPhongTros(response.data.data || []);
+          const phongTrosData = response.data.data || [];
+          setPhongTros(phongTrosData);
           setLoading(false);
         }
       } catch (error: any) {
@@ -237,10 +239,14 @@ export default function Rooms() {
     switch (trangThai) {
       case 'Trống':
         return 'bg-green-100 text-green-800';
+      case 'Đã thuê':
+        return 'bg-blue-100 text-blue-800';
       case 'Đã cho thuê':
         return 'bg-blue-100 text-blue-800';
       case 'Bảo trì':
-        return 'bg-red-100 text-red-800';
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Đã cọc':
+        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -402,6 +408,7 @@ export default function Rooms() {
   const handleEditRoom = async (phongTro: PhongTro) => {
     setEditingPhongTro({ ...phongTro });
     setShowEditModal(true);
+    setDetailActiveTab('basic'); // Reset tab về Thông tin cơ bản khi mở modal
 
     // Fetch loại dịch vụ for service selection
     setLoadingLoaiDichVus(true);
@@ -534,11 +541,12 @@ export default function Rooms() {
     }
   };
 
-  // Lưu phòng: ghi lại thay đổi từ editingPhongTro
+  // Lưu phòng: ghi lại thay đổi từ editingPhongTro, including members và thiết bị
   const handleSaveRoom = async () => {
     if (!editingPhongTro) return;
 
     try {
+      // 1. Lưu thông tin phòng + khách chính + dịch vụ
       const updateData: any = {
         MaDay: editingPhongTro.MaDay,
         MaLoaiPhong: editingPhongTro.MaLoaiPhong,
@@ -551,7 +559,7 @@ export default function Rooms() {
       };
 
       // Thêm thông tin khách thuê chính (nếu có)
-      const khachChinh = editingPhongTro.khachThue?.find((k: any) => k.VaiTro === 'KHACH_CHINH');
+      const khachChinh = editingPhongTro.khachThue?.find((k: any) => k.VaiTro === 'KHÁCH_CHÍNH');
       if (khachChinh) {
         updateData.khachThueChinh = {
           HoTen: khachChinh.HoTen,
@@ -567,14 +575,68 @@ export default function Rooms() {
         };
       }
 
-      // Thêm danh sách dịch vụ đã chọn (luôn gửi, kể cả mảng rỗng để xóa hết)
+      // Thêm danh sách thành viên (nếu có)
+      const currentMembers = editingPhongTro.khachThue?.filter((k: any) => k.VaiTro === 'THÀNH_VIÊN') || [];
+      if (currentMembers.length > 0) {
+        updateData.thanhViens = currentMembers.map((member: any) => ({
+          MaKhachThue: member.MaKhachThue > 0 ? member.MaKhachThue : undefined,
+          HoTen: member.HoTen,
+          CCCD: member.CCCD,
+          NgayCapCCCD: member.NgayCapCCCD,
+          NoiCapCCCD: member.NoiCapCCCD,
+          SDT1: member.SDT1,
+          SDT2: member.SDT2,
+          Email: member.Email,
+          DiaChiThuongTru: member.DiaChiThuongTru,
+          NgaySinh: member.NgaySinh,
+          NoiSinh: member.NoiSinh,
+          VaiTro: 'THÀNH_VIÊN',
+          SoXe: member.SoXe || 0,
+          BienSoXe: member.BienSoXe,
+          MaLoaiXe: member.MaLoaiXe,
+          GhiChu: member.GhiChu,
+          MaTaiKhoan: member.MaTaiKhoan,
+          HinhAnh: member.HinhAnh,
+          // Thêm fields cho create new member
+          TenDangNhap: member.MaKhachThue > 0 ? undefined : `member_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          password: member.MaKhachThue > 0 ? undefined : 'DefaultPassword123',
+          TrangThaiTaiKhoan: member.MaKhachThue > 0 ? undefined : 'ACTIVE'
+        }));
+      }
+
+      // Thêm danh sách dịch vụ đã chọn
       updateData.dichVuIds = selectedDichVuIds;
 
-      // Dùng API cập nhật đầy đủ
+      // Lưu phòng + khách chính + thành viên + dịch vụ (trong một transaction)
       await phongTroService.capNhatDayDu(editingPhongTro.MaPhong, updateData);
+
+      // 2. Xử lý THIẾT BỊ (vẫn gọi riêng vì API thiết bị chưa tích hợp vào capNhatDayDu)
+      for (const tb of thietBis) {
+        const tbData = {
+          TenThietBi: tb.TenThietBi,
+          MaThietBi_Code: tb.MaThietBi_Code,
+          LoaiThietBi: tb.LoaiThietBi,
+          MaDay: editingPhongTro.MaDay,
+          MaPhong: editingPhongTro.MaPhong,
+          TinhTrang: tb.TinhTrang,
+          GiaMua: tb.GiaMua,
+          NgayMua: tb.NgayMua,
+          HangSanXuat: tb.HangSanXuat,
+          MoTa: tb.MoTa,
+        };
+
+        if (tb.MaThietBi && tb.MaThietBi > 0) {
+          // Update existing equipment
+          await thietBiService.update(tb.MaThietBi, tbData);
+        } else {
+          // Create new equipment
+          await thietBiService.create(tbData);
+        }
+      }
+
       toast.success({
         title: 'Cập nhật thành công',
-        message: 'Đã lưu thông tin phòng và khách thuê!'
+        message: 'Đã lưu đầy đủ thông tin phòng, khách thuê, dịch vụ, thành viên và thiết bị!'
       });
       setShowEditModal(false);
       setEditingPhongTro(null);
@@ -1002,13 +1064,19 @@ export default function Rooms() {
                       <div className="mb-4">
                         <p className="text-sm text-gray-600 mb-2">Tiện nghi:</p>
                         <div className="flex flex-wrap gap-1">
-                          {phongTro.TienNghi.slice(0, 3).map((tienNghi, index) => (
-                            <span key={index} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
-                              {tienNghi}
-                            </span>
-                          ))}
-                          {phongTro.TienNghi.length > 3 && (
-                            <span className="text-xs text-gray-500">+{phongTro.TienNghi.length - 3} khác</span>
+                          {phongTro.TienNghi && phongTro.TienNghi.length > 0 ? (
+                            <>
+                              {phongTro.TienNghi.slice(0, 3).map((tienNghi, index) => (
+                                <span key={index} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
+                                  {tienNghi}
+                                </span>
+                              ))}
+                              {phongTro.TienNghi.length > 3 && (
+                                <span className="text-xs text-gray-500">+{phongTro.TienNghi.length - 3} khác</span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-500">Chưa có thông tin</span>
                           )}
                         </div>
                       </div>
@@ -1223,14 +1291,18 @@ export default function Rooms() {
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-4">Tiện nghi</h3>
                     <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="grid grid-cols-2 gap-2">
-                        {selectedPhongTro.TienNghi.map((tienNghi, index) => (
-                          <div key={index} className="flex items-center">
-                            <i className="ri-check-line text-green-500 mr-2"></i>
-                            <span className="text-sm">{tienNghi}</span>
-                          </div>
-                        ))}
-                      </div>
+                      {selectedPhongTro.TienNghi && selectedPhongTro.TienNghi.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedPhongTro.TienNghi.map((tienNghi, index) => (
+                            <div key={index} className="flex items-center">
+                              <i className="ri-check-line text-green-500 mr-2"></i>
+                              <span className="text-sm">{tienNghi}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-sm">Chưa có thông tin tiện nghi</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1670,10 +1742,55 @@ export default function Rooms() {
                 {detailActiveTab === 'tenant' && (
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-4">Thông tin khách thuê chính</h3>
-                    {editingPhongTro.khachThue && editingPhongTro.khachThue.filter((k: any) => k.VaiTro === 'KHACH_CHINH').length > 0 ? (
-                      (() => {
-                        const khachChinh = editingPhongTro.khachThue.find((k: any) => k.VaiTro === 'KHACH_CHINH');
+                    <p className="text-sm text-gray-500 mb-4">Quản lý thông tin khách thuê chính của phòng. Thay đổi sẽ được lưu vào hệ thống Khách thuê.</p>
+
+                    {(() => {
+                      const khachChinh = editingPhongTro.khachThue?.find((k: any) => k.VaiTro === 'KHÁCH_CHÍNH');
+
+                      if (!khachChinh) {
+                        // Nếu chưa có khách chính, hiển thị nút thêm
                         return (
+                          <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                            <p className="text-gray-500 mb-4">Chưa có khách thuê chính</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newKhachChinh = {
+                                  MaKhachThue: 0,
+                                  HoTen: '',
+                                  CCCD: '',
+                                  NgayCapCCCD: '',
+                                  NoiCapCCCD: '',
+                                  SDT1: '',
+                                  SDT2: '',
+                                  Email: '',
+                                  DiaChiThuongTru: '',
+                                  NgaySinh: '',
+                                  NoiSinh: '',
+                                  VaiTro: 'KHÁCH_CHÍNH',
+                                  SoXe: 0,
+                                  BienSoXe: '',
+                                  MaLoaiXe: null,
+                                  GhiChu: '',
+                                  MaPhong: editingPhongTro.MaPhong,
+                                  MaTaiKhoan: null,
+                                  HinhAnh: null,
+                                };
+                                const updated = [...(editingPhongTro.khachThue || []), newKhachChinh];
+                                setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                              }}
+                              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer"
+                            >
+                              <i className="ri-add-line mr-2"></i>
+                              Thêm khách thuê chính
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      // Nếu đã có khách chính, hiển thị form edit
+                      return (
+                        <div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Họ tên */}
                             <div>
@@ -1683,7 +1800,7 @@ export default function Rooms() {
                                 value={khachChinh?.HoTen || ''}
                                 onChange={(e) => {
                                   const updatedKhachThue = editingPhongTro.khachThue.map((k: any) =>
-                                    k.VaiTro === 'KHACH_CHINH' ? { ...k, HoTen: e.target.value } : k
+                                    k.VaiTro === 'KHÁCH_CHÍNH' ? { ...k, HoTen: e.target.value } : k
                                   );
                                   setEditingPhongTro({ ...editingPhongTro, khachThue: updatedKhachThue });
                                 }}
@@ -1699,7 +1816,7 @@ export default function Rooms() {
                                 value={khachChinh?.CCCD || ''}
                                 onChange={(e) => {
                                   const updatedKhachThue = editingPhongTro.khachThue.map((k: any) =>
-                                    k.VaiTro === 'KHACH_CHINH' ? { ...k, CCCD: e.target.value } : k
+                                    k.VaiTro === 'KHÁCH_CHÍNH' ? { ...k, CCCD: e.target.value } : k
                                   );
                                   setEditingPhongTro({ ...editingPhongTro, khachThue: updatedKhachThue });
                                 }}
@@ -1715,7 +1832,7 @@ export default function Rooms() {
                                 value={khachChinh?.SDT1 || ''}
                                 onChange={(e) => {
                                   const updatedKhachThue = editingPhongTro.khachThue.map((k: any) =>
-                                    k.VaiTro === 'KHACH_CHINH' ? { ...k, SDT1: e.target.value } : k
+                                    k.VaiTro === 'KHÁCH_CHÍNH' ? { ...k, SDT1: e.target.value } : k
                                   );
                                   setEditingPhongTro({ ...editingPhongTro, khachThue: updatedKhachThue });
                                 }}
@@ -1731,7 +1848,7 @@ export default function Rooms() {
                                 value={khachChinh?.SDT2 || ''}
                                 onChange={(e) => {
                                   const updatedKhachThue = editingPhongTro.khachThue.map((k: any) =>
-                                    k.VaiTro === 'KHACH_CHINH' ? { ...k, SDT2: e.target.value } : k
+                                    k.VaiTro === 'KHÁCH_CHÍNH' ? { ...k, SDT2: e.target.value } : k
                                   );
                                   setEditingPhongTro({ ...editingPhongTro, khachThue: updatedKhachThue });
                                 }}
@@ -1747,7 +1864,7 @@ export default function Rooms() {
                                 value={khachChinh?.Email || ''}
                                 onChange={(e) => {
                                   const updatedKhachThue = editingPhongTro.khachThue.map((k: any) =>
-                                    k.VaiTro === 'KHACH_CHINH' ? { ...k, Email: e.target.value } : k
+                                    k.VaiTro === 'KHÁCH_CHÍNH' ? { ...k, Email: e.target.value } : k
                                   );
                                   setEditingPhongTro({ ...editingPhongTro, khachThue: updatedKhachThue });
                                 }}
@@ -1763,7 +1880,7 @@ export default function Rooms() {
                                 value={khachChinh?.NgaySinh || ''}
                                 onChange={(e) => {
                                   const updatedKhachThue = editingPhongTro.khachThue.map((k: any) =>
-                                    k.VaiTro === 'KHACH_CHINH' ? { ...k, NgaySinh: e.target.value } : k
+                                    k.VaiTro === 'KHÁCH_CHÍNH' ? { ...k, NgaySinh: e.target.value } : k
                                   );
                                   setEditingPhongTro({ ...editingPhongTro, khachThue: updatedKhachThue });
                                 }}
@@ -1779,7 +1896,7 @@ export default function Rooms() {
                                 value={khachChinh?.NoiSinh || ''}
                                 onChange={(e) => {
                                   const updatedKhachThue = editingPhongTro.khachThue.map((k: any) =>
-                                    k.VaiTro === 'KHACH_CHINH' ? { ...k, NoiSinh: e.target.value } : k
+                                    k.VaiTro === 'KHÁCH_CHÍNH' ? { ...k, NoiSinh: e.target.value } : k
                                   );
                                   setEditingPhongTro({ ...editingPhongTro, khachThue: updatedKhachThue });
                                 }}
@@ -1795,7 +1912,7 @@ export default function Rooms() {
                                 value={khachChinh?.BienSoXe || ''}
                                 onChange={(e) => {
                                   const updatedKhachThue = editingPhongTro.khachThue.map((k: any) =>
-                                    k.VaiTro === 'KHACH_CHINH' ? { ...k, BienSoXe: e.target.value } : k
+                                    k.VaiTro === 'KHÁCH_CHÍNH' ? { ...k, BienSoXe: e.target.value } : k
                                   );
                                   setEditingPhongTro({ ...editingPhongTro, khachThue: updatedKhachThue });
                                 }}
@@ -1810,7 +1927,7 @@ export default function Rooms() {
                                 value={khachChinh?.DiaChiThuongTru || ''}
                                 onChange={(e) => {
                                   const updatedKhachThue = editingPhongTro.khachThue.map((k: any) =>
-                                    k.VaiTro === 'KHACH_CHINH' ? { ...k, DiaChiThuongTru: e.target.value } : k
+                                    k.VaiTro === 'KHÁCH_CHÍNH' ? { ...k, DiaChiThuongTru: e.target.value } : k
                                   );
                                   setEditingPhongTro({ ...editingPhongTro, khachThue: updatedKhachThue });
                                 }}
@@ -1826,7 +1943,7 @@ export default function Rooms() {
                                 value={khachChinh?.GhiChu || ''}
                                 onChange={(e) => {
                                   const updatedKhachThue = editingPhongTro.khachThue.map((k: any) =>
-                                    k.VaiTro === 'KHACH_CHINH' ? { ...k, GhiChu: e.target.value } : k
+                                    k.VaiTro === 'KHÁCH_CHÍNH' ? { ...k, GhiChu: e.target.value } : k
                                   );
                                   setEditingPhongTro({ ...editingPhongTro, khachThue: updatedKhachThue });
                                 }}
@@ -1835,11 +1952,24 @@ export default function Rooms() {
                               />
                             </div>
                           </div>
-                        );
-                      })()
-                    ) : (
-                      <p className="text-gray-500 italic">Chưa có khách thuê chính. Vui lòng tạo khách thuê tại module "Khách thuê" trước.</p>
-                    )}
+
+                          {/* Nút xóa khách thuê chính */}
+                          <div className="flex justify-end mt-4">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = editingPhongTro.khachThue?.filter((k: any) => k.VaiTro !== 'KHÁCH_CHÍNH') || [];
+                                setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                              }}
+                              className="text-red-600 hover:text-red-800 text-sm cursor-pointer"
+                            >
+                              <i className="ri-delete-bin-line mr-1"></i>
+                              Xóa khách thuê chính
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -1897,61 +2027,389 @@ export default function Rooms() {
                 {detailActiveTab === 'members' && (
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-4">Thành viên trong phòng</h3>
-                    <p className="text-sm text-gray-500 mb-4 italic">Hiển thị thành viên. Quản lý tại module "Khách thuê".</p>
-                    {editingPhongTro.khachThue && editingPhongTro.khachThue.filter((k: any) => k.VaiTro === 'THANH_VIEN').length > 0 ? (
-                      <div className="space-y-3">
-                        {editingPhongTro.khachThue.filter((k: any) => k.VaiTro === 'THANH_VIEN').map((member: any, idx: number) => (
-                          <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                            <h4 className="font-medium text-gray-900 mb-2">{member.HoTen}</h4>
-                            <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                              <div>CCCD: {member.CCCD || '-'}</div>
-                              <div>SĐT: {member.SDT1 || '-'}</div>
-                              <div>Ngày sinh: {member.NgaySinh || '-'}</div>
-                              <div>Xe: {member.BienSoXe || '-'}</div>
+                    <p className="text-sm text-gray-500 mb-4">Quản lý thông tin thành viên trong phòng. Lưu ý: Thành viên sẽ được lưu vào hệ thống Khách thuê.</p>
+
+                    <div className="space-y-4">
+                      {editingPhongTro.khachThue && editingPhongTro.khachThue.filter((k: any) => k.VaiTro === 'THÀNH_VIÊN').length > 0 ? (
+                        editingPhongTro.khachThue.filter((k: any) => k.VaiTro === 'THÀNH_VIÊN').map((member: any, idx: number) => {
+                          const memberIndex = editingPhongTro.khachThue!.indexOf(member);
+                          return (
+                            <div key={memberIndex} className="border border-gray-200 rounded-lg p-4">
+                              {/* Hàng 1: Thông tin cá nhân */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Họ tên</label>
+                                  <input
+                                    type="text"
+                                    value={member.HoTen || ''}
+                                    onChange={(e) => {
+                                      const updated = [...(editingPhongTro.khachThue || [])];
+                                      updated[memberIndex] = { ...member, HoTen: e.target.value };
+                                      setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
+                                  <input
+                                    type="date"
+                                    value={member.NgaySinh || ''}
+                                    onChange={(e) => {
+                                      const updated = [...(editingPhongTro.khachThue || [])];
+                                      updated[memberIndex] = { ...member, NgaySinh: e.target.value };
+                                      setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Nơi sinh</label>
+                                  <input
+                                    type="text"
+                                    value={member.NoiSinh || ''}
+                                    onChange={(e) => {
+                                      const updated = [...(editingPhongTro.khachThue || [])];
+                                      updated[memberIndex] = { ...member, NoiSinh: e.target.value };
+                                      setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Hàng 2: Giấy tờ */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">CCCD</label>
+                                  <input
+                                    type="text"
+                                    value={member.CCCD || ''}
+                                    onChange={(e) => {
+                                      const updated = [...(editingPhongTro.khachThue || [])];
+                                      updated[memberIndex] = { ...member, CCCD: e.target.value };
+                                      setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngày cấp</label>
+                                  <input
+                                    type="date"
+                                    value={member.NgayCapCCCD || ''}
+                                    onChange={(e) => {
+                                      const updated = [...(editingPhongTro.khachThue || [])];
+                                      updated[memberIndex] = { ...member, NgayCapCCCD: e.target.value };
+                                      setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Nơi cấp</label>
+                                  <input
+                                    type="text"
+                                    value={member.NoiCapCCCD || ''}
+                                    onChange={(e) => {
+                                      const updated = [...(editingPhongTro.khachThue || [])];
+                                      updated[memberIndex] = { ...member, NoiCapCCCD: e.target.value };
+                                      setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Hàng 3: Liên hệ */}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Điện thoại 1</label>
+                                  <input
+                                    type="text"
+                                    value={member.SDT1 || ''}
+                                    onChange={(e) => {
+                                      const updated = [...(editingPhongTro.khachThue || [])];
+                                      updated[memberIndex] = { ...member, SDT1: e.target.value };
+                                      setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Điện thoại 2</label>
+                                  <input
+                                    type="text"
+                                    value={member.SDT2 || ''}
+                                    onChange={(e) => {
+                                      const updated = [...(editingPhongTro.khachThue || [])];
+                                      updated[memberIndex] = { ...member, SDT2: e.target.value };
+                                      setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                  <input
+                                    type="email"
+                                    value={member.Email || ''}
+                                    onChange={(e) => {
+                                      const updated = [...(editingPhongTro.khachThue || [])];
+                                      updated[memberIndex] = { ...member, Email: e.target.value };
+                                      setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Hàng 4: Địa chỉ và xe */}
+                              <div className="grid grid-cols-1 gap-4 mb-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ thường trú</label>
+                                  <input
+                                    type="text"
+                                    value={member.DiaChiThuongTru || ''}
+                                    onChange={(e) => {
+                                      const updated = [...(editingPhongTro.khachThue || [])];
+                                      updated[memberIndex] = { ...member, DiaChiThuongTru: e.target.value };
+                                      setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                    }}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Biển số xe</label>
+                                    <input
+                                      type="text"
+                                      value={member.BienSoXe || ''}
+                                      onChange={(e) => {
+                                        const updated = [...(editingPhongTro.khachThue || [])];
+                                        updated[memberIndex] = { ...member, BienSoXe: e.target.value };
+                                        setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                      }}
+                                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                                    <textarea
+                                      value={member.GhiChu || ''}
+                                      onChange={(e) => {
+                                        const updated = [...(editingPhongTro.khachThue || [])];
+                                        updated[memberIndex] = { ...member, GhiChu: e.target.value };
+                                        setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                      }}
+                                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                      rows={2}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Nút xóa */}
+                              <div className="flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = editingPhongTro.khachThue?.filter((_, i) => i !== memberIndex) || [];
+                                    setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                                  }}
+                                  className="text-red-600 hover:text-red-800 text-sm cursor-pointer"
+                                >
+                                  <i className="ri-delete-bin-line mr-1"></i>
+                                  Xóa thành viên
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 italic">Chưa có thành viên</p>
-                    )}
+                          );
+                        })
+                      ) : (
+                        <p className="text-gray-500 italic">Chưa có thành viên</p>
+                      )}
+
+                      {/* Nút thêm thành viên */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newMember = {
+                            MaKhachThue: 0, // Temporary ID
+                            HoTen: '',
+                            CCCD: '',
+                            NgayCapCCCD: '',
+                            NoiCapCCCD: '',
+                            SDT1: '',
+                            SDT2: '',
+                            Email: '',
+                            DiaChiThuongTru: '',
+                            NgaySinh: '',
+                            NoiSinh: '',
+                            VaiTro: 'THÀNH_VIÊN',
+                            SoXe: 0,
+                            BienSoXe: '',
+                            MaLoaiXe: null,
+                            GhiChu: '',
+                            MaPhong: editingPhongTro.MaPhong,
+                            MaTaiKhoan: null,
+                            HinhAnh: null,
+                          };
+                          const updated = [...(editingPhongTro.khachThue || []), newMember];
+                          setEditingPhongTro({ ...editingPhongTro, khachThue: updated });
+                        }}
+                        className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-gray-600 hover:border-gray-400 hover:text-gray-800 cursor-pointer text-sm"
+                      >
+                        <i className="ri-add-line mr-1"></i> Thêm thành viên mới
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 {detailActiveTab === 'thietbi' && (
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-4">Thiết bị phòng</h3>
-                    <p className="text-sm text-gray-500 mb-4 italic">Hiển thị thiết bị. Quản lý tại module "Thiết bị".</p>
+                    <p className="text-sm text-gray-500 mb-4">Quản lý thiết bị trong phòng. Thay đổi sẽ được lưu vào hệ thống Thiết bị.</p>
+
                     {loadingThietBis ? (
                       <div className="text-center py-4">
                         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                         <p className="text-gray-500 mt-2">Đang tải...</p>
                       </div>
-                    ) : thietBis.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full border divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-2 text-left text-xs text-gray-500 uppercase">Tên</th>
-                              <th className="px-4 py-2 text-left text-xs text-gray-500 uppercase">Loại</th>
-                              <th className="px-4 py-2 text-left text-xs text-gray-500 uppercase">Tình trạng</th>
-                              <th className="px-4 py-2 text-left text-xs text-gray-500 uppercase">Ghi chú</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200 bg-white">
-                            {thietBis.map((tb: ThietBi) => (
-                              <tr key={tb.MaThietBi}>
-                                <td className="px-4 py-2 text-sm">{tb.TenThietBi}</td>
-                                <td className="px-4 py-2 text-sm">{tb.LoaiThietBi}</td>
-                                <td className="px-4 py-2 text-sm">{tb.TinhTrang}</td>
-                                <td className="px-4 py-2 text-sm">{tb.GhiChu || '-'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
                     ) : (
-                      <p className="text-gray-500 italic">Chưa có thiết bị</p>
+                      <div className="space-y-3">
+                        {thietBis.map((tb: ThietBi, idx: number) => (
+                          <div key={tb.MaThietBi} className="grid grid-cols-12 gap-2 items-end bg-gray-50 p-3 rounded-lg">
+                            {/* Tên thiết bị */}
+                            <div className="col-span-4">
+                              <label className="block text-xs text-gray-600 mb-1">Tên thiết bị</label>
+                              <input
+                                type="text"
+                                value={tb.TenThietBi}
+                                onChange={(e) => {
+                                  const updated = [...thietBis];
+                                  updated[idx] = { ...tb, TenThietBi: e.target.value };
+                                  setThietBis(updated);
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+                              />
+                            </div>
+
+                            {/* Mã thiết bị */}
+                            <div className="col-span-2">
+                              <label className="block text-xs text-gray-600 mb-1">Mã TB</label>
+                              <input
+                                type="text"
+                                value={tb.MaThietBi_Code || ''}
+                                onChange={(e) => {
+                                  const updated = [...thietBis];
+                                  updated[idx] = { ...tb, MaThietBi_Code: e.target.value };
+                                  setThietBis(updated);
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+                              />
+                            </div>
+
+                            {/* Loại thiết bị */}
+                            <div className="col-span-2">
+                              <label className="block text-xs text-gray-600 mb-1">Loại</label>
+                              <select
+                                value={tb.LoaiThietBi}
+                                onChange={(e) => {
+                                  const updated = [...thietBis];
+                                  updated[idx] = { ...tb, LoaiThietBi: e.target.value as ThietBi['LoaiThietBi'] };
+                                  setThietBis(updated);
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+                              >
+                                <option value="NoiThat">Nội thất</option>
+                                <option value="ThietBiDien">Thiết bị điện</option>
+                                <option value="DienTu">Điện tử</option>
+                                <option value="AnToan">An toàn</option>
+                                <option value="Khac">Khác</option>
+                              </select>
+                            </div>
+
+                            {/* Tình trạng */}
+                            <div className="col-span-2">
+                              <label className="block text-xs text-gray-600 mb-1">Tình trạng</label>
+                              <select
+                                value={tb.TinhTrang}
+                                onChange={(e) => {
+                                  const updated = [...thietBis];
+                                  updated[idx] = { ...tb, TinhTrang: e.target.value as ThietBi['TinhTrang'] };
+                                  setThietBis(updated);
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+                              >
+                                <option value="Tot">Tốt</option>
+                                <option value="Binh_Thuong">Bình thường</option>
+                                <option value="Kem">Kém</option>
+                                <option value="Hu_Hong">Hư hỏng</option>
+                              </select>
+                            </div>
+
+                            {/* Nút xóa */}
+                            <div className="col-span-2 flex items-center justify-end">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = thietBis.filter((_, i) => i !== idx);
+                                  setThietBis(updated);
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-2 rounded-lg text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Xóa thiết bị"
+                              >
+                                <i className="ri-delete-bin-line text-base"></i>
+                                Xóa
+                              </button>
+                            </div>
+
+                            {/* Ghi chú - full width */}
+                            <div className="col-span-12">
+                              <label className="block text-xs text-gray-600 mb-1">Ghi chú</label>
+                              <input
+                                type="text"
+                                value={tb.MoTa || ''}
+                                onChange={(e) => {
+                                  const updated = [...thietBis];
+                                  updated[idx] = { ...tb, MoTa: e.target.value };
+                                  setThietBis(updated);
+                                }}
+                                className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+                              />
+                            </div>
+                          </div>
+                        ))}
+
+                        {thietBis.length === 0 && (
+                          <p className="text-gray-500 italic">Chưa có thiết bị</p>
+                        )}
+
+                        {/* Nút thêm thiết bị */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newThietBi: ThietBi = {
+                              MaThietBi: 0, // Temporary ID
+                              TenThietBi: '',
+                              MaThietBi_Code: '',
+                              LoaiThietBi: 'Khac',
+                              MaDay: editingPhongTro.MaDay,
+                              MaPhong: editingPhongTro.MaPhong,
+                              TinhTrang: 'Tot',
+                              GiaMua: null,
+                              NgayMua: null,
+                              HangSanXuat: null,
+                              MoTa: null,
+                            };
+                            setThietBis([...thietBis, newThietBi]);
+                          }}
+                          className="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-gray-600 hover:border-gray-400 hover:text-gray-800 cursor-pointer text-sm"
+                        >
+                          <i className="ri-add-line mr-1"></i> Thêm thiết bị
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}

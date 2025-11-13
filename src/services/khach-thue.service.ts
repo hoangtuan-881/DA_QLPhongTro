@@ -27,6 +27,8 @@ export interface KhachThue {
   DiaChiDay?: string;
 }
 
+export type KhachThueListItem = Pick<KhachThue, 'MaKhachThue' | 'HoTen' | 'SDT1' | 'Email' | 'MaPhong' | 'TenPhong'>;
+
 export type KhachThueCreateInput = Omit<
   KhachThue,
   'MaKhachThue' | 'TenPhong' | 'DiaChiDay'

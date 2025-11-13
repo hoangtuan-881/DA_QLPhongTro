@@ -5,6 +5,7 @@ import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
 import loaiPhongService, { LoaiPhong } from '../../services/loai-phong.service';
 import { getErrorMessage } from '../../lib/http-client';
+import AmenitiesSelector from './components/AmenitiesSelector';
 
 export default function RoomTypes() {
   const toast = useToast();
@@ -19,6 +20,7 @@ export default function RoomTypes() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLoaiPhong, setEditingLoaiPhong] = useState<LoaiPhong | null>(null);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: '',
@@ -69,7 +71,6 @@ export default function RoomTypes() {
   const handleAddLoaiPhong = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
-    const amenitiesText = formData.get('TienNghi') as string;
     const donGia = parseFloat(formData.get('DonGiaCoBan') as string);
 
     const newData = {
@@ -77,7 +78,7 @@ export default function RoomTypes() {
       MoTa: formData.get('MoTa') as string,
       DonGiaCoBan: isNaN(donGia) ? 0 : donGia,
       DienTich: parseFloat(formData.get('DienTich') as string) || null,
-      TienNghi: amenitiesText ? amenitiesText.split(',').map(item => item.trim()).filter(item => item) : [],
+      TienNghi: selectedAmenities,
     };
 
     if (!newData.TenLoaiPhong || newData.DonGiaCoBan === null) {
@@ -96,6 +97,7 @@ export default function RoomTypes() {
           setConfirmDialog(prev => ({ ...prev, loading: true }));
           await loaiPhongService.create(newData);
           setShowAddModal(false);
+          setSelectedAmenities([]);
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
           toast.success({ title: 'Thành công', message: 'Đã thêm loại phòng' });
           refreshLoaiPhongs();
@@ -111,6 +113,7 @@ export default function RoomTypes() {
   // ===== Sửa loại phòng =====
   const handleEdit = (loaiPhong: LoaiPhong) => {
     setEditingLoaiPhong(loaiPhong);
+    setSelectedAmenities(loaiPhong.TienNghi || []);
     setShowEditModal(true);
   };
 
@@ -119,7 +122,6 @@ export default function RoomTypes() {
     if (!editingLoaiPhong) return;
 
     const formData = new FormData(e.target as HTMLFormElement);
-    const amenitiesText = formData.get('TienNghi') as string;
     const donGia = parseFloat(formData.get('DonGiaCoBan') as string);
 
     const updatedData = {
@@ -127,7 +129,7 @@ export default function RoomTypes() {
       MoTa: formData.get('MoTa') as string,
       DonGiaCoBan: isNaN(donGia) ? 0 : donGia,
       DienTich: parseFloat(formData.get('DienTich') as string) || null,
-      TienNghi: amenitiesText ? amenitiesText.split(',').map(item => item.trim()).filter(item => item) : [],
+      TienNghi: selectedAmenities,
     };
 
     if (!updatedData.TenLoaiPhong || updatedData.DonGiaCoBan === null) {
@@ -147,6 +149,7 @@ export default function RoomTypes() {
           await loaiPhongService.update(editingLoaiPhong.MaLoaiPhong, updatedData);
           setShowEditModal(false);
           setEditingLoaiPhong(null);
+          setSelectedAmenities([]);
           setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
           toast.success({ title: 'Đã cập nhật', message: 'Cập nhật loại phòng thành công' });
           refreshLoaiPhongs();
@@ -215,7 +218,10 @@ export default function RoomTypes() {
                 <p className="text-gray-600">Quản lý các loại phòng và thông tin chi tiết</p>
               </div>
               <button
-                onClick={() => setShowAddModal(true)}
+                onClick={() => {
+                  setSelectedAmenities([]);
+                  setShowAddModal(true);
+                }}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center whitespace-nowrap cursor-pointer"
               >
                 <i className="ri-add-line mr-2"></i>
@@ -295,7 +301,10 @@ export default function RoomTypes() {
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có loại phòng nào</h3>
                 <p className="text-gray-600 mb-4">Bắt đầu bằng cách thêm loại phòng đầu tiên</p>
                 <button
-                  onClick={() => setShowAddModal(true)}
+                  onClick={() => {
+                    setSelectedAmenities([]);
+                    setShowAddModal(true);
+                  }}
                   className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer"
                 >
                   <i className="ri-add-line mr-2"></i>
@@ -456,13 +465,10 @@ export default function RoomTypes() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tiện nghi</label>
-                  <textarea
-                    name="TienNghi"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    rows={3}
-                    placeholder="Điều hòa, Tủ lạnh, Giường, Tủ quần áo, Bàn học..."
-                  ></textarea>
-                  <p className="text-xs text-gray-500 mt-1">Phân cách bằng dấu phẩy</p>
+                  <AmenitiesSelector
+                    value={selectedAmenities}
+                    onChange={setSelectedAmenities}
+                  />
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -547,13 +553,10 @@ export default function RoomTypes() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tiện nghi</label>
-                  <textarea
-                    name="TienNghi"
-                    defaultValue={editingLoaiPhong.TienNghi.join(', ')}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    rows={3}
-                  ></textarea>
-                  <p className="text-xs text-gray-500 mt-1">Phân cách bằng dấu phẩy</p>
+                  <AmenitiesSelector
+                    value={selectedAmenities}
+                    onChange={setSelectedAmenities}
+                  />
                 </div>
 
                 <div className="flex gap-3 pt-4">

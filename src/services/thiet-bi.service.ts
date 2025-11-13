@@ -13,13 +13,20 @@ export interface ThietBi {
   GiaMua: number | null;
   NgayMua: string | null;
   HangSanXuat: string | null;
-  MoTa: string | null;
-  TenDay?: string | null;
-  TenPhong?: string | null;
+  GhiChu: string | null; // Changed from MoTa to GhiChu
+  // Nested relationships
+  dayTro?: {
+    MaDay: number;
+    TenDay: string;
+  };
+  phongTro?: {
+    MaPhong: number;
+    TenPhong: string;
+  };
 }
 
-// Type cho create (không có id và computed fields)
-export type ThietBiCreateInput = Omit<ThietBi, 'MaThietBi' | 'TenDay' | 'TenPhong'>;
+// Type cho create (không có MaThietBi và computed fields)
+export type ThietBiCreateInput = Omit<ThietBi, 'MaThietBi' | 'dayTro' | 'phongTro'>;
 
 // Type cho update (partial)
 export type ThietBiUpdateInput = Partial<ThietBiCreateInput>;

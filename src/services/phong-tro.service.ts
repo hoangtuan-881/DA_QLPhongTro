@@ -19,10 +19,11 @@ export interface PhongTro {
   DonGiaCoBan: number;
   GiaThueHienTai: number | null;
   DienTich: number | null;
-  TrangThai: string;  // 'Trống' | 'Đã cho thuê' | 'Bảo trì'
+  TrangThai: string;  // 'Trống' | 'Đã cho thuê' | 'Bảo trì' | 'Đã cọc'
   MoTa: string | null;
   HinhAnh: string | null;
   TienNghi: string[];
+  TienCoc: number;
 
   // Computed
   TenDay?: string;
@@ -44,18 +45,22 @@ export interface PhongTro {
 }
 
 export type PhongTroCreateInput = Omit<PhongTro,
-  'MaPhong' | 'TenDay' | 'TenLoaiPhong' | 'dayTro' | 'loaiPhong' | 'khachThue' | 'dichVuDangKy'
+  'MaPhong' | 'TenDay' | 'TenLoaiPhong' | 'dayTro' | 'loaiPhong' | 'khachThue' | 'dichVuDangKy' | 'thietBis'
 >;
 
 export type PhongTroUpdateInput = Partial<PhongTroCreateInput>;
 
 class PhongTroService {
   async getAll(signal?: AbortSignal) {
-    return httpClient.get<PhongTro[]>(API_ENDPOINTS.PHONG_TRO, { signal });
+    const config: any = {};
+    if (signal) config.signal = signal;
+    return httpClient.get<PhongTro[]>(API_ENDPOINTS.PHONG_TRO, config);
   }
 
   async getById(id: number, signal?: AbortSignal) {
-    return httpClient.get<PhongTro>(`${API_ENDPOINTS.PHONG_TRO}/${id}`, { signal });
+    const config: any = {};
+    if (signal) config.signal = signal;
+    return httpClient.get<PhongTro>(`${API_ENDPOINTS.PHONG_TRO}/${id}`, config);
   }
 
   async create(data: PhongTroCreateInput) {
@@ -75,16 +80,22 @@ class PhongTroService {
   }
 
   async getByTrangThai(trangThai: string, signal?: AbortSignal) {
-    return httpClient.get<PhongTro[]>(`${API_ENDPOINTS.PHONG_TRO}/trang-thai/${trangThai}`, { signal });
+    const config: any = {};
+    if (signal) config.signal = signal;
+    return httpClient.get<PhongTro[]>(`${API_ENDPOINTS.PHONG_TRO}/trang-thai/${trangThai}`, config);
   }
 
   // PUBLIC API - Không cần đăng nhập
   async getPublicPhongTrong(signal?: AbortSignal) {
-    return httpClient.get<PhongTro[]>('/public/phong-trong', { signal });
+    const config: any = {};
+    if (signal) config.signal = signal;
+    return httpClient.get<PhongTro[]>('/public/phong-trong', config);
   }
 
   async getPublicPhongDetail(id: number, signal?: AbortSignal) {
-    return httpClient.get<PhongTro>(`/public/phong-tro/${id}`, { signal });
+    const config: any = {};
+    if (signal) config.signal = signal;
+    return httpClient.get<PhongTro>(`/public/phong-tro/${id}`, config);
   }
 }
 

@@ -263,7 +263,7 @@ function RoomsOnHome() {
     };
 
     try {
-      await datCocService.create(payload);
+      await datCocService.createPublic(payload);
       toast.success({
         title: t('messages.success.deposit_created_title', 'Đặt cọc thành công!'),
         message: t('messages.success.deposit_created_message', 'Chúng tôi sẽ liên hệ với bạn sớm nhất để xác nhận.'),

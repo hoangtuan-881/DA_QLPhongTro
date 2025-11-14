@@ -42,7 +42,11 @@ export class BaseApiService<T = any> {
    */
   async getAll(params?: PaginationParams): Promise<AxiosResponse<ApiResponse<T[] | PaginatedResponse<T>>>> {
     const { signal, ...queryParams } = params || {};
-    return httpClient.get(this.endpoint, { params: queryParams, signal });
+    const config: any = { params: queryParams };
+    if (signal) {
+      config.signal = signal;
+    }
+    return httpClient.get(this.endpoint, config);
   }
 
   /**
@@ -98,7 +102,11 @@ export class BaseApiService<T = any> {
    * Custom POST request to a specific path
    */
   async customPost<R = any>(path: string, data?: any, signal?: AbortSignal): Promise<AxiosResponse<ApiResponse<R>>> {
-    return httpClient.post(`${this.endpoint}${path}`, data, { signal });
+    const config: any = {};
+    if (signal) {
+      config.signal = signal;
+    }
+    return httpClient.post(`${this.endpoint}${path}`, data, config);
   }
 
   /**

@@ -65,11 +65,37 @@ export interface AddAdditionalChargeRequest {
   amount: number;
 }
 
+export interface HoaDonStatistics {
+  TongTien: number;
+  DaThanhToan: number;
+  ConLai: number;
+  TongSoHoaDon: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number;
+  to: number;
+}
+
 const HOADON_API_URL = '/admin/hoa-don';
 
 class HoaDonService {
-  getAll(signal?: AbortSignal) {
-    return httpClient.get<{ data: HoaDon[] }>(HOADON_API_URL, { signal });
+  getAll(params?: { page?: number; perPage?: number }, signal?: AbortSignal) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.perPage) queryParams.append('perPage', params.perPage.toString());
+
+    const url = queryParams.toString() ? `${HOADON_API_URL}?${queryParams}` : HOADON_API_URL;
+    return httpClient.get<{ data: PaginatedResponse<HoaDon> }>(url, { signal });
+  }
+
+  getStatistics(signal?: AbortSignal) {
+    return httpClient.get<{ data: HoaDonStatistics }>(`${HOADON_API_URL}/statistics`, { signal });
   }
 
   getById(id: number, signal?: AbortSignal) {

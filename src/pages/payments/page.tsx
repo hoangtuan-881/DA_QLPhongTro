@@ -4,10 +4,9 @@ import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
-import { usePagination } from '../../hooks/usePagination';
 import Pagination from '../../components/base/Pagination';
 import thanhToanService from '../../services/thanh-toan.service';
-import hoaDonService, { HoaDon, CreateHoaDonRequest, ChiTietHoaDon, CreateBulkHoaDonRequest, AddAdditionalChargeRequest } from '../../services/hoa-don.service';
+import hoaDonService, { HoaDon, CreateHoaDonRequest, ChiTietHoaDon, CreateBulkHoaDonRequest, AddAdditionalChargeRequest, HoaDonStatistics } from '../../services/hoa-don.service';
 import soDienService, { SoDien, CreateSoDienRequest } from '../../services/so-dien.service';
 import thongBaoService, { ThongBao, CreateThongBaoRequest } from '../../services/thong-bao.service';
 import { getErrorMessage } from '../../lib/http-client';
@@ -490,16 +489,38 @@ export default function Payments() {
   const [hoaDons, setHoaDons] = useState<HoaDon[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [statistics, setStatistics] = useState<HoaDonStatistics>({
+    TongTien: 0,
+    DaThanhToan: 0,
+    ConLai: 0,
+    TongSoHoaDon: 0
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [total, setTotal] = useState(0);
 
-  // ✅ Load HoaDon từ Backend
+  // ✅ Load HoaDon và Statistics từ Backend
   useEffect(() => {
     const controller = new AbortController();
 
-    const fetchHoaDons = async () => {
+    const fetchData = async () => {
       try {
-        const response = await hoaDonService.getAll(controller.signal);
+        // Fetch statistics và paginated data cùng lúc
+        const [statsResponse, hoaDonsResponse] = await Promise.all([
+          hoaDonService.getStatistics(controller.signal),
+          hoaDonService.getAll({ page: currentPage, perPage }, controller.signal)
+        ]);
+
         if (!controller.signal.aborted) {
-          setHoaDons(response.data.data || []);
+          setStatistics(statsResponse.data.data);
+
+          const paginatedData = hoaDonsResponse.data.data;
+          setHoaDons(paginatedData.data || []);
+          setCurrentPage(paginatedData.current_page || 1);
+          setTotalPages(paginatedData.last_page || 1);
+          setTotal(paginatedData.total || 0);
+
           setLoading(false);
         }
       } catch (err: any) {
@@ -510,13 +531,24 @@ export default function Payments() {
       }
     };
 
-    fetchHoaDons();
+    fetchData();
     return () => controller.abort();
-  }, [refreshKey]);
+  }, [refreshKey, currentPage, perPage]);
 
   const refreshData = () => {
     setLoading(true);
     setRefreshKey(prev => prev + 1);
+  };
+
+  // Format tiền sang đơn vị Việt Nam (triệu, nghìn)
+  const formatCurrency = (amount: number | string): string => {
+    const num = Number(amount || 0);
+    if (num >= 1000000) {
+      return `${(num / 1000000).toFixed(1)} tr`; // triệu
+    } else if (num >= 1000) {
+      return `${(num / 1000).toFixed(0)} k`; // nghìn
+    }
+    return `${num.toLocaleString('vi-VN')}đ`;
   };
 
   const getStatusColor = (status: string) => {
@@ -1091,14 +1123,23 @@ export default function Payments() {
     ? (hoaDons || [])
     : (hoaDons || []).filter(hoaDon => hoaDon.TrangThai === filterStatus);
 
-  // ✅ Pagination
-  const { paginatedData, currentPage, totalPages, goToPage, nextPage, prevPage } = usePagination({
-    data: filteredHoaDons || [],
-    initialItemsPerPage: 10
-  });
+  // ✅ Pagination handlers for Backend pagination
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setLoading(true);
+  };
 
-  const totalRevenue = (hoaDons || []).reduce((sum, hoaDon) => sum + hoaDon.DaThanhToan, 0);
-  const totalPending = (hoaDons || []).reduce((sum, hoaDon) => sum + hoaDon.ConLai, 0);
+  const goToPage = (page: number) => handlePageChange(page);
+  const nextPage = () => {
+    if (currentPage < totalPages) handlePageChange(currentPage + 1);
+  };
+  const prevPage = () => {
+    if (currentPage > 1) handlePageChange(currentPage - 1);
+  };
+
+  // ✅ Use statistics from Backend
+  const totalRevenue = statistics.DaThanhToan;
+  const totalPending = statistics.ConLai;
 
   const handleDeletePayment = (maHoaDon: number) => {
     const hoaDon = (hoaDons || []).find(h => h.MaHoaDon === maHoaDon);
@@ -1249,7 +1290,7 @@ export default function Payments() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Đã thu</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {totalRevenue.toLocaleString('vi-VN')}đ
+                      {formatCurrency(totalRevenue)}
                     </p>
                   </div>
                 </div>
@@ -1262,7 +1303,7 @@ export default function Payments() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Chưa thu</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {totalPending.toLocaleString('vi-VN')}đ
+                      {formatCurrency(totalPending)}
                     </p>
                   </div>
                 </div>
@@ -1369,7 +1410,7 @@ export default function Payments() {
                         </td>
                       </tr>
                     ) : (
-                      paginatedData.map((hoaDon) => (
+                      filteredHoaDons.map((hoaDon) => (
                         <tr key={hoaDon.MaHoaDon} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
@@ -1391,7 +1432,9 @@ export default function Payments() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">
-                            {hoaDon.chiTietHoaDon?.find(ct => ct.NoiDung?.includes('Tiền thuê'))?.ThanhTien?.toLocaleString('vi-VN') || '-'}đ
+                            {hoaDon.chiTietHoaDon?.find(ct => ct.NoiDung?.includes('Tiền thuê'))?.ThanhTien
+                              ? formatCurrency(hoaDon.chiTietHoaDon.find(ct => ct.NoiDung?.includes('Tiền thuê'))?.ThanhTien || 0)
+                              : '-'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1399,7 +1442,7 @@ export default function Payments() {
                             <div className="text-sm text-gray-900">
                               {hoaDon.chiTietHoaDon.map((ct, idx) => (
                                 <div key={idx} className="text-xs">
-                                  {ct.NoiDung}: {(ct.ThanhTien || 0).toLocaleString('vi-VN')}đ
+                                  {ct.NoiDung}: {formatCurrency(ct.ThanhTien || 0)}
                                 </div>
                               ))}
                             </div>
@@ -1409,16 +1452,16 @@ export default function Payments() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            {(hoaDon.TongTien || 0).toLocaleString('vi-VN')}đ
+                            {formatCurrency(hoaDon.TongTien)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-green-600">
-                            {(hoaDon.DaThanhToan || 0).toLocaleString('vi-VN')}đ
+                            {formatCurrency(hoaDon.DaThanhToan)}
                           </div>
-                          {(hoaDon.ConLai || 0) > 0 && (
+                          {Number(hoaDon.ConLai || 0) > 0 && (
                             <div className="text-xs text-red-600">
-                              Còn lại: {(hoaDon.ConLai || 0).toLocaleString('vi-VN')}đ
+                              Còn lại: {formatCurrency(hoaDon.ConLai)}
                             </div>
                           )}
                         </td>

@@ -515,11 +515,11 @@ export default function Payments() {
         if (!controller.signal.aborted) {
           setStatistics(statsResponse.data.data);
 
-          const paginatedData = hoaDonsResponse.data.data;
-          setHoaDons(paginatedData.data || []);
-          setCurrentPage(paginatedData.current_page || 1);
-          setTotalPages(paginatedData.last_page || 1);
-          setTotal(paginatedData.total || 0);
+          const response = hoaDonsResponse.data;
+          setHoaDons(response.data || []);
+          setCurrentPage(response.meta?.current_page || 1);
+          setTotalPages(response.meta?.last_page || 1);
+          setTotal(response.meta?.total || 0);
 
           setLoading(false);
         }
@@ -1403,7 +1403,7 @@ export default function Payments() {
                           </div>
                         </td>
                       </tr>
-                    ) : paginatedData.length === 0 ? (
+                    ) : filteredHoaDons.length === 0 ? (
                       <tr key="empty">
                         <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                           Không có dữ liệu

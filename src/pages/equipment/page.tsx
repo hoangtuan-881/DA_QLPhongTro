@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
+import { usePagination } from '../../hooks/usePagination';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
+import Pagination from '../../components/base/Pagination';
 import thietBiService, { ThietBi, ThietBiCreateInput, ThietBiUpdateInput } from '../../services/thiet-bi.service';
 import maintenanceService, { MaintenanceRequestCreate } from '../../services/maintenance.service';
 import { dayTroService, DayTro } from '../../services/day-tro.service';
@@ -34,8 +36,6 @@ export default function Equipment() {
   const [phongTros, setPhongTros] = useState<PhongTro[]>([]);
   const [loadingDayTros, setLoadingDayTros] = useState(true);
   const [loadingPhongTros, setLoadingPhongTros] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [detailContext, setDetailContext] = useState<'inventory' | 'placement' | null>(null);
@@ -197,11 +197,23 @@ export default function Equipment() {
     });
   }, [equipments, filterCategory, search]);
 
-  const inventoryFiltered = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return unpaginatedInventoryFiltered.slice(startIndex, endIndex);
-  }, [unpaginatedInventoryFiltered, currentPage, itemsPerPage]);
+  // Pagination for Inventory tab
+  const {
+    paginatedData: inventoryFiltered,
+    currentPage: inventoryCurrentPage,
+    totalPages: inventoryTotalPages,
+    startIndex: inventoryStartIndex,
+    endIndex: inventoryEndIndex,
+    itemsPerPage: inventoryItemsPerPage,
+    totalItems: inventoryTotalItems,
+    setItemsPerPage: setInventoryItemsPerPage,
+    nextPage: inventoryNextPage,
+    prevPage: inventoryPrevPage,
+    goToPage: inventoryGoToPage,
+  } = usePagination({
+    data: unpaginatedInventoryFiltered,
+    initialItemsPerPage: 10,
+  });
 
   type PlacementRow = {
     MaThietBi: number;
@@ -251,11 +263,23 @@ export default function Equipment() {
     });
   }, [placementRows, placementBlock, placementStatus, placementSearch]);
 
-  const placementFiltered = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return unpaginatedPlacementFiltered.slice(startIndex, endIndex);
-  }, [unpaginatedPlacementFiltered, currentPage, itemsPerPage]);
+  // Pagination for Placement tab
+  const {
+    paginatedData: placementFiltered,
+    currentPage: placementCurrentPage,
+    totalPages: placementTotalPages,
+    startIndex: placementStartIndex,
+    endIndex: placementEndIndex,
+    itemsPerPage: placementItemsPerPage,
+    totalItems: placementTotalItems,
+    setItemsPerPage: setPlacementItemsPerPage,
+    nextPage: placementNextPage,
+    prevPage: placementPrevPage,
+    goToPage: placementGoToPage,
+  } = usePagination({
+    data: unpaginatedPlacementFiltered,
+    initialItemsPerPage: 10,
+  });
 
   const showConfirm = (action: {
     title: string;
@@ -762,36 +786,35 @@ export default function Equipment() {
                   </div>
                 )}
                 {/* Pagination Controls */}
-                <div className="flex justify-between items-center mt-6 bg-white p-4 rounded-lg shadow-sm">
-                  <span className="text-sm text-gray-700">
-                    Hiển thị {((currentPage - 1) * itemsPerPage) + 1} đến {Math.min(currentPage * itemsPerPage, (activeTab === 'inventory' ? unpaginatedInventoryFiltered.length : unpaginatedPlacementFiltered.length))} của {(activeTab === 'inventory' ? unpaginatedInventoryFiltered.length : unpaginatedPlacementFiltered.length)} mục
-                  </span>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Trước
-                    </button>
-                    {Array.from({ length: Math.ceil((activeTab === 'inventory' ? unpaginatedInventoryFiltered.length : unpaginatedPlacementFiltered.length) / itemsPerPage) }, (_, i) => (
-                      <button
-                        key={i + 1}
-                        onClick={() => setCurrentPage(i + 1)}
-                        className={`px-4 py-2 text-sm font-medium rounded-lg ${currentPage === i + 1 ? 'bg-indigo-600 text-white' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'}`}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil((activeTab === 'inventory' ? unpaginatedInventoryFiltered.length : unpaginatedPlacementFiltered.length) / itemsPerPage), prev + 1))}
-                      disabled={currentPage === Math.ceil((activeTab === 'inventory' ? unpaginatedInventoryFiltered.length : unpaginatedPlacementFiltered.length) / itemsPerPage)}
-                      className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Tiếp
-                    </button>
-                  </div>
-                </div>
+                {activeTab === 'inventory' ? (
+                  <Pagination
+                    currentPage={inventoryCurrentPage}
+                    totalPages={inventoryTotalPages}
+                    totalItems={inventoryTotalItems}
+                    startIndex={inventoryStartIndex}
+                    endIndex={inventoryEndIndex}
+                    itemsPerPage={inventoryItemsPerPage}
+                    onPageChange={inventoryGoToPage}
+                    onItemsPerPageChange={setInventoryItemsPerPage}
+                    onNext={inventoryNextPage}
+                    onPrev={inventoryPrevPage}
+                    itemLabel="thiết bị"
+                  />
+                ) : (
+                  <Pagination
+                    currentPage={placementCurrentPage}
+                    totalPages={placementTotalPages}
+                    totalItems={placementTotalItems}
+                    startIndex={placementStartIndex}
+                    endIndex={placementEndIndex}
+                    itemsPerPage={placementItemsPerPage}
+                    onPageChange={placementGoToPage}
+                    onItemsPerPageChange={setPlacementItemsPerPage}
+                    onNext={placementNextPage}
+                    onPrev={placementPrevPage}
+                    itemLabel="thiết bị"
+                  />
+                )}
               </>
             )}
           </div>

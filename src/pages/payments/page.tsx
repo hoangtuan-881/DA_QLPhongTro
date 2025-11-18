@@ -1,42 +1,27 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
+import { usePagination } from '../../hooks/usePagination';
+import Pagination from '../../components/base/Pagination';
+import thanhToanService from '../../services/thanh-toan.service';
+import hoaDonService, { HoaDon, CreateHoaDonRequest, ChiTietHoaDon, CreateBulkHoaDonRequest, AddAdditionalChargeRequest } from '../../services/hoa-don.service';
+import soDienService, { SoDien, CreateSoDienRequest } from '../../services/so-dien.service';
+import thongBaoService, { ThongBao, CreateThongBaoRequest } from '../../services/thong-bao.service';
+import { getErrorMessage } from '../../lib/http-client';
+
+// ✅ Tất cả interfaces đã import từ services - KHÔNG tạo thêm interface mới
+
+// Temporary interfaces cho UI features (sẽ refactor dần)
+type InternetPlan = 1 | 2;
 
 interface AdditionalCharge {
   id: string;
   description: string;
   amount: number;
   date: string;
-}
-type InternetPlan = 1 | 2;
-
-interface Payment {
-  id: string;
-  tenantName: string;
-  room: string;
-  building: string;
-  month: string;
-  rentAmount: number;
-  electricityUsage: number;
-  electricityAmount: number;
-  waterUsage: number;
-  waterAmount: number;
-  internetPlan: InternetPlan;
-  internetAmount: number;
-  trashAmount: number;
-  parkingCount: number;
-  parkingAmount: number;
-  additionalCharges?: AdditionalCharge[];
-  totalAmount: number;
-  paidAmount: number;
-  remainingAmount: number;
-  dueDate: string;
-  paidDate?: string;
-  status: 'pending' | 'partial' | 'paid' | 'overdue';
-  paymentMethod?: string;
 }
 
 interface NewInvoice {
@@ -420,7 +405,7 @@ const defaultCommonCharges: CommonCharge[] = [
 
 export default function Payments() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [selectedHoaDon, setSelectedHoaDon] = useState<HoaDon | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showElectricModal, setShowElectricModal] = useState(false);
@@ -431,10 +416,10 @@ export default function Payments() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [electricReadings, setElectricReadings] = useState<ElectricReading[]>(mockElectricReadings);
   const [editingReading, setEditingReading] = useState<string | null>(null);
-  const [selectedPaymentForCharges, setSelectedPaymentForCharges] = useState<Payment | null>(null);
+  const [selectedHoaDonForCharges, setSelectedHoaDonForCharges] = useState<HoaDon | null>(null);
   const [newCharge, setNewCharge] = useState({ description: '', amount: 0 });
-  const [selectedPaymentForPayment, setSelectedPaymentForPayment] = useState<Payment | null>(null);
-  const [selectedPaymentForNotification, setSelectedPaymentForNotification] = useState<Payment | null>(null);
+  const [selectedHoaDonForPayment, setSelectedHoaDonForPayment] = useState<HoaDon | null>(null);
+  const [selectedHoaDonForNotification, setSelectedHoaDonForNotification] = useState<HoaDon | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
@@ -500,23 +485,56 @@ export default function Payments() {
   });
 
   const { success, error, warning } = useToast();
-  const [payments, setPayments] = useState<Payment[]>(mockPayments);
+
+  // ✅ State cho HoaDon từ Backend
+  const [hoaDons, setHoaDons] = useState<HoaDon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // ✅ Load HoaDon từ Backend
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchHoaDons = async () => {
+      try {
+        const response = await hoaDonService.getAll(controller.signal);
+        if (!controller.signal.aborted) {
+          setHoaDons(response.data.data || []);
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
+          error({ title: 'Lỗi tải dữ liệu', message: getErrorMessage(err) });
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchHoaDons();
+    return () => controller.abort();
+  }, [refreshKey]);
+
+  const refreshData = () => {
+    setLoading(true);
+    setRefreshKey(prev => prev + 1);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'paid': return 'bg-green-100 text-green-800';
-      case 'partial': return 'bg-yellow-100 text-yellow-800';
-      case 'pending': return 'bg-blue-100 text-blue-800';
-      case 'overdue': return 'bg-red-100 text-red-800';
+      case 'da_thanh_toan': return 'bg-green-100 text-green-800';
+      case 'da_thanh_toan_mot_phan': return 'bg-yellow-100 text-yellow-800';
+      case 'moi_tao': return 'bg-blue-100 text-blue-800';
+      case 'qua_han': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'paid': return 'Đã thanh toán';
-      case 'partial': return 'Thanh toán một phần';
-      case 'pending': return 'Chờ thanh toán';
-      case 'overdue': return 'Quá hạn';
+      case 'da_thanh_toan': return 'Đã thanh toán';
+      case 'da_thanh_toan_mot_phan': return 'Thanh toán một phần';
+      case 'moi_tao': return 'Chờ thanh toán';
+      case 'qua_han': return 'Quá hạn';
       default: return status;
     }
   };
@@ -572,46 +590,63 @@ export default function Payments() {
       return;
     }
 
-    if (!selectedPaymentForCharges) return; // Kiểm tra an toàn
+    if (!selectedHoaDonForCharges) return; // Kiểm tra an toàn
 
     showConfirm({
       title: 'Xác nhận thêm chi phí phát sinh',
       message: `Bạn có chắc chắn muốn thêm chi phí phát sinh "${newCharge.description}" với số tiền ${newCharge.amount.toLocaleString('vi-VN')}đ không?`,
-      onConfirm: () => {
-        const chargeToAdd: AdditionalCharge = {
-          id: `charge-${Date.now()}`,
-          description: newCharge.description,
-          amount: newCharge.amount,
-          date: new Date().toISOString().split('T')[0]
-        };
+      onConfirm: async () => {
+        try {
+          // Gọi API thêm phí phát sinh
+          const maHoaDon = parseInt(selectedHoaDonForCharges.id);
+          if (!isNaN(maHoaDon)) {
+            await hoaDonService.addAdditionalCharge(maHoaDon, {
+              description: newCharge.description,
+              amount: newCharge.amount
+            });
+          }
 
-        setPayments(prevPayments =>
-          prevPayments.map(payment => {
-            if (payment.id === selectedPaymentForCharges.id) {
-              const newAdditionalCharges = [...(payment.additionalCharges || []), chargeToAdd];
-              const newTotalAmount = payment.totalAmount + chargeToAdd.amount;
-              const newRemainingAmount = payment.remainingAmount + chargeToAdd.amount;
-              const newStatus = payment.status === 'paid' ? 'partial' : payment.status;
+          // Cập nhật state local
+          const chargeToAdd: AdditionalCharge = {
+            id: `charge-${Date.now()}`,
+            description: newCharge.description,
+            amount: newCharge.amount,
+            date: new Date().toISOString().split('T')[0]
+          };
 
-              return {
-                ...payment,
-                additionalCharges: newAdditionalCharges,
-                totalAmount: newTotalAmount,
-                remainingAmount: newRemainingAmount,
-                status: newStatus
-              };
-            }
-            return payment;
-          })
-        );
+          setPayments(prevPayments =>
+            prevPayments.map(payment => {
+              if (payment.id === selectedHoaDonForCharges.id) {
+                const newAdditionalCharges = [...(payment.additionalCharges || []), chargeToAdd];
+                const newTotalAmount = payment.totalAmount + chargeToAdd.amount;
+                const newRemainingAmount = payment.remainingAmount + chargeToAdd.amount;
+                const newStatus = payment.status === 'paid' ? 'partial' : payment.status;
 
-        success({
-          title: 'Thêm phát sinh thành công',
-          message: `Đã thêm ${newCharge.description} - ${newCharge.amount.toLocaleString('vi-VN')}đ`
-        });
-        setShowAdditionalChargesModal(false);
-        setNewCharge({ description: '', amount: 0 });
-        setSelectedPaymentForCharges(null);
+                return {
+                  ...payment,
+                  additionalCharges: newAdditionalCharges,
+                  totalAmount: newTotalAmount,
+                  remainingAmount: newRemainingAmount,
+                  status: newStatus
+                };
+              }
+              return payment;
+            })
+          );
+
+          success({
+            title: 'Thêm phát sinh thành công',
+            message: `Đã thêm ${newCharge.description} - ${newCharge.amount.toLocaleString('vi-VN')}đ`
+          });
+          setShowAdditionalChargesModal(false);
+          setNewCharge({ description: '', amount: 0 });
+          setSelectedPaymentForCharges(null);
+        } catch (err) {
+          error({
+            title: 'Lỗi thêm phát sinh',
+            message: getErrorMessage(err)
+          });
+        }
       }
     });
   };
@@ -636,9 +671,9 @@ export default function Payments() {
       return;
     }
 
-    if (!selectedPaymentForPayment) return;
+    if (!selectedHoaDonForPayment) return;
 
-    if (paymentData.amount > selectedPaymentForPayment.remainingAmount) {
+    if (paymentData.amount > selectedHoaDonForPayment.remainingAmount) {
       error({
         title: 'Lỗi thu tiền',
         message: 'Số tiền thu không được vượt quá số tiền còn lại'
@@ -648,41 +683,61 @@ export default function Payments() {
 
     showConfirm({
       title: 'Xác nhận thu tiền',
-      message: `Bạn có chắc chắn muốn thu ${paymentData.amount.toLocaleString('vi-VN')}đ từ "${selectedPaymentForPayment.tenantName}" không?`,
-      onConfirm: () => {
-        setPayments(prevPayments =>
-          prevPayments.map(payment => {
-            if (payment.id === selectedPaymentForPayment.id) {
-              const newPaidAmount = payment.paidAmount + paymentData.amount;
-              const newRemainingAmount = payment.totalAmount - newPaidAmount;
-              const newStatus = newRemainingAmount <= 0 ? 'paid' : 'partial';
+      message: `Bạn có chắc chắn muốn thu ${paymentData.amount.toLocaleString('vi-VN')}đ từ "${selectedHoaDonForPayment.tenantName}" không?`,
+      onConfirm: async () => {
+        try {
+          // Gọi API tạo bản ghi thanh toán
+          const maHoaDon = parseInt(selectedHoaDonForPayment.id);
+          if (!isNaN(maHoaDon)) {
+            await thanhToanService.create({
+              MaHoaDon: maHoaDon,
+              SoTien: paymentData.amount,
+              NgayThanhToan: paymentData.date,
+              PhuongThuc: paymentData.method === 'cash' ? 'tien_mat' : 'chuyen_khoan',
+              GhiChu: paymentData.note || null
+            });
+          }
 
-              return {
-                ...payment,
-                paidAmount: newPaidAmount,
-                remainingAmount: newRemainingAmount,
-                status: newStatus,
-                paidDate: paymentData.date,
-                paymentMethod: paymentData.method
-              };
-            }
-            return payment;
-          })
-        );
+          // Cập nhật state local
+          setPayments(prevPayments =>
+            prevPayments.map(payment => {
+              if (payment.id === selectedHoaDonForPayment.id) {
+                const newPaidAmount = payment.paidAmount + paymentData.amount;
+                const newRemainingAmount = payment.totalAmount - newPaidAmount;
+                const newStatus = newRemainingAmount <= 0 ? 'paid' : 'partial';
 
-        success({
-          title: 'Thu tiền thành công',
-          message: `Đã thu ${paymentData.amount.toLocaleString('vi-VN')}đ từ ${selectedPaymentForPayment.tenantName}`
-        });
+                return {
+                  ...payment,
+                  paidAmount: newPaidAmount,
+                  remainingAmount: newRemainingAmount,
+                  status: newStatus,
+                  paidDate: paymentData.date,
+                  paymentMethod: paymentData.method
+                };
+              }
+              return payment;
+            })
+          );
 
-        setShowPaymentModal(false);
-        setSelectedPaymentForPayment(null);
-        setPaymentData({
-          amount: 0,
-          method: 'cash',
-          note: '',
-          date: new Date().toISOString().split('T')[0]
-        });
+          success({
+            title: 'Thu tiền thành công',
+            message: `Đã thu ${paymentData.amount.toLocaleString('vi-VN')}đ từ ${selectedHoaDonForPayment.tenantName}`
+          });
+
+          setShowPaymentModal(false);
+          setSelectedPaymentForPayment(null);
+          setPaymentData({
+            amount: 0,
+            method: 'cash',
+            note: '',
+            date: new Date().toISOString().split('T')[0]
+          });
+        } catch (err) {
+          error({
+            title: 'Lỗi thu tiền',
+            message: getErrorMessage(err)
+          });
+        }
       }
     });
   };
@@ -712,11 +767,11 @@ export default function Payments() {
 
     showConfirm({
       title: 'Xác nhận gửi thông báo',
-      message: `Bạn có chắc chắn muốn gửi thông báo ${methodText} cho "${selectedPaymentForNotification?.tenantName}" không?`,
+      message: `Bạn có chắc chắn muốn gửi thông báo ${methodText} cho "${selectedHoaDonForNotification?.tenantName}" không?`,
       onConfirm: () => {
         success({
           title: 'Gửi thông báo thành công',
-          message: `Đã gửi thông báo ${methodText} cho ${selectedPaymentForNotification?.tenantName}`
+          message: `Đã gửi thông báo ${methodText} cho ${selectedHoaDonForNotification?.tenantName}`
         });
 
         setShowNotificationModal(false);
@@ -1032,26 +1087,40 @@ export default function Payments() {
     room.room.toLowerCase().includes(searchRoomQuery.toLowerCase())
   );
 
-  const filteredPayments = filterStatus === 'all'
-    ? payments
-    : payments.filter(payment => payment.status === filterStatus);
+  const filteredHoaDons = filterStatus === 'all'
+    ? (hoaDons || [])
+    : (hoaDons || []).filter(hoaDon => hoaDon.TrangThai === filterStatus);
 
-  const totalRevenue = payments.reduce((sum, payment) => sum + payment.paidAmount, 0);
-  const totalPending = payments.reduce((sum, payment) => sum + payment.remainingAmount, 0);
+  // ✅ Pagination
+  const { paginatedData, currentPage, totalPages, goToPage, nextPage, prevPage } = usePagination({
+    data: filteredHoaDons || [],
+    initialItemsPerPage: 10
+  });
 
-  const handleDeletePayment = (paymentId: string) => {
-    const payment = payments.find(p => p.id === paymentId);
-    if (!payment) return;
+  const totalRevenue = (hoaDons || []).reduce((sum, hoaDon) => sum + hoaDon.DaThanhToan, 0);
+  const totalPending = (hoaDons || []).reduce((sum, hoaDon) => sum + hoaDon.ConLai, 0);
+
+  const handleDeletePayment = (maHoaDon: number) => {
+    const hoaDon = (hoaDons || []).find(h => h.MaHoaDon === maHoaDon);
+    if (!hoaDon) return;
 
     showConfirm({
       title: 'Xác nhận xóa hóa đơn',
-      message: `Bạn có chắc chắn muốn xóa hóa đơn của "${payment.tenantName}" không? Hành động này không thể hoàn tác.`,
-      onConfirm: () => {
-        setPayments(prevPayments => prevPayments.filter(p => p.id !== paymentId));
-        success({
-          title: 'Xóa hóa đơn thành công',
-          message: `Đã xóa hóa đơn của ${payment.tenantName} thành công`
-        });
+      message: `Bạn có chắc chắn muốn xóa hóa đơn #${maHoaDon} (Phòng ${hoaDon.MaPhong}) không? Hành động này không thể hoàn tác.`,
+      onConfirm: async () => {
+        try {
+          await hoaDonService.delete(maHoaDon);
+          refreshData();
+          success({
+            title: 'Xóa hóa đơn thành công',
+            message: `Đã xóa hóa đơn #${maHoaDon} thành công`
+          });
+        } catch (err) {
+          error({
+            title: 'Lỗi xóa hóa đơn',
+            message: getErrorMessage(err)
+          });
+        }
       },
       type: 'danger'
     });
@@ -1206,7 +1275,7 @@ export default function Payments() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Quá hạn</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {payments.filter(p => p.status === 'overdue').length} {/* <-- Sửa */}
+                      {hoaDons.filter(p => p.status === 'overdue').length} {/* <-- Sửa */}
                     </p>
                   </div>
                 </div>
@@ -1218,7 +1287,7 @@ export default function Payments() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Tổng hóa đơn</p>
-                    <p className="text-2xl font-bold text-gray-900">{payments.length}</p> {/* <-- Sửa */}
+                    <p className="text-2xl font-bold text-gray-900">{hoaDons.length}</p> {/* <-- Sửa */}
                   </div>
                 </div>
               </div>
@@ -1284,87 +1353,107 @@ export default function Payments() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredPayments.map((payment) => (
-                      <tr key={payment.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{payment.tenantName}</div>
-                            <div className="text-sm text-gray-500">{payment.building} • {payment.room}</div>
+                    {loading ? (
+                      <tr key="loading">
+                        <td colSpan={8} className="px-6 py-12 text-center">
+                          <div className="flex justify-center items-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                            <span className="ml-3 text-gray-500">Đang tải dữ liệu...</span>
                           </div>
                         </td>
+                      </tr>
+                    ) : paginatedData.length === 0 ? (
+                      <tr key="empty">
+                        <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                          Không có dữ liệu
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedData.map((hoaDon) => (
+                        <tr key={hoaDon.MaHoaDon} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {hoaDon.hopDong?.TenKhach || `Phòng ${hoaDon.MaPhong}`}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {hoaDon.phongTro?.DayTro?.TenDay || ''} • {hoaDon.phongTro?.TenPhong || `P${hoaDon.MaPhong}`}
+                              </div>
+                            </div>
+                          </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                            {new Date(payment.month).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit' })}
+                            Tháng {hoaDon.Thang}
                           </div>
                           <div className="text-xs text-gray-500">
-                            Hạn: {new Date(payment.dueDate).toLocaleDateString('vi-VN')}
+                            Hạn: {new Date(hoaDon.NgayHetHan).toLocaleDateString('vi-VN')}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {payment.rentAmount.toLocaleString('vi-VN')}đ
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            Điện: {payment.electricityUsage}kWh - {payment.electricityAmount.toLocaleString('vi-VN')}đ
-                          </div>
                           <div className="text-sm text-gray-500">
-                            Nước: {payment.waterUsage} người - {payment.waterAmount.toLocaleString('vi-VN')}đ
+                            {hoaDon.chiTietHoaDon?.find(ct => ct.NoiDung?.includes('Tiền thuê'))?.ThanhTien?.toLocaleString('vi-VN') || '-'}đ
                           </div>
-                          {payment.additionalCharges && payment.additionalCharges.length > 0 && (
-                            <div className="text-sm text-orange-600">
-                              Phát sinh: {payment.additionalCharges.reduce((sum, charge) => sum + charge.amount, 0).toLocaleString('vi-VN')}đ
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {hoaDon.chiTietHoaDon && hoaDon.chiTietHoaDon.length > 0 ? (
+                            <div className="text-sm text-gray-900">
+                              {hoaDon.chiTietHoaDon.map((ct, idx) => (
+                                <div key={idx} className="text-xs">
+                                  {ct.NoiDung}: {(ct.ThanhTien || 0).toLocaleString('vi-VN')}đ
+                                </div>
+                              ))}
                             </div>
+                          ) : (
+                            <div className="text-sm text-gray-500">-</div>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            {payment.totalAmount.toLocaleString('vi-VN')}đ
+                            {(hoaDon.TongTien || 0).toLocaleString('vi-VN')}đ
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-green-600">
-                            {payment.paidAmount.toLocaleString('vi-VN')}đ
+                            {(hoaDon.DaThanhToan || 0).toLocaleString('vi-VN')}đ
                           </div>
-                          {payment.remainingAmount > 0 && (
+                          {(hoaDon.ConLai || 0) > 0 && (
                             <div className="text-xs text-red-600">
-                              Còn lại: {payment.remainingAmount.toLocaleString('vi-VN')}đ
+                              Còn lại: {(hoaDon.ConLai || 0).toLocaleString('vi-VN')}đ
                             </div>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.status)}`}>
-                            {getStatusText(payment.status)}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(hoaDon.TrangThai)}`}>
+                            {getStatusText(hoaDon.TrangThai)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => handleViewDetail(payment)}
+                              onClick={() => handleViewDetail(hoaDon)}
                               className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
                               title="Xem chi tiết"
                             >
                               <i className="ri-eye-line"></i>
                             </button>
                             <button
-                              onClick={() => handleAddAdditionalCharge(payment)}
+                              onClick={() => handleAddAdditionalCharge(hoaDon)}
                               className="text-orange-600 hover:text-orange-900 cursor-pointer"
                               title="Thêm phát sinh"
                             >
                               <i className="ri-add-circle-line"></i>
                             </button>
-                            {payment.status !== 'paid' && (
+                            {hoaDon.TrangThai !== 'da_thanh_toan' && (
                               <>
                                 <button
-                                  onClick={() => handleCollectPayment(payment)}
+                                  onClick={() => handleCollectPayment(hoaDon)}
                                   className="text-green-600 hover:text-green-900 cursor-pointer"
                                   title="Thu tiền"
                                 >
                                   <i className="ri-money-dollar-circle-line"></i>
                                 </button>
                                 <button
-                                  onClick={() => handleSendPaymentNotification(payment)}
+                                  onClick={() => handleSendPaymentNotification(hoaDon)}
                                   className="text-blue-600 hover:text-blue-900 cursor-pointer"
                                   title="Gửi thông báo"
                                 >
@@ -1373,7 +1462,7 @@ export default function Payments() {
                               </>
                             )}
                             <button
-                              onClick={() => handleDeletePayment(payment.id)}
+                              onClick={() => handleDeletePayment(hoaDon.MaHoaDon)}
                               className="text-red-600 hover:text-red-900 cursor-pointer"
                               title="Xóa"
                             >
@@ -1382,10 +1471,24 @@ export default function Payments() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    ))
+                  )}
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination */}
+              {!loading && filteredHoaDons.length > 0 && (
+                <div className="mt-4">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={goToPage}
+                    onNext={nextPage}
+                    onPrev={prevPage}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Electric Reading Modal */}
@@ -2058,14 +2161,14 @@ export default function Payments() {
             )}
 
             {/* Payment Detail Modal */}
-            {showDetailModal && selectedPayment && (
+            {showDetailModal && selectedHoaDon && (
               <div className="fixed inset-0 z-50 overflow-y-auto">
                 <div className="flex items-center justify-center min-h-screen px-4">
                   <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowDetailModal(false)}></div>
                   <div className="relative bg-white rounded-lg max-w-4xl w-full p-6 max-h-screen overflow-y-auto">
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-bold text-gray-900">
-                        Chi tiết hóa đơn - {selectedPayment.tenantName}
+                        Chi tiết hóa đơn - {selectedHoaDon.tenantName}
                       </h2>
                       <button
                         onClick={() => setShowDetailModal(false)}
@@ -2082,44 +2185,44 @@ export default function Payments() {
                         <div className="space-y-3">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Khách thuê:</span>
-                            <span className="font-medium">{selectedPayment.tenantName}</span>
+                            <span className="font-medium">{selectedHoaDon.tenantName}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Phòng:</span>
-                            <span className="font-medium">{selectedPayment.room}</span>
+                            <span className="font-medium">{selectedHoaDon.room}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Dãy:</span>
-                            <span className="font-medium">{selectedPayment.building}</span>
+                            <span className="font-medium">{selectedHoaDon.building}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Tháng:</span>
                             <span className="font-medium">
-                              {new Date(selectedPayment.month).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit' })}
+                              {new Date(selectedHoaDon.month).toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit' })}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Hạn thanh toán:</span>
-                            <span className={`font-medium ${new Date(selectedPayment.dueDate) < new Date() ? 'text-red-600' : 'text-gray-900'}`}>
-                              {new Date(selectedPayment.dueDate).toLocaleDateString('vi-VN')}
+                            <span className={`font-medium ${new Date(selectedHoaDon.dueDate) < new Date() ? 'text-red-600' : 'text-gray-900'}`}>
+                              {new Date(selectedHoaDon.dueDate).toLocaleDateString('vi-VN')}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Trạng thái:</span>
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedPayment.status)}`}>
-                              {getStatusText(selectedPayment.status)}
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedHoaDon.status)}`}>
+                              {getStatusText(selectedHoaDon.status)}
                             </span>
                           </div>
-                          {selectedPayment.paidDate && (
+                          {selectedHoaDon.paidDate && (
                             <div className="flex justify-between">
                               <span className="text-gray-600">Ngày thanh toán:</span>
-                              <span className="font-medium text-green-600">{selectedPayment.paidDate}</span>
+                              <span className="font-medium text-green-600">{selectedHoaDon.paidDate}</span>
                             </div>
                           )}
-                          {selectedPayment.paymentMethod && (
+                          {selectedHoaDon.paymentMethod && (
                             <div className="flex justify-between">
                               <span className="text-gray-600">Phương thức:</span>
-                              <span className="font-medium">{selectedPayment.paymentMethod}</span>
+                              <span className="font-medium">{selectedHoaDon.paymentMethod}</span>
                             </div>
                           )}
                         </div>
@@ -2131,34 +2234,34 @@ export default function Payments() {
                         <div className="space-y-3">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Tiền thuê phòng:</span>
-                            <span className="font-medium">{selectedPayment.rentAmount.toLocaleString('vi-VN')}đ</span>
+                            <span className="font-medium">{selectedHoaDon.rentAmount.toLocaleString('vi-VN')}đ</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Tiền điện ({selectedPayment.electricityUsage} kWh):</span>
-                            <span className="font-medium">{selectedPayment.electricityAmount.toLocaleString('vi-VN')}đ</span>
+                            <span className="text-gray-600">Tiền điện ({selectedHoaDon.electricityUsage} kWh):</span>
+                            <span className="font-medium">{selectedHoaDon.electricityAmount.toLocaleString('vi-VN')}đ</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Tiền nước ({selectedPayment.waterUsage} người):</span>
-                            <span className="font-medium">{selectedPayment.waterAmount.toLocaleString('vi-VN')}đ</span>
+                            <span className="text-gray-600">Tiền nước ({selectedHoaDon.waterUsage} người):</span>
+                            <span className="font-medium">{selectedHoaDon.waterAmount.toLocaleString('vi-VN')}đ</span>
                           </div>
 
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Internet (Plan {selectedPayment.internetPlan}):</span>
-                            <span className="font-medium">{selectedPayment.internetAmount.toLocaleString('vi-VN')}đ</span>
+                            <span className="text-gray-600">Internet (Plan {selectedHoaDon.internetPlan}):</span>
+                            <span className="font-medium">{selectedHoaDon.internetAmount.toLocaleString('vi-VN')}đ</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Rác:</span>
-                            <span className="font-medium">{selectedPayment.trashAmount.toLocaleString('vi-VN')}đ</span>
+                            <span className="font-medium">{selectedHoaDon.trashAmount.toLocaleString('vi-VN')}đ</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Gửi xe ({selectedPayment.parkingCount} xe):</span>
-                            <span className="font-medium">{selectedPayment.parkingAmount.toLocaleString('vi-VN')}đ</span>
+                            <span className="text-gray-600">Gửi xe ({selectedHoaDon.parkingCount} xe):</span>
+                            <span className="font-medium">{selectedHoaDon.parkingAmount.toLocaleString('vi-VN')}đ</span>
                           </div>
 
-                          {selectedPayment.additionalCharges && selectedPayment.additionalCharges.length > 0 && (
+                          {selectedHoaDon.additionalCharges && selectedHoaDon.additionalCharges.length > 0 && (
                             <div className="border-t pt-3">
                               <div className="text-sm font-medium text-gray-700 mb-2">Chi phí phát sinh:</div>
-                              {selectedPayment.additionalCharges.map((charge) => (
+                              {selectedHoaDon.additionalCharges.map((charge) => (
                                 <div key={charge.id} className="flex justify-between text-sm">
                                   <span className="text-gray-600">{charge.description}:</span>
                                   <span className="font-medium">{charge.amount.toLocaleString('vi-VN')}đ</span>
@@ -2169,16 +2272,16 @@ export default function Payments() {
                           <div className="border-t pt-3">
                             <div className="flex justify-between text-lg font-bold">
                               <span>Tổng cộng:</span>
-                              <span className="text-green-600">{selectedPayment.totalAmount.toLocaleString('vi-VN')}đ</span>
+                              <span className="text-green-600">{selectedHoaDon.totalAmount.toLocaleString('vi-VN')}đ</span>
                             </div>
                             <div className="flex justify-between text-sm text-gray-600 mt-1">
                               <span>Đã thanh toán:</span>
-                              <span>{selectedPayment.paidAmount.toLocaleString('vi-VN')}đ</span>
+                              <span>{selectedHoaDon.paidAmount.toLocaleString('vi-VN')}đ</span>
                             </div>
-                            {selectedPayment.remainingAmount > 0 && (
+                            {selectedHoaDon.remainingAmount > 0 && (
                               <div className="flex justify-between text-sm font-medium text-red-600 mt-1">
                                 <span>Còn lại:</span>
-                                <span>{selectedPayment.remainingAmount.toLocaleString('vi-VN')}đ</span>
+                                <span>{selectedHoaDon.remainingAmount.toLocaleString('vi-VN')}đ</span>
                               </div>
                             )}
                           </div>
@@ -2193,12 +2296,12 @@ export default function Payments() {
                       >
                         Đóng
                       </button>
-                      {selectedPayment.status !== 'paid' && (
+                      {selectedHoaDon.status !== 'paid' && (
                         <>
                           <button
                             onClick={() => {
                               setShowDetailModal(false);
-                              handleCollectPayment(selectedPayment);
+                              handleCollectPayment(selectedHoaDon);
                             }}
                             className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 cursor-pointer whitespace-nowrap"
                           >
@@ -2208,7 +2311,7 @@ export default function Payments() {
                           <button
                             onClick={() => {
                               setShowDetailModal(false);
-                              handleSendPaymentNotification(selectedPayment);
+                              handleSendPaymentNotification(selectedHoaDon);
                             }}
                             className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 cursor-pointer whitespace-nowrap"
                           >
@@ -2224,14 +2327,14 @@ export default function Payments() {
             )}
 
             {/* Payment Collection Modal */}
-            {showPaymentModal && selectedPaymentForPayment && (
+            {showPaymentModal && selectedHoaDonForPayment && (
               <div className="fixed inset-0 z-50 overflow-y-auto">
                 <div className="flex items-center justify-center min-h-screen px-4">
                   <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowPaymentModal(false)}></div>
                   <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-bold text-gray-900">
-                        Thu tiền - {selectedPaymentForPayment.tenantName}
+                        Thu tiền - {selectedHoaDonForPayment.tenantName}
                       </h2>
                       <button
                         onClick={() => setShowPaymentModal(false)}
@@ -2246,25 +2349,25 @@ export default function Payments() {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Phòng:</span>
-                          <span className="font-medium ml-2">{selectedPaymentForPayment.room}</span>
+                          <span className="font-medium ml-2">{selectedHoaDonForPayment.room}</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Tháng:</span>
                           <span className="font-medium ml-2">
-                            {new Date(selectedPaymentForPayment.month).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}
+                            {new Date(selectedHoaDonForPayment.month).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}
                           </span>
                         </div>
                         <div>
                           <span className="text-gray-600">Tổng tiền:</span>
-                          <span className="font-medium ml-2">{selectedPaymentForPayment.totalAmount.toLocaleString('vi-VN')}đ</span>
+                          <span className="font-medium ml-2">{selectedHoaDonForPayment.totalAmount.toLocaleString('vi-VN')}đ</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Đã thanh toán:</span>
-                          <span className="font-medium ml-2 text-green-600">{selectedPaymentForPayment.paidAmount.toLocaleString('vi-VN')}đ</span>
+                          <span className="font-medium ml-2 text-green-600">{selectedHoaDonForPayment.paidAmount.toLocaleString('vi-VN')}đ</span>
                         </div>
                         <div className="col-span-2">
                           <span className="text-gray-600">Còn lại:</span>
-                          <span className="font-bold ml-2 text-red-600 text-lg">{selectedPaymentForPayment.remainingAmount.toLocaleString('vi-VN')}đ</span>
+                          <span className="font-bold ml-2 text-red-600 text-lg">{selectedHoaDonForPayment.remainingAmount.toLocaleString('vi-VN')}đ</span>
                         </div>
                       </div>
                     </div>
@@ -2280,17 +2383,17 @@ export default function Payments() {
                           onChange={(e) => setPaymentData({ ...paymentData, amount: parseInt(e.target.value) || 0 })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           placeholder="Nhập số tiền thu"
-                          max={selectedPaymentForPayment.remainingAmount}
+                          max={selectedHoaDonForPayment.remainingAmount}
                         />
                         <div className="flex gap-2 mt-2">
                           <button
-                            onClick={() => setPaymentData({ ...paymentData, amount: selectedPaymentForPayment.remainingAmount })}
+                            onClick={() => setPaymentData({ ...paymentData, amount: selectedHoaDonForPayment.remainingAmount })}
                             className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 cursor-pointer whitespace-nowrap"
                           >
                             Thu toàn bộ
                           </button>
                           <button
-                            onClick={() => setPaymentData({ ...paymentData, amount: Math.floor(selectedPaymentForPayment.remainingAmount / 2) })}
+                            onClick={() => setPaymentData({ ...paymentData, amount: Math.floor(selectedHoaDonForPayment.remainingAmount / 2) })}
                             className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 cursor-pointer whitespace-nowrap"
                           >
                             Thu một nửa
@@ -2355,14 +2458,14 @@ export default function Payments() {
             )}
 
             {/* Payment Notification Modal */}
-            {showNotificationModal && selectedPaymentForNotification && (
+            {showNotificationModal && selectedHoaDonForNotification && (
               <div className="fixed inset-0 z-50 overflow-y-auto">
                 <div className="flex items-center justify-center min-h-screen px-4">
                   <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowNotificationModal(false)}></div>
                   <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-bold text-gray-900">
-                        Gửi thông báo thu tiền - {selectedPaymentForNotification.tenantName}
+                        Gửi thông báo thu tiền - {selectedHoaDonForNotification.tenantName}
                       </h2>
                       <button
                         onClick={() => setShowNotificationModal(false)}
@@ -2377,22 +2480,22 @@ export default function Payments() {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Phòng:</span>
-                          <span className="font-medium ml-2">{selectedPaymentForNotification.room}</span>
+                          <span className="font-medium ml-2">{selectedHoaDonForNotification.room}</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Tháng:</span>
                           <span className="font-medium ml-2">
-                            {new Date(selectedPaymentForNotification.month).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}
+                            {new Date(selectedHoaDonForNotification.month).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}
                           </span>
                         </div>
                         <div>
                           <span className="text-gray-600">Số tiền cần thu:</span>
-                          <span className="font-bold ml-2 text-red-600">{selectedPaymentForNotification.remainingAmount.toLocaleString('vi-VN')}đ</span>
+                          <span className="font-bold ml-2 text-red-600">{selectedHoaDonForNotification.remainingAmount.toLocaleString('vi-VN')}đ</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Hạn thanh toán:</span>
-                          <span className={`font-medium ml-2 ${new Date(selectedPaymentForNotification.dueDate) < new Date() ? 'text-red-600' : 'text-gray-900'}`}>
-                            {new Date(selectedPaymentForNotification.dueDate).toLocaleDateString('vi-VN')}
+                          <span className={`font-medium ml-2 ${new Date(selectedHoaDonForNotification.dueDate) < new Date() ? 'text-red-600' : 'text-gray-900'}`}>
+                            {new Date(selectedHoaDonForNotification.dueDate).toLocaleDateString('vi-VN')}
                           </span>
                         </div>
                       </div>
@@ -2461,14 +2564,14 @@ export default function Payments() {
             )}
 
             {/* Additional Charges Modal */}
-            {showAdditionalChargesModal && selectedPaymentForCharges && (
+            {showAdditionalChargesModal && selectedHoaDonForCharges && (
               <div className="fixed inset-0 z-50 overflow-y-auto">
                 <div className="flex items-center justify-center min-h-screen px-4">
                   <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowAdditionalChargesModal(false)}></div>
                   <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-xl font-bold text-gray-900">
-                        Thêm chi phí phát sinh - {selectedPaymentForCharges.tenantName}
+                        Thêm chi phí phát sinh - {selectedHoaDonForCharges.tenantName}
                       </h2>
                       <button
                         onClick={() => setShowAdditionalChargesModal(false)}
@@ -2483,17 +2586,17 @@ export default function Payments() {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Phòng:</span>
-                          <span className="font-medium ml-2">{selectedPaymentForCharges.room}</span>
+                          <span className="font-medium ml-2">{selectedHoaDonForCharges.room}</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Tháng:</span>
                           <span className="font-medium ml-2">
-                            {new Date(selectedPaymentForCharges.month).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}
+                            {new Date(selectedHoaDonForCharges.month).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })}
                           </span>
                         </div>
                         <div>
                           <span className="text-gray-600">Tổng tiền hiện tại:</span>
-                          <span className="font-medium ml-2">{selectedPaymentForCharges.totalAmount.toLocaleString('vi-VN')}đ</span>
+                          <span className="font-medium ml-2">{selectedHoaDonForCharges.totalAmount.toLocaleString('vi-VN')}đ</span>
                         </div>
                       </div>
                     </div>

@@ -19,15 +19,17 @@ export interface PhongTro {
   DonGiaCoBan: number;
   GiaThueHienTai: number | null;
   DienTich: number | null;
-  TrangThai: string;  // 'Trống' | 'Đã cho thuê' | 'Bảo trì' | 'Đã cọc'
+  TrangThai: string;  // 'Trống' | 'DaThue' | 'BaoTri' | 'DaCoc'
   MoTa: string | null;
   HinhAnh: string | null;
   TienNghi: string[];
-  TienCoc: number;
 
-  // Computed
-  TenDay?: string;
-  TenLoaiPhong?: string;
+  // Computed attributes from backend
+  TenDay: string;
+  TenLoaiPhong: string;
+  LoaiPhong: string; // Alias
+  GiaThue: number; // Computed: GiaThueHienTai ?? DonGiaCoBan
+  TienCoc: number; // Computed: 1 month rent
 
   // Relationships
   dayTro?: {
@@ -41,7 +43,7 @@ export interface PhongTro {
   };
   khachThue?: any[];
   dichVuDangKy?: any[];
-  thietBis?: ThietBiPhong[];  // TODO Backend: Populate from API
+  thietBis?: ThietBiPhong[];
 }
 
 export type PhongTroCreateInput = Omit<PhongTro,

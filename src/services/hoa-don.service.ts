@@ -25,17 +25,27 @@ export interface HoaDon {
   };
   hopDong?: {
     MaHopDong: number;
-    TenKhach: string;
+    SoHopDong: string;
+    TenKhachThue?: string;
+    khachThue?: {
+      MaKhachThue: number;
+      HoTen: string;
+      CCCD?: string;
+      SDT1?: string;
+      Email?: string;
+    };
   };
   chiTietHoaDon?: ChiTietHoaDon[];
   thanhToan?: any[];
 }
 
 export interface ChiTietHoaDon {
-  NoiDung: string;
-  SoLuong: number;
-  DonGia: number;
-  ThanhTien: number;
+  id?: number;
+  maHoaDon?: number;
+  noiDung: string;
+  soLuong: number | string;
+  donGia: number | string;
+  thanhTien: number | string;
 }
 
 export interface CreateHoaDonRequest {
@@ -46,6 +56,7 @@ export interface CreateHoaDonRequest {
   NgayHetHan: string;
   TongTien: number;
   DaThanhToan?: number;
+  ConLai: number;
   TrangThai?: string;
   GhiChu?: string;
   chiTietHoaDon: ChiTietHoaDon[];
@@ -92,6 +103,11 @@ class HoaDonService {
 
     const url = queryParams.toString() ? `${HOADON_API_URL}?${queryParams}` : HOADON_API_URL;
     return httpClient.get<{ data: PaginatedResponse<HoaDon> }>(url, { signal });
+  }
+
+  // Fetch all hóa đơn without pagination (for duplicate checking)
+  getAllNoPagination(signal?: AbortSignal) {
+    return httpClient.get<{ data: PaginatedResponse<HoaDon> }>(`${HOADON_API_URL}?perPage=1000`, { signal });
   }
 
   getStatistics(signal?: AbortSignal) {

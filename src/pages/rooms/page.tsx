@@ -1457,7 +1457,7 @@ export default function Rooms() {
             ></div>
             <div className="relative bg-white rounded-lg max-w-md w-full p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">
-                Thêm phòng mới {selectedBuilding && `- ${selectedBuilding}`}
+                Thêm phòng mới {activeTab !== 'all' && `- ${activeTab}`}
               </h2>
 
               <form
@@ -1528,7 +1528,7 @@ export default function Rooms() {
                     type="button"
                     onClick={() => {
                       setShowAddModal(false);
-                      // Không cần reset selectedBuilding
+                      // Không cần reset activeTab (keep current building filter)
                     }}
                     className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 cursor-pointer whitespace-nowrap"
                   >

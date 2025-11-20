@@ -344,6 +344,7 @@ export default function Rules() {
                 await viPhamService.update(violation.MaViPham, payload);
                 success({ title: 'Thành công', message: 'Cập nhật trạng thái vi phạm thành công.' });
                 refreshViPhamData();
+                setSelectedViolation(null); // Close the detail modal
             } catch (err) {
                 error({ title: 'Lỗi', message: getErrorMessage(err) });
             } finally {
@@ -566,6 +567,107 @@ export default function Rules() {
           </div>
         </main>
       </div>
+
+      {/* Violation Detail Modal */}
+      {selectedViolation && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSelectedViolation(null)}></div>
+            <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900">Chi tiết vi phạm</h2>
+                <button
+                  onClick={() => setSelectedViolation(null)}
+                  className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                >
+                  <i className="ri-close-line text-xl"></i>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-gray-600">Khách thuê:</span>
+                    <span className="font-medium ml-2">{selectedViolation.khachThue.HoTen}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Dãy:</span>
+                    <span className="font-medium ml-2">{selectedViolation.khachThue.phongTro?.dayTro?.TenDay}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Phòng:</span>
+                    <span className="font-medium ml-2">{selectedViolation.khachThue.phongTro?.TenPhong}</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Nội quy vi phạm:</span>
+                  <span className="font-medium ml-2">{selectedViolation.noiQuy.TieuDe}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Mô tả vi phạm:</span>
+                  <p className="mt-1 text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedViolation.MoTa}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-gray-600">Mức độ:</span>
+                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getSeverityColor(selectedViolation.MucDo)}`}>
+                      {getSeverityText(selectedViolation.MucDo)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Trạng thái:</span>
+                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedViolation.TrangThai)}`}>
+                      {getStatusText(selectedViolation.TrangThai)}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-gray-600">Ngày báo cáo:</span>
+                    <span className="font-medium ml-2">{new Date(selectedViolation.NgayBaoCao).toLocaleDateString('vi-VN')}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Người báo cáo:</span>
+                    <span className="font-medium ml-2">{selectedViolation.nguoiBaoCao?.HoTen}</span>
+                  </div>
+                </div>
+                {selectedViolation.GhiChu && (
+                  <div>
+                    <span className="text-gray-600">Ghi chú:</span>
+                    <p className="mt-1 text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedViolation.GhiChu}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 mt-6 pt-6 border-t">
+                {selectedViolation.TrangThai === 'da_bao_cao' && (
+                  <>
+                    <button
+                      onClick={() => handleUpdateViolationStatus(selectedViolation, 'da_canh_cao')}
+                      className="flex-1 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 cursor-pointer whitespace-nowrap">
+                      Cảnh báo
+                    </button>
+                  </>
+                )}
+
+                {selectedViolation.TrangThai === 'da_canh_cao' && (
+                  <button
+                    onClick={() => handleUpdateViolationStatus(selectedViolation, 'da_giai_quyet')}
+                    className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 cursor-pointer whitespace-nowrap">
+                    Đánh dấu đã giải quyết
+                  </button>
+                )}
+
+                <button
+                  onClick={() => handleDeleteViolation(selectedViolation)}
+                  className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 cursor-pointer whitespace-nowrap">
+                  Xoá
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modals and Toasts */}
       {selectedNoiQuy && (

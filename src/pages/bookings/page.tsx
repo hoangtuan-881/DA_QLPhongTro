@@ -797,13 +797,6 @@ export default function Bookings() {
                                     >
                                       <i className="ri-close-line"></i>
                                     </button>
-                                    <button
-                                      onClick={() => handleQuickRefund(booking)}
-                                      className="text-orange-600 hover:text-orange-900 cursor-pointer"
-                                      title="Hoàn cọc nhanh"
-                                    >
-                                      <i className="ri-flashlight-line"></i>
-                                    </button>
                                   </>
                                 )}
                                 {booking.TrangThai === 'DaXacNhan' && (
@@ -814,13 +807,6 @@ export default function Bookings() {
                                       title="Tạo hợp đồng"
                                     >
                                       <i className="ri-file-text-line"></i>
-                                    </button>
-                                    <button
-                                      onClick={() => handleQuickRefund(booking)}
-                                      className="text-orange-600 hover:text-orange-900 cursor-pointer"
-                                      title="Hoàn cọc nhanh"
-                                    >
-                                      <i className="ri-flashlight-line"></i>
                                     </button>
                                     <button
                                       onClick={() => handleFullRefund(booking)}
@@ -959,16 +945,6 @@ export default function Bookings() {
                     >
                       <i className="ri-file-text-line mr-2"></i>
                       Tạo hợp đồng
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleQuickRefund(selectedBooking);
-                        setSelectedBooking(null);
-                      }}
-                      className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center justify-center cursor-pointer whitespace-nowrap"
-                    >
-                      <i className="ri-refund-line mr-2"></i>
-                      Hoàn cọc nhanh
                     </button>
                   </>
                 )}

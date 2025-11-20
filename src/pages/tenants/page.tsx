@@ -23,7 +23,7 @@ export default function TenantsPage() {
     SDT1: '',
     SDT2: '',
     Email: '',
-    VaiTro: 'KHACH_CHINH',
+    VaiTro: 'TIỀM_NĂNG',
     CCCD: '',
     NgayCapCCCD: '',
     NoiCapCCCD: '',
@@ -83,13 +83,13 @@ export default function TenantsPage() {
 
   const getVaiTroColor = (vaiTro: string) => {
     switch (vaiTro) {
-      case 'KHACH_CHINH':
+      case 'KHÁCH_CHÍNH':
         return 'bg-blue-100 text-blue-800';
-      case 'THANH_VIEN':
+      case 'THÀNH_VIÊN':
         return 'bg-green-100 text-green-800';
-      case 'TIEM_NANG':
+      case 'TIỀM_NĂNG':
         return 'bg-yellow-100 text-yellow-800';
-      case 'DA_DON_DI':
+      case 'ĐÃ_DỌN_ĐI':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -98,13 +98,13 @@ export default function TenantsPage() {
 
   const getVaiTroText = (vaiTro: string) => {
     switch (vaiTro) {
-      case 'KHACH_CHINH':
+      case 'KHÁCH_CHÍNH':
         return 'Khách chính';
-      case 'THANH_VIEN':
+      case 'THÀNH_VIÊN':
         return 'Thành viên';
-      case 'TIEM_NANG':
+      case 'TIỀM_NĂNG':
         return 'Tiềm năng';
-      case 'DA_DON_DI':
+      case 'ĐÃ_DỌN_ĐI':
         return 'Đã dọn đi';
       default:
         return vaiTro;
@@ -176,7 +176,7 @@ export default function TenantsPage() {
         SDT1: '',
         SDT2: '',
         Email: '',
-        VaiTro: 'KHACH_CHINH',
+        VaiTro: 'TIỀM_NĂNG',
         CCCD: '',
         NgayCapCCCD: '',
         NoiCapCCCD: '',
@@ -328,10 +328,10 @@ export default function TenantsPage() {
                   className="border border-gray-300 rounded-lg px-3 py-2 pr-8"
                 >
                   <option value="all">Tất cả vai trò</option>
-                  <option value="KHACH_CHINH">Khách chính</option>
-                  <option value="THANH_VIEN">Thành viên</option>
-                  <option value="TIEM_NANG">Tiềm năng</option>
-                  <option value="DA_DON_DI">Đã dọn đi</option>
+                  <option value="KHÁCH_CHÍNH">Khách chính</option>
+                  <option value="THÀNH_VIÊN">Thành viên</option>
+                  <option value="TIỀM_NĂNG">Tiềm năng</option>
+                  <option value="ĐÃ_DỌN_ĐI">Đã dọn đi</option>
                 </select>
                 <input
                   type="text"
@@ -372,9 +372,6 @@ export default function TenantsPage() {
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Phòng đã ở
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Trống
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Trạng thái
@@ -425,12 +422,6 @@ export default function TenantsPage() {
                           <div className="text-xs text-gray-500 max-w-56 truncate">
                             <span className="font-medium">Dãy</span>{' '}
                             {khachThue.DiaChiDay || '-'}
-                          </div>
-                        </td>
-
-                        {/* 4) Trống thêm thông tin khác sau */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
                           </div>
                         </td>
 

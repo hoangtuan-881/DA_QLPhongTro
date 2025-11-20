@@ -9,6 +9,8 @@ import thanhToanService from '../../services/thanh-toan.service';
 import hoaDonService, { HoaDon, CreateHoaDonRequest, ChiTietHoaDon, CreateBulkHoaDonRequest, AddAdditionalChargeRequest, HoaDonStatistics } from '../../services/hoa-don.service';
 import soDienService, { SoDien, CreateSoDienRequest } from '../../services/so-dien.service';
 import thongBaoService, { ThongBao, CreateThongBaoRequest } from '../../services/thong-bao.service';
+import phongTroService, { PhongTro } from '../../services/phong-tro.service';
+import hopDongService from '../../services/hop-dong.service';
 import { getErrorMessage } from '../../lib/http-client';
 
 // ✅ Tất cả interfaces đã import từ services - KHÔNG tạo thêm interface mới
@@ -38,6 +40,10 @@ interface NewInvoice {
 
   additionalCharges: AdditionalCharge[];
   notes: string;
+
+  // Backend integration fields
+  MaPhong?: number;
+  MaHopDong?: number;
 }
 
 interface ElectricReading {
@@ -413,8 +419,13 @@ export default function Payments() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [electricReadings, setElectricReadings] = useState<ElectricReading[]>(mockElectricReadings);
+  const [electricFilterBuilding, setElectricFilterBuilding] = useState<string>('all');
+  const [electricReadings, setElectricReadings] = useState<ElectricReading[]>([]);
   const [editingReading, setEditingReading] = useState<string | null>(null);
+
+  // Pagination for electricity readings modal
+  const [electricReadingsPage, setElectricReadingsPage] = useState(1);
+  const [electricReadingsPerPage] = useState(10);
   const [selectedHoaDonForCharges, setSelectedHoaDonForCharges] = useState<HoaDon | null>(null);
   const [newCharge, setNewCharge] = useState({ description: '', amount: 0 });
   const [selectedHoaDonForPayment, setSelectedHoaDonForPayment] = useState<HoaDon | null>(null);
@@ -444,16 +455,18 @@ export default function Payments() {
     parkingAmount: 0,
 
     additionalCharges: [],
-    notes: ''
+    notes: '',
+    MaPhong: undefined,
+    MaHopDong: undefined
   });
   const [selectedBuildingForInvoice, setSelectedBuildingForInvoice] = useState<string>('');
-  const roomsBySelectedBuilding: BulkInvoiceRoom[] = selectedBuildingForInvoice
-    ? mockBulkRooms.filter(r => r.building === selectedBuildingForInvoice)
-    : [];
-  const [bulkRooms, setBulkRooms] = useState<BulkInvoiceRoom[]>(mockBulkRooms);
+  const [bulkRooms, setBulkRooms] = useState<BulkInvoiceRoom[]>([]);
   const [commonCharges, setCommonCharges] = useState<CommonCharge[]>(
     defaultCommonCharges.map(c => ({ ...c, selected: false }))
   );
+  const roomsBySelectedBuilding: BulkInvoiceRoom[] = selectedBuildingForInvoice
+    ? bulkRooms.filter(r => r.building === selectedBuildingForInvoice)
+    : [];
   const [selectedBuilding, setSelectedBuilding] = useState<string>('all');
   const [bulkSettings, setBulkSettings] = useState({
     month: new Date().toISOString().slice(0, 7),
@@ -487,7 +500,10 @@ export default function Payments() {
 
   // ✅ State cho HoaDon từ Backend
   const [hoaDons, setHoaDons] = useState<HoaDon[]>([]);
+  const [phongTros, setPhongTros] = useState<PhongTro[]>([]);
+  const [soDiens, setSoDiens] = useState<SoDien[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPhongTros, setLoadingPhongTros] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [statistics, setStatistics] = useState<HoaDonStatistics>({
     TongTien: 0,
@@ -539,6 +555,146 @@ export default function Payments() {
     setLoading(true);
     setRefreshKey(prev => prev + 1);
   };
+
+  // Load PhongTro và SoDien data
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchRoomsAndElectricity = async () => {
+      try {
+        const [phongTrosResponse, soDiensResponse] = await Promise.all([
+          phongTroService.getAll(controller.signal),
+          soDienService.getAll(controller.signal)
+        ]);
+
+        if (!controller.signal.aborted) {
+          const phongTrosData = phongTrosResponse.data.data || [];
+          const soDiensData = soDiensResponse.data.data || [];
+
+          setPhongTros(phongTrosData);
+          setSoDiens(soDiensData);
+          setLoadingPhongTros(false);
+
+          console.log('✅ Loaded PhongTro:', phongTrosData.length, 'rooms');
+          console.log('✅ Loaded SoDien:', soDiensData.length, 'readings');
+          console.log('📊 PhongTro data sample:', phongTrosData[0]);
+        }
+      } catch (err: any) {
+        if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
+          console.error('❌ Error loading rooms/electricity:', err);
+          setLoadingPhongTros(false);
+        }
+      }
+    };
+
+    fetchRoomsAndElectricity();
+    return () => controller.abort();
+  }, [refreshKey]);
+
+  // Build electricity readings từ phongTros (tất cả các phòng)
+  useEffect(() => {
+    console.log('⚡️ [EFFECT] Re-building electric readings. SoDien length:', soDiens.length);
+
+    if (phongTros.length > 0) {
+      const readings: ElectricReading[] = phongTros.map(phong => {
+        const lastReading = soDiens
+          .filter(sd => sd.MaPhong === phong.MaPhong)
+          .sort((a, b) => new Date(b.NgayGhi).getTime() - new Date(a.NgayGhi).getTime())[0];
+
+        // Debug log for a specific room if needed
+        if (phong.MaPhong === 7) { // Replace with a MaPhong you are testing
+          console.log(`[DEBUG] Searching for MaPhong: ${phong.MaPhong}`);
+          console.log('[DEBUG] Searching within soDiens array:', soDiens);
+          console.log(`[DEBUG] Room ${phong.TenPhong}: Last reading found:`, lastReading);
+        }
+
+        return {
+          id: phong.MaPhong.toString(),
+          building: phong.TenDay || 'N/A',
+          room: phong.TenPhong,
+          tenantName: phong.khachThue?.[0]?.HoTen || 'Chưa có khách',
+          oldReading: lastReading?.ChiSoMoi || 0,
+          newReading: lastReading?.ChiSoMoi || 0,
+          usage: 0
+        };
+      });
+
+      // ✅ Sort: Phòng có khách lên trên, phòng trống xuống dưới
+      const sortedReadings = readings.sort((a, b) => {
+        const aHasTenant = a.tenantName !== 'Chưa có khách';
+        const bHasTenant = b.tenantName !== 'Chưa có khách';
+
+        if (aHasTenant && !bHasTenant) return -1;  // a lên trước
+        if (!aHasTenant && bHasTenant) return 1;   // b lên trước
+
+        // Cùng trạng thái → sort theo tên phòng
+        return a.room.localeCompare(b.room);
+      });
+
+      setElectricReadings(sortedReadings);
+      console.log('📊 Loaded electricReadings:', sortedReadings.length, 'rooms (sorted: có khách → trống)');
+    }
+  }, [phongTros, soDiens]);
+
+  // Reset pagination when electricReadings change
+  useEffect(() => {
+    setElectricReadingsPage(1);
+  }, [electricReadings.length]);
+
+  // Build bulk rooms từ phongTros (chỉ phòng đã thuê)
+  useEffect(() => {
+    if (phongTros.length > 0) {
+      const rentedRooms = phongTros.filter(p => p.TrangThai === 'Đã cho thuê');
+
+      const rooms: BulkInvoiceRoom[] = rentedRooms.map(phong => {
+        // Tìm chỉ số điện gần nhất
+        const lastReading = soDiens
+          .filter(sd => sd.MaPhong === phong.MaPhong)
+          .sort((a, b) => new Date(b.NgayGhi).getTime() - new Date(a.NgayGhi).getTime())[0];
+
+        return {
+          id: phong.MaPhong.toString(),
+          room: phong.TenPhong,
+          tenantName: phong.khachThue?.[0]?.HoTen || 'Chưa có khách',
+          rentAmount: phong.GiaThueHienTai || phong.DonGiaCoBan,
+          electricityUsage: lastReading?.SoKwh || 0,
+          waterUsage: phong.khachThue?.length || 1, // Số người
+          building: phong.TenDay,
+          selected: false,
+          internetPlan: 1,
+          parkingCount: 0,
+          trashIncluded: true
+        };
+      });
+
+      setBulkRooms(rooms);
+    }
+  }, [phongTros, soDiens]);
+
+  const electricBuildings = useMemo(() => {
+    return [...new Set(electricReadings.map(r => r.building))].sort();
+  }, [electricReadings]);
+
+  const filteredElectricReadings = useMemo(() => {
+    if (electricFilterBuilding === 'all') {
+      return electricReadings;
+    }
+    return electricReadings.filter(r => r.building === electricFilterBuilding);
+  }, [electricReadings, electricFilterBuilding]);
+
+  // Calculate paginated electricity readings based on the filtered list
+  const getPaginatedElectricReadings = () => {
+    const startIndex = (electricReadingsPage - 1) * electricReadingsPerPage;
+    const endIndex = startIndex + electricReadingsPerPage;
+    return filteredElectricReadings.slice(startIndex, endIndex);
+  };
+
+  const electricReadingsTotalPages = Math.ceil(filteredElectricReadings.length / electricReadingsPerPage);
+
+  // Reset page to 1 when filter changes
+  useEffect(() => {
+    setElectricReadingsPage(1);
+  }, [electricFilterBuilding]);
 
   // Format tiền sang đơn vị Việt Nam (triệu, nghìn)
   const formatCurrency = (amount: number | string): string => {
@@ -600,12 +756,45 @@ export default function Payments() {
     }));
   };
 
-  const handleSaveReading = (id: string) => {
-    setEditingReading(null);
-    success({
-      title: 'Lưu chỉ số điện thành công',
-      message: 'Đã cập nhật chỉ số điện cho phòng'
-    });
+  const handleSaveReading = async (id: string) => {
+    try {
+      const reading = electricReadings.find(r => r.id === id);
+      if (!reading) return;
+
+      // Validate
+      if (reading.newReading < reading.oldReading) {
+        error({
+          title: 'Lỗi nhập liệu',
+          message: 'Chỉ số mới phải lớn hơn hoặc bằng chỉ số cũ'
+        });
+        return;
+      }
+
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+      const soDienData: CreateSoDienRequest = {
+        MaPhong: parseInt(id), // Assuming id is MaPhong
+        Thang: currentMonth,
+        ChiSoCu: reading.oldReading,
+        ChiSoMoi: reading.newReading,
+        NgayGhi: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+        GhiChu: null
+      };
+
+      await soDienService.create(soDienData);
+
+      setEditingReading(null);
+      success({
+        title: 'Lưu chỉ số điện thành công',
+        message: `Đã lưu chỉ số điện cho phòng ${reading.room}: ${reading.usage} kWh`
+      });
+      refreshData(); // Refresh all data from backend
+    } catch (err) {
+      error({
+        title: 'Lỗi lưu chỉ số điện',
+        message: getErrorMessage(err)
+      });
+    }
   };
 
   const handleAddAdditionalCharge = (payment: Payment) => {
@@ -918,9 +1107,8 @@ export default function Payments() {
   };
 
 
-  const handleCreateBulkInvoices = () => {
+  const handleCreateBulkInvoices = async () => {
     const selectedRooms = bulkRooms.filter(room => room.selected);
-    setCommonCharges(defaultCommonCharges.map(c => ({ ...c, selected: false })));
 
     if (selectedRooms.length === 0) {
       error({
@@ -930,90 +1118,49 @@ export default function Payments() {
       return;
     }
 
-    const [year, month] = bulkSettings.month.split('-').map(Number);
-    const dueDate = new Date(year, month, 5).toISOString().split('T')[0];
-    const dueDateString = new Date(dueDate).toLocaleDateString('vi-VN');
+    try {
+      const selectedCharges: CommonCharge[] = commonCharges.filter(c => c.selected);
 
-    showConfirm({
-      title: 'Xác nhận tạo hóa đơn hàng loạt',
-      message: `Bạn có chắc chắn muốn tạo ${selectedRooms.length} hóa đơn (Hạn nộp: ${dueDateString}) không?`,
-      onConfirm: () => {
-        const planPrice = (plan: InternetPlan) =>
-          plan === 1 ? bulkSettings.internetPricePlan1 : bulkSettings.internetPricePlan2;
-        const selectedCharges: CommonCharge[] = commonCharges.filter(c => c.selected);
+      // Build commonCharges for API (if any)
+      const apiCommonCharges = selectedCharges.map(c => ({
+        description: c.description,
+        amount: c.amount
+      }));
 
-        const newPayments: Payment[] = selectedRooms.map((room, index) => {
-          const electricityAmount = room.electricityUsage * bulkSettings.electricityRate;
-          const waterAmount = room.waterUsage * bulkSettings.waterRate;
+      // TODO: Get real room IDs (MaPhong) from selectedRooms
+      // Currently selectedRooms only have mock data with string IDs
+      const roomIds = selectedRooms.map(room => parseInt(room.id)); // This won't work with real data
 
-          const internetPlan = room.internetPlan ?? bulkSettings.defaultInternetPlan;
-          const internetAmount = planPrice(internetPlan);
+      const bulkData: CreateBulkHoaDonRequest = {
+        Thang: bulkSettings.month,
+        roomIds,
+        commonCharges: apiCommonCharges.length > 0 ? apiCommonCharges : undefined
+      };
 
-          const trashAmount = room.trashIncluded === false ? 0 : bulkSettings.trashPrice;
+      await hoaDonService.createBulk(bulkData);
 
-          const parkingCount = room.parkingCount ?? bulkSettings.defaultParkingCount;
-          const parkingAmount = parkingCount * bulkSettings.parkingPerVehicle;
+      const totalAmount = calculateBulkTotal();
 
-          const newAdditionalCharges: AdditionalCharge[] = selectedCharges.map((c: CommonCharge, i: number) => ({
-            id: `bc-${room.id}-${i}`,
-            description: c.description,
-            amount: c.amount,
-            date: new Date().toISOString().split('T')[0]
-          }));
-          const additionalAmount = newAdditionalCharges.reduce((s, c) => s + c.amount, 0);
+      success({
+        title: 'Tạo hóa đơn hàng loạt thành công',
+        message: `Đã tạo ${selectedRooms.length} hóa đơn với tổng giá trị ${totalAmount.toLocaleString('vi-VN')}đ`
+      });
 
-          const totalAmount =
-            room.rentAmount + electricityAmount + waterAmount +
-            internetAmount + trashAmount + parkingAmount +
-            additionalAmount;
+      // Refresh data
+      refreshData();
 
-          return {
-            id: `inv-${Date.now()}-${index}`,
-            tenantName: room.tenantName,
-            room: room.room,
-            building: room.building,
-            month: bulkSettings.month,
-            rentAmount: room.rentAmount,
-
-            electricityUsage: room.electricityUsage,
-            electricityAmount,
-
-            waterUsage: room.waterUsage,
-            waterAmount,
-
-            internetPlan,
-            internetAmount,
-            trashAmount,
-            parkingCount,
-            parkingAmount,
-
-            additionalCharges: newAdditionalCharges,
-            totalAmount,
-            paidAmount: 0,
-            remainingAmount: totalAmount,
-            dueDate,
-            paidDate: undefined,
-            status: 'pending',
-            paymentMethod: undefined
-          };
-        });
-        setPayments(prevPayments => [...newPayments, ...prevPayments]);
-
-        const invoiceCount = selectedRooms.length;
-        const totalAmount = calculateBulkTotal();
-
-        success({
-          title: 'Tạo hóa đơn hàng loạt thành công',
-          message: `Đã tạo ${invoiceCount} hóa đơn với tổng giá trị ${totalAmount.toLocaleString('vi-VN')}đ`
-        });
-        setShowBulkModal(false);
-        setBulkRooms(prev => prev.map(room => ({ ...room, selected: false })));
-        setCommonCharges(defaultCommonCharges.map(c => ({ ...c, selected: false })));
-      }
-    });
+      setShowBulkModal(false);
+      setBulkRooms(prev => prev.map(room => ({ ...room, selected: false })));
+      setCommonCharges(defaultCommonCharges.map(c => ({ ...c, selected: false })));
+    } catch (err) {
+      error({
+        title: 'Lỗi tạo hóa đơn hàng loạt',
+        message: getErrorMessage(err)
+      });
+    }
   };
 
-  const handleCreateNewInvoice = () => {
+  const handleCreateNewInvoice = async () => {
     if (!newInvoice.tenantName || !newInvoice.room) {
       error({
         title: 'Lỗi tạo hóa đơn',
@@ -1022,79 +1169,144 @@ export default function Payments() {
       return;
     }
 
-    const [year, month] = newInvoice.month.split('-').map(Number);
-    const dueDate = new Date(year, month, 5).toISOString().split('T')[0];
-    const dueDateString = new Date(dueDate).toLocaleDateString('vi-VN');
+    if (!newInvoice.MaPhong) {
+      error({
+        title: 'Lỗi tạo hóa đơn',
+        message: 'Không tìm thấy mã phòng. Vui lòng chọn lại phòng.'
+      });
+      return;
+    }
 
-    showConfirm({
-      title: 'Xác nhận tạo hóa đơn',
-      message: `Bạn có chắc chắn muốn tạo hóa đơn cho "${newInvoice.tenantName}" (Hạn nộp: ${dueDateString}) không?`,
-      onConfirm: () => {
-        const totalAmount = calculateNewInvoiceTotal();
-        const electricityAmount = newInvoice.electricityUsage * bulkSettings.electricityRate;
-        const waterAmount = newInvoice.waterUsage * bulkSettings.waterRate;
-        const building =
-          (bulkRooms.find(r => r.room === newInvoice.room)?.building) ||
-          (mockBulkRooms.find(r => r.room === newInvoice.room)?.building) ||
-          '';
-        const newPayment: Payment = {
-          id: `inv-${Date.now()}`,
-          tenantName: newInvoice.tenantName,
-          room: newInvoice.room,
-          building,
-          month: newInvoice.month,
-          rentAmount: newInvoice.rentAmount,
+    try {
+      const [year, month] = newInvoice.month.split('-').map(Number);
+      const ngayLap = new Date().toISOString().split('T')[0];
+      const ngayHetHan = new Date(year, month, 5).toISOString().split('T')[0];
 
-          electricityUsage: newInvoice.electricityUsage,
-          electricityAmount,
-          waterUsage: newInvoice.waterUsage,
-          waterAmount,
+      // Calculate amounts
+      const electricityAmount = newInvoice.electricityUsage * bulkSettings.electricityRate;
+      const waterAmount = newInvoice.waterUsage * bulkSettings.waterRate;
+      const totalAmount = calculateNewInvoiceTotal();
 
-          // dịch vụ tách
-          internetPlan: newInvoice.internetPlan,
-          internetAmount: newInvoice.internetAmount,
-          trashAmount: newInvoice.trashAmount,
-          parkingCount: newInvoice.parkingCount,
-          parkingAmount: newInvoice.parkingAmount,
+      // Build chiTietHoaDon array
+      const chiTietHoaDon: ChiTietHoaDon[] = [];
 
-          additionalCharges: newInvoice.additionalCharges,
-          totalAmount,
-          paidAmount: 0,
-          remainingAmount: totalAmount,
-          dueDate,
-          paidDate: undefined,
-          status: 'pending',
-          paymentMethod: undefined
-        };
-        setPayments(prevPayments => [newPayment, ...prevPayments]);
-
-        success({
-          title: 'Tạo hóa đơn thành công',
-          message: `Hóa đơn cho ${newInvoice.tenantName} - ${newInvoice.room} đã được tạo với tổng tiền ${totalAmount.toLocaleString('vi-VN')}đ`
+      // 1. Tiền thuê
+      if (newInvoice.rentAmount > 0) {
+        chiTietHoaDon.push({
+          NoiDung: `Tiền thuê phòng tháng ${month}/${year}`,
+          SoLuong: 1,
+          DonGia: newInvoice.rentAmount,
+          ThanhTien: newInvoice.rentAmount
         });
-
-        setShowAddModal(false);
-        setNewInvoice({
-          tenantName: '',
-          room: '',
-          month: new Date().toISOString().slice(0, 7),
-          rentAmount: 0,
-          electricityUsage: 0,
-          waterUsage: 0,
-
-          internetPlan: 1,
-          internetAmount: 0,
-          trashAmount: 0,
-          parkingCount: 0,
-          parkingAmount: 0,
-
-          additionalCharges: [],
-          notes: ''
-        });
-
-        setSearchRoomQuery('');
       }
-    });
+
+      // 2. Tiền điện
+      if (newInvoice.electricityUsage > 0) {
+        chiTietHoaDon.push({
+          NoiDung: `Tiền điện tháng ${month}/${year} (${newInvoice.electricityUsage} kWh)`,
+          SoLuong: newInvoice.electricityUsage,
+          DonGia: bulkSettings.electricityRate,
+          ThanhTien: electricityAmount
+        });
+      }
+
+      // 3. Tiền nước
+      if (newInvoice.waterUsage > 0) {
+        chiTietHoaDon.push({
+          NoiDung: `Tiền nước tháng ${month}/${year} (${newInvoice.waterUsage} người)`,
+          SoLuong: newInvoice.waterUsage,
+          DonGia: bulkSettings.waterRate,
+          ThanhTien: waterAmount
+        });
+      }
+
+      // 4. Dịch vụ
+      if (newInvoice.internetAmount > 0) {
+        chiTietHoaDon.push({
+          NoiDung: `Phí Internet tháng ${month}/${year}`,
+          SoLuong: 1,
+          DonGia: newInvoice.internetAmount,
+          ThanhTien: newInvoice.internetAmount
+        });
+      }
+
+      if (newInvoice.trashAmount > 0) {
+        chiTietHoaDon.push({
+          NoiDung: `Phí rác tháng ${month}/${year}`,
+          SoLuong: 1,
+          DonGia: newInvoice.trashAmount,
+          ThanhTien: newInvoice.trashAmount
+        });
+      }
+
+      if (newInvoice.parkingAmount > 0) {
+        chiTietHoaDon.push({
+          NoiDung: `Phí gửi xe tháng ${month}/${year} (${newInvoice.parkingCount} xe)`,
+          SoLuong: newInvoice.parkingCount,
+          DonGia: newInvoice.parkingAmount / newInvoice.parkingCount,
+          ThanhTien: newInvoice.parkingAmount
+        });
+      }
+
+      // 5. Additional charges
+      newInvoice.additionalCharges.forEach(charge => {
+        chiTietHoaDon.push({
+          NoiDung: charge.description,
+          SoLuong: 1,
+          DonGia: charge.amount,
+          ThanhTien: charge.amount
+        });
+      });
+
+      // ✅ Use real MaPhong from selected room
+      const hoaDonData: CreateHoaDonRequest = {
+        MaPhong: newInvoice.MaPhong,
+        MaHopDong: newInvoice.MaHopDong, // Optional - Backend will look it up
+        Thang: newInvoice.month,
+        NgayLap: ngayLap,
+        NgayHetHan: ngayHetHan,
+        TongTien: totalAmount,
+        DaThanhToan: 0,
+        TrangThai: 'moi_tao',
+        GhiChu: newInvoice.notes || null,
+        chiTietHoaDon
+      };
+
+      await hoaDonService.create(hoaDonData);
+
+      success({
+        title: 'Tạo hóa đơn thành công',
+        message: `Hóa đơn cho ${newInvoice.tenantName} - ${newInvoice.room} đã được tạo với tổng tiền ${totalAmount.toLocaleString('vi-VN')}đ`
+      });
+
+      // Refresh data
+      refreshData();
+
+      setShowAddModal(false);
+      setNewInvoice({
+        tenantName: '',
+        room: '',
+        month: new Date().toISOString().slice(0, 7),
+        rentAmount: 0,
+        electricityUsage: 0,
+        waterUsage: 0,
+        internetPlan: 1,
+        internetAmount: 0,
+        trashAmount: 0,
+        parkingCount: 0,
+        parkingAmount: 0,
+        additionalCharges: [],
+        notes: '',
+        MaPhong: undefined,
+        MaHopDong: undefined
+      });
+      setSearchRoomQuery('');
+    } catch (err) {
+      error({
+        title: 'Lỗi tạo hóa đơn',
+        message: getErrorMessage(err)
+      });
+    }
   };
 
   const calculateNewInvoiceTotal = () => {
@@ -1192,7 +1404,11 @@ export default function Payments() {
       parkingAmount,
 
       additionalCharges: [],
-      notes: ''
+      notes: '',
+
+      // ✅ Store MaPhong for API call (room.id is MaPhong.toString())
+      MaPhong: parseInt(room.id),
+      MaHopDong: undefined // Backend will look it up based on MaPhong
     });
 
     setSearchRoomQuery(`${room.tenantName} - ${room.room}`);
@@ -1328,7 +1544,7 @@ export default function Payments() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Tổng hóa đơn</p>
-                    <p className="text-2xl font-bold text-gray-900">{hoaDons.length}</p> {/* <-- Sửa */}
+                    <p className="text-2xl font-bold text-gray-900">{statistics.TongSoHoaDon}</p>
                   </div>
                 </div>
               </div>
@@ -1550,12 +1766,28 @@ export default function Payments() {
                       </button>
                     </div>
 
-                    <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                      <div className="flex items-center">
-                        <i className="ri-information-line text-blue-600 text-xl mr-3"></i>
-                        <div>
-                          <h3 className="font-semibold text-blue-900">Hướng dẫn nhập chỉ số điện</h3>
-                          <p className="text-blue-700 text-sm">Click "Sửa" để nhập chỉ số mới cho từng phòng. Hệ thống sẽ tự động tính toán mức tiêu thụ.</p>
+                    <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                      <div className="flex items-start md:items-center flex-col md:flex-row gap-4">
+                        <div className="flex items-center flex-shrink-0">
+                          <i className="ri-information-line text-blue-600 text-xl mr-3"></i>
+                          <div>
+                            <h3 className="font-semibold text-blue-900">Hướng dẫn nhập chỉ số điện</h3>
+                            <p className="text-blue-700 text-sm">Click "Sửa" để nhập chỉ số mới. Hệ thống sẽ tự động tính toán mức tiêu thụ.</p>
+                          </div>
+                        </div>
+                        <div className="flex-grow w-full md:w-auto md:flex-grow-0 md:ml-auto">
+                          <label htmlFor="building-filter" className="sr-only">Lọc theo dãy</label>
+                          <select
+                            id="building-filter"
+                            value={electricFilterBuilding}
+                            onChange={e => setElectricFilterBuilding(e.target.value)}
+                            className="w-full md:w-48 border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm"
+                          >
+                            <option value="all">Tất cả dãy</option>
+                            {electricBuildings.map(b => (
+                              <option key={b} value={b}>{b}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>
@@ -1574,70 +1806,116 @@ export default function Payments() {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {electricReadings.map((reading) => (
-                            <tr key={reading.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{reading.building}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{reading.room}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{reading.tenantName}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                {editingReading === reading.id ? (
-                                  <input
-                                    type="number"
-                                    value={reading.oldReading}
-                                    onChange={(e) => handleUpdateReading(reading.id, 'oldReading', parseInt(e.target.value) || 0)}
-                                    className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
-                                  />
-                                ) : (
-                                  <span className="text-sm text-gray-900">{reading.oldReading}</span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                {editingReading === reading.id ? (
-                                  <input
-                                    type="number"
-                                    value={reading.newReading}
-                                    onChange={(e) => handleUpdateReading(reading.id, 'newReading', parseInt(e.target.value) || 0)}
-                                    className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
-                                  />
-                                ) : (
-                                  <span className="text-sm text-gray-900">{reading.newReading}</span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`text-sm font-medium ${reading.usage > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  {reading.usage}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                {editingReading === reading.id ? (
-                                  <div className="flex space-x-2">
-                                    <button
-                                      onClick={() => handleSaveReading(reading.id)}
-                                      className="text-green-600 hover:text-green-900 cursor-pointer"
-                                    >
-                                      <i className="ri-check-line"></i> Lưu
-                                    </button>
-                                    <button
-                                      onClick={() => setEditingReading(null)}
-                                      className="text-gray-600 hover:text-gray-900 cursor-pointer"
-                                    >
-                                      <i className="ri-close-line"></i> Hủy
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    onClick={() => setEditingReading(reading.id)}
-                                    className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
-                                  >
-                                    <i className="ri-edit-line"></i> Sửa
-                                  </button>
-                                )}
+                          {loadingPhongTros ? (
+                            <tr>
+                              <td colSpan={7} className="px-6 py-8 text-center">
+                                <div className="flex flex-col items-center justify-center">
+                                  <i className="ri-loader-4-line text-4xl text-gray-400 animate-spin mb-2"></i>
+                                  <p className="text-gray-500">Đang tải dữ liệu phòng...</p>
+                                </div>
                               </td>
                             </tr>
-                          ))}
+                          ) : filteredElectricReadings.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="px-6 py-8 text-center">
+                                <div className="flex flex-col items-center justify-center">
+                                  <i className="ri-home-line text-4xl text-gray-400 mb-2"></i>
+                                  <p className="text-gray-500 font-medium">
+                                    {electricFilterBuilding === 'all' ? 'Chưa có phòng nào trong hệ thống' : `Không có phòng nào trong dãy ${electricFilterBuilding}`}
+                                  </p>
+                                  <p className="text-gray-400 text-sm">Vui lòng thêm phòng hoặc chọn dãy khác.</p>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            getPaginatedElectricReadings().map((reading) => (
+                              <tr key={reading.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{reading.building}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{reading.room}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{reading.tenantName}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  {editingReading === reading.id ? (
+                                    <input
+                                      type="number"
+                                      value={reading.oldReading}
+                                      readOnly
+                                      className="w-24 border-gray-200 bg-gray-100 rounded px-2 py-1 text-sm text-gray-500 focus:ring-0 focus:border-gray-200"
+                                    />
+                                  ) : (
+                                    <span className="text-sm text-gray-900">{reading.oldReading}</span>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  {editingReading === reading.id ? (
+                                    <input
+                                      type="number"
+                                      value={reading.newReading}
+                                      onChange={(e) => handleUpdateReading(reading.id, 'newReading', parseInt(e.target.value) || 0)}
+                                      className="w-24 border border-gray-300 rounded px-2 py-1 text-sm"
+                                    />
+                                  ) : (
+                                    <span className="text-sm text-gray-900">{reading.newReading}</span>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className={`text-sm font-medium ${reading.usage > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {reading.usage}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  {editingReading === reading.id ? (
+                                    <div className="flex space-x-2">
+                                      <button
+                                        onClick={() => handleSaveReading(reading.id)}
+                                        className="text-green-600 hover:text-green-900 cursor-pointer"
+                                      >
+                                        <i className="ri-check-line"></i> Lưu
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingReading(null)}
+                                        className="text-gray-600 hover:text-gray-900 cursor-pointer"
+                                      >
+                                        <i className="ri-close-line"></i> Hủy
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => setEditingReading(reading.id)}
+                                      className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
+                                    >
+                                      <i className="ri-edit-line"></i> Sửa
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
+
+                    {/* Pagination for electricity readings */}
+                    {filteredElectricReadings.length > electricReadingsPerPage && (
+                      <div className="mt-6 flex items-center justify-between">
+                        <div className="text-sm text-gray-700">
+                          Hiển thị{' '}
+                          <span className="font-medium">
+                            {(electricReadingsPage - 1) * electricReadingsPerPage + 1}
+                          </span>
+                          {' '}-{' '}
+                          <span className="font-medium">
+                            {Math.min(electricReadingsPage * electricReadingsPerPage, filteredElectricReadings.length)}
+                          </span>
+                          {' '}trong tổng số{' '}
+                          <span className="font-medium">{filteredElectricReadings.length}</span> phòng
+                        </div>
+                        <Pagination
+                          currentPage={electricReadingsPage}
+                          totalPages={electricReadingsTotalPages}
+                          onPageChange={setElectricReadingsPage}
+                        />
+                      </div>
+                    )}
 
                     <div className="flex gap-3 mt-6 pt-6 border-t">
                       <button
@@ -1647,12 +1925,82 @@ export default function Payments() {
                         Đóng
                       </button>
                       <button
-                        onClick={() => {
-                          success({
-                            title: 'Lưu chỉ số điện thành công',
-                            message: 'Đã cập nhật chỉ số điện cho tất cả các phòng'
-                          });
-                          setShowElectricModal(false);
+                        onClick={async () => {
+                          try {
+                            const currentMonth = new Date().toISOString().slice(0, 7);
+                            const currentDate = new Date().toISOString().split('T')[0];
+
+                            // ✅ 1. Lọc chỉ những phòng có thay đổi (ChiSoMoi !== ChiSoCu)
+                            const changedReadings = filteredElectricReadings.filter(r => {
+                              // Bỏ qua nếu không có thay đổi
+                              if (r.newReading === r.oldReading) return false;
+
+                              // Validate: chỉ số mới phải >= chỉ số cũ
+                              if (r.newReading < r.oldReading) {
+                                error({
+                                  title: 'Lỗi nhập liệu',
+                                  message: `Phòng ${r.room}: Chỉ số mới (${r.newReading}) phải >= chỉ số cũ (${r.oldReading})`
+                                });
+                                return false;
+                              }
+
+                              return true;
+                            });
+
+                            if (changedReadings.length === 0) {
+                              warning({
+                                title: 'Không có thay đổi',
+                                message: 'Không có phòng nào có thay đổi chỉ số điện'
+                              });
+                              return;
+                            }
+
+                            // ✅ 2. Gửi tuần tự để tránh quá tải (không dùng Promise.all)
+                            let successCount = 0;
+                            let errorCount = 0;
+                            const errors: string[] = [];
+
+                            for (const reading of changedReadings) {
+                              try {
+                                await soDienService.create({
+                                  MaPhong: parseInt(reading.id),
+                                  Thang: currentMonth,
+                                  ChiSoCu: reading.oldReading,
+                                  ChiSoMoi: reading.newReading,
+                                  NgayGhi: currentDate,
+                                  GhiChu: null
+                                });
+                                successCount++;
+
+                                // Delay nhỏ giữa các request (50ms) để tránh quá tải
+                                await new Promise(resolve => setTimeout(resolve, 50));
+                              } catch (err) {
+                                errorCount++;
+                                errors.push(`${reading.room}: ${getErrorMessage(err)}`);
+                                console.error(`❌ Failed to save reading for room ${reading.room}:`, err);
+                              }
+                            }
+
+                            // Show result
+                            if (errorCount === 0) {
+                              success({
+                                title: 'Lưu chỉ số điện thành công',
+                                message: `Đã lưu chỉ số điện cho ${successCount}/${changedReadings.length} phòng`
+                              });
+                              setShowElectricModal(false);
+                              refreshData();
+                            } else {
+                              warning({
+                                title: 'Lưu một phần',
+                                message: `Thành công: ${successCount}, Lỗi: ${errorCount}\n${errors.slice(0, 3).join('\n')}`
+                              });
+                            }
+                          } catch (err) {
+                            error({
+                              title: 'Lỗi lưu chỉ số điện',
+                              message: getErrorMessage(err)
+                            });
+                          }
                         }}
                         className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 cursor-pointer whitespace-nowrap"
                       >
@@ -1663,7 +2011,8 @@ export default function Payments() {
                   </div>
                 </div>
               </div>
-            )}
+            )
+          }
 
             {/* Bulk Invoice Modal */}
             {showBulkModal && (
@@ -1963,7 +2312,11 @@ export default function Payments() {
                                   parkingCount: bulkSettings.defaultParkingCount,
                                   parkingAmount: 0,
 
-                                  additionalCharges: []
+                                  additionalCharges: [],
+
+                                  // reset backend fields
+                                  MaPhong: undefined,
+                                  MaHopDong: undefined
                                 }));
                               }}
                               className="w-full border border-gray-300 rounded-lg px-3 py-2"

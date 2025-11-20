@@ -4,8 +4,8 @@ export interface SoDien {
   MaSoDien: number;
   MaPhong: number;
   Thang: string;
-  SoCu: number;
-  SoMoi: number;
+  ChiSoCu: number;
+  ChiSoMoi: number;
   SoKwh: number;
   NgayGhi: string;
   GhiChu?: string;
@@ -14,8 +14,8 @@ export interface SoDien {
 export interface CreateSoDienRequest {
   MaPhong: number;
   Thang: string;
-  SoCu: number;
-  SoMoi: number;
+  ChiSoCu: number;
+  ChiSoMoi: number;
   NgayGhi: string;
   GhiChu?: string;
 }

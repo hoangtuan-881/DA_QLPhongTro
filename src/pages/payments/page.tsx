@@ -685,14 +685,9 @@ export default function Payments() {
     setElectricReadingsPage(1);
   }, [electricFilterBuilding]);
 
-  // Format tiền sang đơn vị Việt Nam (triệu, nghìn)
+  // Format tiền đầy đủ cho ngữ cảnh tài chính (không viết tắt)
   const formatCurrency = (amount: number | string): string => {
     const num = Number(amount || 0);
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)} tr`; // triệu
-    } else if (num >= 1000) {
-      return `${(num / 1000).toFixed(0)} k`; // nghìn
-    }
     return `${num.toLocaleString('vi-VN')}đ`;
   };
 

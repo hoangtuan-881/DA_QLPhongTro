@@ -65,7 +65,10 @@ export const API_ENDPOINTS = {
   THONG_BAO: '/thong-bao',
 
   // Bao Cao (Reports)
-  BAO_CAO: '/bao-cao',
+  BAO_CAO: '/admin/bao-cao',
+
+  // Dashboard
+  DASHBOARD: '/admin/dashboard',
 
   // Profile
   PROFILE: '/profile',

@@ -95,7 +95,12 @@ export class BaseApiService<T = any> {
    * Custom GET request to a specific path
    */
   async customGet<R = any>(path: string, params?: any): Promise<AxiosResponse<ApiResponse<R>>> {
-    return httpClient.get(`${this.endpoint}${path}`, { params });
+    const { signal, ...queryParams } = params || {};
+    const config: any = { params: queryParams };
+    if (signal) {
+      config.signal = signal;
+    }
+    return httpClient.get(`${this.endpoint}${path}`, config);
   }
 
   /**

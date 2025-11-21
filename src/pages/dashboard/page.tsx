@@ -8,12 +8,61 @@ import RecentActivities from './components/RecentActivities';
 import RoomChart from './components/RoomChart';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { useToast } from '@/hooks/useToast';
+import dashboardService, {
+  DashboardStats,
+  RoomStatusByBuilding,
+  RecentActivity,
+} from '@/services/dashboard.service';
+import { getErrorMessage } from '@/lib/http-client';
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [statsData, setStatsData] = useState<DashboardStats | null>(null);
+  const [roomStatusData, setRoomStatusData] = useState<RoomStatusByBuilding | null>(null);
+  const [activitiesData, setActivitiesData] = useState<RecentActivity[]>([]);
   const { user } = useAuth();
+  const toast = useToast();
 
   useDocumentTitle('Trang chủ');
+
+  // Fetch all dashboard data
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch all 3 endpoints in parallel
+        const [statsResponse, roomStatusResponse, activitiesResponse] = await Promise.all([
+          dashboardService.getStats(controller.signal),
+          dashboardService.getRoomStatusByBuilding(controller.signal),
+          dashboardService.getRecentActivities(5, controller.signal),
+        ]);
+
+        if (!controller.signal.aborted) {
+          setStatsData(statsResponse.data.data || null);
+          setRoomStatusData(roomStatusResponse.data.data || null);
+          setActivitiesData(activitiesResponse.data.data || []);
+          setLoading(false);
+        }
+      } catch (error: any) {
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          toast.error({
+            title: 'Lỗi tải dữ liệu dashboard',
+            message: getErrorMessage(error),
+          });
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchDashboardData();
+
+    return () => controller.abort();
+  }, []);
 
   return (
     <ProtectedRoute>
@@ -34,12 +83,20 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              <StatsCards />
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                </div>
+              ) : (
+                <>
+                  <StatsCards data={statsData} />
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                <RoomChart />
-                <RecentActivities />
-              </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <RoomChart data={roomStatusData} />
+                    <RecentActivities data={activitiesData} />
+                  </div>
+                </>
+              )}
             </div>
           </main>
         </div>

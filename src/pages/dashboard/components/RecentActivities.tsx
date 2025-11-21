@@ -1,52 +1,32 @@
+import { RecentActivity } from '@/services/dashboard.service';
 
-export default function RecentActivities() {
-  const activities = [
-    {
-      id: 1,
-      type: 'payment',
-      title: 'Thanh toán tiền phòng',
-      description: 'Nguyễn Văn A - Phòng 101',
-      time: '2 giờ trước',
-      icon: 'ri-money-dollar-circle-line',
-      color: 'bg-green-100 text-green-600'
-    },
-    {
-      id: 2,
-      type: 'booking',
-      title: 'Đặt phòng mới',
-      description: 'Trần Thị B - Phòng 205',
-      time: '4 giờ trước',
-      icon: 'ri-calendar-check-line',
-      color: 'bg-blue-100 text-blue-600'
-    },
-    {
-      id: 3,
-      type: 'maintenance',
-      title: 'Yêu cầu bảo trì',
-      description: 'Sửa chữa điều hòa - Phòng 303',
-      time: '6 giờ trước',
-      icon: 'ri-tools-line',
-      color: 'bg-orange-100 text-orange-600'
-    },
-    {
-      id: 4,
-      type: 'contract',
-      title: 'Gia hạn hợp đồng',
-      description: 'Lê Văn C - Phòng 102',
-      time: '1 ngày trước',
-      icon: 'ri-file-text-line',
-      color: 'bg-purple-100 text-purple-600'
-    },
-    {
-      id: 5,
-      type: 'violation',
-      title: 'Vi phạm nội quy',
-      description: 'Tiếng ồn - Phòng 401',
-      time: '2 ngày trước',
-      icon: 'ri-shield-check-line',
-      color: 'bg-red-100 text-red-600'
-    }
-  ];
+interface RecentActivitiesProps {
+  data: RecentActivity[];
+}
+
+export default function RecentActivities({ data }: RecentActivitiesProps) {
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Hoạt động gần đây</h3>
+        </div>
+        <div className="text-center py-8 text-gray-500">
+          Chưa có hoạt động nào
+        </div>
+      </div>
+    );
+  }
+
+  const activities = data.map((activity, index) => ({
+    id: index + 1,
+    type: activity.LoaiHoatDong,
+    title: activity.TieuDe,
+    description: activity.MoTa,
+    time: activity.ThoiGianHienThi,
+    icon: activity.Icon,
+    color: activity.Color
+  }));
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">

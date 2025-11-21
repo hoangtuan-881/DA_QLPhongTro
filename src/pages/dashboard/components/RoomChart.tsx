@@ -1,11 +1,20 @@
+import { RoomStatusByBuilding } from '@/services/dashboard.service';
 
-export default function RoomChart() {
-  const roomData = [
-    { floor: 'Dãy 1', total: 12, occupied: 10, vacant: 2 },
-    { floor: 'Dãy 2', total: 12, occupied: 11, vacant: 1 },
-    { floor: 'Dãy 3', total: 12, occupied: 9, vacant: 3 },
-    { floor: 'Dãy 4', total: 12, occupied: 12, vacant: 0 }
-  ];
+interface RoomChartProps {
+  data: RoomStatusByBuilding | null;
+}
+
+export default function RoomChart({ data }: RoomChartProps) {
+  if (!data) {
+    return null;
+  }
+
+  const roomData = data.DanhSachDay.map(day => ({
+    floor: day.TenDay,
+    total: day.TongSoPhong,
+    occupied: day.SoPhongDaThue,
+    vacant: day.SoPhongTrong
+  }));
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -48,7 +57,7 @@ export default function RoomChart() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-900">Tỷ lệ lấp đầy</p>
-            <p className="text-2xl font-bold text-green-600">87.5%</p>
+            <p className="text-2xl font-bold text-green-600">{data.TyLeLapDay}%</p>
           </div>
           <div className="w-16 h-16 relative">
             <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
@@ -63,7 +72,7 @@ export default function RoomChart() {
                 fill="none"
                 stroke="#10b981"
                 strokeWidth="3"
-                strokeDasharray="87.5, 100"
+                strokeDasharray={`${data.TyLeLapDay}, 100`}
               />
             </svg>
           </div>

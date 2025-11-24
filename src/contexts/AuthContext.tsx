@@ -11,8 +11,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (credentials: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
+  login: (credentials: LoginRequest) => Promise<User>;
+  register: (data: RegisterRequest) => Promise<User>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   hasRole: (maQuyen: number) => boolean;
@@ -73,19 +73,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, []);
 
-  const login = async (credentials: LoginRequest) => {
+  const login = async (credentials: LoginRequest): Promise<User> => {
     try {
       const user = await authService.login(credentials);
       setUser(user);
+      return user;
     } catch (error) {
       throw new Error(getErrorMessage(error));
     }
   };
 
-  const register = async (data: RegisterRequest) => {
+  const register = async (data: RegisterRequest): Promise<User> => {
     try {
       const user = await authService.register(data);
       setUser(user);
+      return user;
     } catch (error) {
       throw new Error(getErrorMessage(error));
     }

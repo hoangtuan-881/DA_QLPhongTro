@@ -1,6 +1,9 @@
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import UserMenu from '@/components/base/UserMenu';
+import canhBaoService from '@/services/canh-bao.service';
+import { CanhBao } from '@/types/canh-bao';
+import { getErrorMessage } from '@/lib/http-client';
 
 interface CustomerHeaderProps {
   onMenuClick: () => void;
@@ -8,7 +11,77 @@ interface CustomerHeaderProps {
 
 export default function CustomerHeader({ onMenuClick }: CustomerHeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
+  const [alerts, setAlerts] = useState<CanhBao[]>([]);
+  const [loading, setLoading] = useState(true);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  // Fetch alerts
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchAlerts = async () => {
+      try {
+        const response = await canhBaoService.getMyAlerts(controller.signal);
+        if (!controller.signal.aborted) {
+          setAlerts(response.data.data || []);
+          setLoading(false);
+        }
+      } catch (error: any) {
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          console.error('Error fetching alerts:', getErrorMessage(error));
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchAlerts();
+    return () => controller.abort();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
+
+  const handleMarkAsRead = async (id: number) => {
+    try {
+      await canhBaoService.markAsRead(id);
+      setAlerts(prev =>
+        prev.map(alert =>
+          alert.MaCanhBao === id
+            ? { ...alert, TrangThai: 'DA_DOC' as const }
+            : alert
+        )
+      );
+    } catch (error) {
+      console.error('Error marking alert as read:', getErrorMessage(error));
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await canhBaoService.markAllAsRead();
+      setAlerts(prev =>
+        prev.map(alert => ({ ...alert, TrangThai: 'DA_DOC' as const }))
+      );
+    } catch (error) {
+      console.error('Error marking all as read:', getErrorMessage(error));
+    }
+  };
+
+  const unreadCount = alerts.filter(a => a.TrangThai === 'CHUA_DOC').length;
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -37,73 +110,85 @@ export default function CustomerHeader({ onMenuClick }: CustomerHeaderProps) {
 
         <div className="flex items-center space-x-4">
           {/* Notifications */}
-          <div className="relative">
+          <div className="relative" ref={notificationRef}>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="p-2 rounded-lg hover:bg-gray-100 relative"
             >
               <i className="ri-notification-line text-gray-600 text-xl"></i>
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                2
-              </span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </button>
 
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200">
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-900">Thông báo</h3>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllAsRead}
+                      className="text-xs text-indigo-600 hover:text-indigo-800"
+                    >
+                      Đánh dấu tất cả đã đọc
+                    </button>
+                  )}
                 </div>
                 <div className="max-h-64 overflow-y-auto">
-                  <div className="p-4 hover:bg-gray-50 border-b border-gray-100">
-                    <p className="text-sm text-gray-900">Hóa đơn tháng 12 đã sẵn sàng</p>
-                    <p className="text-xs text-gray-500 mt-1">1 giờ trước</p>
-                  </div>
-                  <div className="p-4 hover:bg-gray-50">
-                    <p className="text-sm text-gray-900">Yêu cầu sửa chữa đã được xử lý</p>
-                    <p className="text-xs text-gray-500 mt-1">3 giờ trước</p>
-                  </div>
+                  {loading && (
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      Đang tải...
+                    </div>
+                  )}
+                  {!loading && alerts.length === 0 && (
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      Không có cảnh báo nào
+                    </div>
+                  )}
+                  {!loading && alerts.map((alert) => (
+                    <div
+                      key={alert.MaCanhBao}
+                      onClick={() => {
+                        if (alert.TrangThai === 'CHUA_DOC') {
+                          handleMarkAsRead(alert.MaCanhBao);
+                        }
+                        if (alert.LienKet) {
+                          window.location.href = alert.LienKet;
+                        }
+                      }}
+                      className={`p-4 hover:bg-gray-50 border-b border-gray-100 cursor-pointer ${
+                        alert.TrangThai === 'CHUA_DOC' ? 'bg-blue-50' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <p className={`text-sm ${
+                          alert.TrangThai === 'CHUA_DOC' ? 'font-semibold text-gray-900' : 'text-gray-700'
+                        }`}>
+                          {alert.NoiDung}
+                        </p>
+                        {alert.TrangThai === 'CHUA_DOC' && (
+                          <span className="w-2 h-2 bg-blue-500 rounded-full ml-2 mt-1.5"></span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                          {alert.LoaiCanhBao}
+                        </span>
+                        <p className="text-xs text-gray-500">
+                          {alert.ThoiGianGui}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Profile */}
-          <div className="relative">
-            <button
-              onClick={() => setShowProfile(!showProfile)}
-              className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100"
-            >
-              <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">A</span>
-              </div>
-              <span className="hidden md:block text-sm font-medium text-gray-700">Nguyễn Văn A</span>
-              <i className="ri-arrow-down-s-line text-gray-400"></i>
-            </button>
-
-            {showProfile && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <div className="p-2">
-                  <a href="#" className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50">
-                    <i className="ri-user-line mr-3"></i>
-                    Thông tin cá nhân
-                  </a>
-                  <a href="#" className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50">
-                    <i className="ri-settings-line mr-3"></i>
-                    Cài đặt
-                  </a>
-                  <hr className="my-2" />
-                  <Link 
-                    to="/login" 
-                    className="flex items-center px-3 py-2 text-sm text-gray-700 rounded-md hover:bg-gray-50"
-                    onClick={() => setShowProfile(false)}
-                  >
-                    <i className="ri-logout-box-line mr-3"></i>
-                    Đăng xuất
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* User Menu with Logout */}
+          <UserMenu />
         </div>
       </div>
     </header>

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
 import { useDocumentTitle } from '@/hooks/useDocumentTitle';
+import { getDefaultRouteForRole } from '@/router/utils';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -94,7 +95,7 @@ export default function Login() {
       setIsSubmitting(true);
 
       try {
-        await login({
+        const user = await login({
           TenDangNhap: formData.username,
           password: formData.password,
           remember: formData.remember
@@ -105,8 +106,9 @@ export default function Login() {
           message: 'Chào mừng bạn quay trở lại'
         });
 
-        // Navigate to dashboard
-        navigate('/dashboard');
+        // Navigate to appropriate dashboard based on user role
+        const defaultRoute = getDefaultRouteForRole(user);
+        navigate(defaultRoute);
       } catch (error: any) {
         toast.error({
           title: 'Đăng nhập thất bại',

@@ -1,106 +1,32 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
-
-interface Notification {
-  id: number;
-  title: string;
-  content: string;
-  type: 'general' | 'urgent' | 'maintenance' | 'payment';
-  targetAudience: 'all' | 'specific';
-  targetRooms?: string[]; // lưu theo mã phòng (VD: "201")
-  status: 'draft' | 'sent' | 'scheduled';
-  createdAt: string;
-  sentAt?: string;
-  scheduledAt?: string;
-  readCount: number;
-  totalRecipients: number;
-}
-
-type Room = {
-  id: string;
-  building: string;
-  room: string;
-  tenantName: string;
-  rentAmount: number;
-  electricityUsage: number;
-  waterUsage: number;
-};
+import thongBaoService from '../../services/thongBaoHeThongService';
+import phongTroService, { PhongTro } from '../../services/phong-tro.service';
+import { ThongBaoHeThong, ThongBaoHeThongCreateInput } from '../../types/thong-bao';
+import { getErrorMessage } from '../../lib/http-client';
 
 export default function Notifications() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { success, error, warning } = useToast();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<() => void>(() => { });
+  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
   const [confirmMessage, setConfirmMessage] = useState('');
+
+  // Loading & Data states
+  const [loading, setLoading] = useState(true);
+  const [phongTros, setPhongTros] = useState<PhongTro[]>([]);
+  const [thongBaos, setThongBaos] = useState<ThongBaoHeThong[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Tabs theo trạng thái
   const [statusTab, setStatusTab] = useState<'all' | 'sent' | 'scheduled' | 'draft'>('all');
 
-  // ---- MOCK ROOMS (có building) ----
-  const [rooms] = useState<Room[]>([
-    { id: 'A-201', building: 'A', room: '201', tenantName: 'Nguyễn Văn An', rentAmount: 3500000, electricityUsage: 120, waterUsage: 2 },
-    { id: 'A-203', building: 'A', room: '203', tenantName: 'Trần Thị Bình', rentAmount: 3400000, electricityUsage: 110, waterUsage: 2 },
-    { id: 'A-301', building: 'A', room: '301', tenantName: 'Lê Văn Cường', rentAmount: 3600000, electricityUsage: 100, waterUsage: 3 },
-    { id: 'B-101', building: 'B', room: '101', tenantName: 'Hoàng Văn Em', rentAmount: 3300000, electricityUsage: 90, waterUsage: 1 },
-    { id: 'B-302', building: 'B', room: '302', tenantName: 'Phạm Thị Dung', rentAmount: 3600000, electricityUsage: 95, waterUsage: 2 },
-  ]);
-
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: 1,
-      title: 'Thông báo bảo trì hệ thống điện',
-      content: 'Khu trọ sẽ tạm ngừng cung cấp điện từ 8h-12h ngày 25/01 để bảo trì hệ thống. Mong mọi người thông cảm.',
-      type: 'maintenance',
-      targetAudience: 'all',
-      status: 'sent',
-      createdAt: '2024-01-20',
-      sentAt: '2024-01-20 09:00',
-      readCount: 15,
-      totalRecipients: 20,
-    },
-    {
-      id: 2,
-      title: 'Nhắc nhở đóng tiền phòng tháng 1',
-      content: 'Các bạn chưa đóng tiền phòng tháng 1 vui lòng đóng trước ngày 25/01. Liên hệ ban quản lý nếu có thắc mắc.',
-      type: 'payment',
-      targetAudience: 'specific',
-      targetRooms: ['201', '203', '301'],
-      status: 'sent',
-      createdAt: '2024-01-18',
-      sentAt: '2024-01-18 14:30',
-      readCount: 2,
-      totalRecipients: 3,
-    },
-    {
-      id: 3,
-      title: 'Cập nhật nội quy mới',
-      content: 'Từ ngày 1/2, khu trọ sẽ áp dụng nội quy mới về giờ giấc và vệ sinh. Mọi người vui lòng đọc kỹ và tuân thủ.',
-      type: 'general',
-      targetAudience: 'all',
-      status: 'scheduled',
-      createdAt: '2024-01-20',
-      scheduledAt: '2024-02-01 08:00',
-      readCount: 0,
-      totalRecipients: 20,
-    },
-    {
-      id: 4,
-      title: 'Khẩn cấp: Sự cố thang máy',
-      content: 'Thang máy đang gặp sự cố, tạm thời không sử dụng được. Mọi người sử dụng cầu thang bộ. Dự kiến sửa xong trong 2 ngày.',
-      type: 'urgent',
-      targetAudience: 'all',
-      status: 'draft',
-      createdAt: '2024-01-21',
-      readCount: 0,
-      totalRecipients: 20,
-    },
-  ]);
-
+  // Modal & Form states
   const [showModal, setShowModal] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+  const [selectedThongBao, setSelectedThongBao] = useState<ThongBaoHeThong | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'general' | 'urgent' | 'maintenance' | 'payment'>('all');
 
@@ -108,24 +34,49 @@ export default function Notifications() {
   const [scheduleEditId, setScheduleEditId] = useState<number | null>(null);
   const [scheduleValue, setScheduleValue] = useState<string>('');
 
-  const notificationTypes = [
-    { value: 'all', label: 'Tất cả loại' },
-    { value: 'general', label: 'Thông báo chung' },
-    { value: 'urgent', label: 'Khẩn cấp' },
-    { value: 'maintenance', label: 'Bảo trì' },
-    { value: 'payment', label: 'Thanh toán' },
-  ];
+  // ✅ Fetch data với AbortController
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const filteredNotifications = notifications.filter((notification) => {
+    const fetchData = async () => {
+      try {
+        const [thongBaoRes, phongTroRes] = await Promise.all([
+          thongBaoService.getAll(controller.signal),
+          phongTroService.getAll(controller.signal),
+        ]);
+
+        if (!controller.signal.aborted) {
+          setThongBaos(thongBaoRes.data.data || []);
+          setPhongTros(phongTroRes.data.data || []);
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
+          error({ title: 'Lỗi tải dữ liệu', message: getErrorMessage(err) });
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+    return () => controller.abort();
+  }, [refreshKey]);
+
+  const refreshData = () => {
+    setLoading(true);
+    setRefreshKey((prev) => prev + 1);
+  };
+
+  const filteredThongBaos = thongBaos.filter((thongBao) => {
     const matchesSearch =
-      notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      notification.content.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === 'all' || notification.type === typeFilter;
+      thongBao.TieuDe.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      thongBao.NoiDung.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === 'all' || thongBao.LoaiThongBao === typeFilter;
     return matchesSearch && matchesType;
   });
 
   const listByTab =
-    statusTab === 'all' ? filteredNotifications : filteredNotifications.filter((n) => n.status === statusTab);
+    statusTab === 'all' ? filteredThongBaos : filteredThongBaos.filter((n) => n.TrangThai === statusTab);
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -157,103 +108,100 @@ export default function Notifications() {
     }
   };
 
-  const handleSendNotification = (notification: Notification) => {
-    setConfirmMessage(`Bạn có chắc chắn muốn gửi thông báo "${notification.title}" không?`);
-    setConfirmAction(() => () => {
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notification.id ? { ...n, status: 'sent', sentAt: new Date().toLocaleString() } : n
-        )
-      );
-      success({ title: `Đã gửi thông báo "${notification.title}" thành công!` });
-      setShowConfirmDialog(false);
+  const handleSendThongBao = (thongBao: ThongBaoHeThong) => {
+    setConfirmMessage(`Bạn có chắc chắn muốn gửi thông báo "${thongBao.TieuDe}" không?`);
+    setConfirmAction(() => async () => {
+      try {
+        await thongBaoService.update(thongBao.MaThongBao, { TrangThai: 'sent' });
+        success({ title: `Đã gửi thông báo "${thongBao.TieuDe}" thành công!` });
+        setShowConfirmDialog(false);
+        refreshData();
+      } catch (err) {
+        error({ title: 'Lỗi gửi thông báo', message: getErrorMessage(err) });
+      }
     });
     setShowConfirmDialog(true);
   };
 
-  const handleDeleteNotification = (notification: Notification) => {
-    setConfirmMessage(`Bạn có chắc chắn muốn xóa thông báo "${notification.title}" không? Hành động này không thể hoàn tác.`);
-    setConfirmAction(() => () => {
-      setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-      success({ title: `Đã xóa thông báo "${notification.title}" thành công!` });
-      setShowConfirmDialog(false);
+  const handleDeleteThongBao = (thongBao: ThongBaoHeThong) => {
+    setConfirmMessage(`Bạn có chắc chắn muốn xóa thông báo "${thongBao.TieuDe}" không? Hành động này không thể hoàn tác.`);
+    setConfirmAction(() => async () => {
+      try {
+        await thongBaoService.delete(thongBao.MaThongBao);
+        success({ title: `Đã xóa thông báo "${thongBao.TieuDe}" thành công!` });
+        setShowConfirmDialog(false);
+        refreshData();
+      } catch (err) {
+        error({ title: 'Lỗi xóa thông báo', message: getErrorMessage(err) });
+      }
     });
     setShowConfirmDialog(true);
   };
 
-  const handleAddNotification = (notificationData: any) => {
-    if (!notificationData.title || !notificationData.content) {
+  const handleAddThongBao = async (formData: ThongBaoHeThongCreateInput) => {
+    if (!formData.TieuDe || !formData.NoiDung) {
       error({ title: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
 
-    if (notificationData.targetAudience === 'specific' && (!notificationData.targetRooms || notificationData.targetRooms.length === 0)) {
+    if (formData.DoiTuongNhan === 'specific' && (!formData.CacPhongNhan || formData.CacPhongNhan.length === 0)) {
       error({ title: 'Vui lòng chọn ít nhất một phòng!' });
       return;
     }
 
-    const totalRecipients =
-      notificationData.targetAudience === 'all'
-        ? rooms.length
-        : (notificationData.targetRooms?.length || 0);
+    try {
+      await thongBaoService.create(formData);
+      setShowModal(false);
 
-    const newNotification: Notification = {
-      id: notifications.length + 1,
-      ...notificationData,
-      createdAt: new Date().toISOString().split('T')[0],
-      readCount: 0,
-      totalRecipients,
-    };
-    setNotifications((prev) => [newNotification, ...prev]);
-    setShowModal(false);
-
-    if (notificationData.status === 'sent') {
-      success({ title: `Đã tạo và gửi thông báo "${notificationData.title}" thành công!` });
-    } else if (notificationData.status === 'scheduled') {
-      success({ title: `Đã lên lịch gửi thông báo "${notificationData.title}" thành công!` });
-    } else {
-      success({ title: `Đã lưu bản nháp thông báo "${notificationData.title}" thành công!` });
+      if (formData.TrangThai === 'sent') {
+        success({ title: `Đã tạo và gửi thông báo "${formData.TieuDe}" thành công!` });
+      } else if (formData.TrangThai === 'scheduled') {
+        success({ title: `Đã lên lịch gửi thông báo "${formData.TieuDe}" thành công!` });
+      } else {
+        success({ title: `Đã lưu bản nháp thông báo "${formData.TieuDe}" thành công!` });
+      }
+      refreshData();
+    } catch (err) {
+      error({ title: 'Lỗi tạo thông báo', message: getErrorMessage(err) });
     }
   };
 
-  const handleUpdateNotification = (notificationData: any) => {
-    if (!selectedNotification || !notificationData.title || !notificationData.content) {
+  const handleUpdateThongBao = async (formData: ThongBaoHeThongCreateInput) => {
+    if (!selectedThongBao || !formData.TieuDe || !formData.NoiDung) {
       error({ title: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
-    const totalRecipients =
-      notificationData.targetAudience === 'all'
-        ? rooms.length
-        : (notificationData.targetRooms?.length || 0);
 
-    setNotifications((prev) =>
-      prev.map((notification) =>
-        notification.id === selectedNotification.id
-          ? { ...notification, ...notificationData, totalRecipients }
-          : notification
-      )
-    );
-    setShowModal(false);
-    setSelectedNotification(null);
-    success({ title: `Đã cập nhật thông báo "${notificationData.title}" thành công!` });
+    try {
+      await thongBaoService.update(selectedThongBao.MaThongBao, formData);
+      setShowModal(false);
+      setSelectedThongBao(null);
+      success({ title: `Đã cập nhật thông báo "${formData.TieuDe}" thành công!` });
+      refreshData();
+    } catch (err) {
+      error({ title: 'Lỗi cập nhật thông báo', message: getErrorMessage(err) });
+    }
   };
 
-  const handleBulkSendNotifications = () => {
-    const draftNotifications = notifications.filter((n) => n.status === 'draft');
-    if (draftNotifications.length === 0) {
+  const handleBulkSendThongBaos = () => {
+    const draftThongBaos = thongBaos.filter((n) => n.TrangThai === 'draft');
+    if (draftThongBaos.length === 0) {
       warning({ title: 'Không có thông báo nháp nào để gửi!' });
       return;
     }
 
-    setConfirmMessage(`Bạn có chắc chắn muốn gửi tất cả ${draftNotifications.length} thông báo nháp không?`);
-    setConfirmAction(() => () => {
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.status === 'draft' ? { ...n, status: 'sent', sentAt: new Date().toLocaleString() } : n
-        )
-      );
-      success({ title: `Đã gửi ${draftNotifications.length} thông báo thành công!` });
-      setShowConfirmDialog(false);
+    setConfirmMessage(`Bạn có chắc chắn muốn gửi tất cả ${draftThongBaos.length} thông báo nháp không?`);
+    setConfirmAction(() => async () => {
+      try {
+        await Promise.all(
+          draftThongBaos.map((tb) => thongBaoService.update(tb.MaThongBao, { TrangThai: 'sent' }))
+        );
+        success({ title: `Đã gửi ${draftThongBaos.length} thông báo thành công!` });
+        setShowConfirmDialog(false);
+        refreshData();
+      } catch (err) {
+        error({ title: 'Lỗi gửi thông báo', message: getErrorMessage(err) });
+      }
     });
     setShowConfirmDialog(true);
   };
@@ -266,36 +214,67 @@ export default function Notifications() {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
-  const handleQuickPlus1Hour = (id: number) => {
+  const handleQuickPlus1Hour = async (thongBao: ThongBaoHeThong) => {
     const t = nowPlus1HourLocalString();
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? ({ ...n, status: 'scheduled', scheduledAt: t.replace('T', ' ') }) : n)
-    );
-    success({ title: 'Đã đặt lịch sau 1 giờ' });
+    const formatted = t.replace('T', ' ').replace(/-/g, '/');
+    try {
+      await thongBaoService.update(thongBao.MaThongBao, {
+        TrangThai: 'scheduled',
+        ThoiGianHenGio: formatted,
+      });
+      success({ title: 'Đã đặt lịch sau 1 giờ' });
+      refreshData();
+    } catch (err) {
+      error({ title: 'Lỗi đặt lịch', message: getErrorMessage(err) });
+    }
   };
 
   const openScheduleForDraft = (id: number) => {
     setScheduleEditId(id);
-    setScheduleValue(nowPlus1HourLocalString()); // gợi ý +1 giờ
+    setScheduleValue(nowPlus1HourLocalString());
   };
 
-  const saveScheduleForDraft = (id: number) => {
+  const saveScheduleForDraft = async (id: number) => {
     if (!scheduleValue) {
       error({ title: 'Vui lòng chọn thời gian gửi.' });
       return;
     }
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? ({ ...n, status: 'scheduled', scheduledAt: scheduleValue.replace('T', ' ') }) : n)
-    );
-    setScheduleEditId(null);
-    setScheduleValue('');
-    success({ title: 'Đã đặt lịch gửi cho bản nháp.' });
+    const formatted = scheduleValue.replace('T', ' ').replace(/-/g, '/');
+    try {
+      await thongBaoService.update(id, {
+        TrangThai: 'scheduled',
+        ThoiGianHenGio: formatted,
+      });
+      setScheduleEditId(null);
+      setScheduleValue('');
+      success({ title: 'Đã đặt lịch gửi cho bản nháp.' });
+      refreshData();
+    } catch (err) {
+      error({ title: 'Lỗi đặt lịch', message: getErrorMessage(err) });
+    }
   };
 
   const cancelScheduleEdit = () => {
     setScheduleEditId(null);
     setScheduleValue('');
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onMenuClick={() => setSidebarOpen(true)} />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+              <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -313,7 +292,7 @@ export default function Notifications() {
               </div>
               <div className="flex space-x-3">
                 <button
-                  onClick={handleBulkSendNotifications}
+                  onClick={handleBulkSendThongBaos}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 whitespace-nowrap flex items-center"
                 >
                   <i className="ri-send-plane-line mr-2"></i>
@@ -335,17 +314,18 @@ export default function Notifications() {
                 <nav className="-mb-px flex">
                   {([
                     { key: 'all', label: 'Tất cả' },
-                    { key: 'sent', label: `Đã gửi (${notifications.filter(n => n.status === 'sent').length})` },
-                    { key: 'scheduled', label: `Đang lên lịch (${notifications.filter(n => n.status === 'scheduled').length})` },
-                    { key: 'draft', label: `Nháp (${notifications.filter(n => n.status === 'draft').length})` },
+                    { key: 'sent', label: `Đã gửi (${thongBaos.filter((n) => n.TrangThai === 'sent').length})` },
+                    { key: 'scheduled', label: `Đang lên lịch (${thongBaos.filter((n) => n.TrangThai === 'scheduled').length})` },
+                    { key: 'draft', label: `Nháp (${thongBaos.filter((n) => n.TrangThai === 'draft').length})` },
                   ] as const).map((t) => (
                     <button
                       key={t.key}
                       onClick={() => setStatusTab(t.key)}
-                      className={`py-3 px-6 border-b-2 font-medium text-sm cursor-pointer ${statusTab === t.key
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                        }`}
+                      className={`py-3 px-6 border-b-2 font-medium text-sm cursor-pointer ${
+                        statusTab === t.key
+                          ? 'border-indigo-500 text-indigo-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
                     >
                       {t.label}
                     </button>
@@ -361,10 +341,10 @@ export default function Notifications() {
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              <StatCard icon="ri-notification-line" color="blue" label="Tổng thông báo" value={notifications.length} />
-              <StatCard icon="ri-send-plane-line" color="green" label="Đã gửi" value={notifications.filter(n => n.status === 'sent').length} />
-              <StatCard icon="ri-calendar-schedule-line" color="yellow" label="Đã lên lịch" value={notifications.filter(n => n.status === 'scheduled').length} />
-              <StatCard icon="ri-draft-line" color="purple" label="Bản nháp" value={notifications.filter(n => n.status === 'draft').length} />
+              <StatCard icon="ri-notification-line" color="blue" label="Tổng thông báo" value={thongBaos.length} />
+              <StatCard icon="ri-send-plane-line" color="green" label="Đã gửi" value={thongBaos.filter((n) => n.TrangThai === 'sent').length} />
+              <StatCard icon="ri-calendar-schedule-line" color="yellow" label="Đã lên lịch" value={thongBaos.filter((n) => n.TrangThai === 'scheduled').length} />
+              <StatCard icon="ri-draft-line" color="purple" label="Bản nháp" value={thongBaos.filter((n) => n.TrangThai === 'draft').length} />
             </div>
 
             {/* Filters: chỉ tìm kiếm + loại */}
@@ -419,52 +399,52 @@ export default function Notifications() {
 
             {/* Notifications List */}
             <div className="space-y-4">
-              {listByTab.map((notification) => {
-                const isDraft = notification.status === 'draft';
-                const isScheduled = notification.status === 'scheduled';
+              {listByTab.map((thongBao) => {
+                const isDraft = thongBao.TrangThai === 'draft';
+                const isScheduled = thongBao.TrangThai === 'scheduled';
 
                 return (
-                  <div key={notification.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <div key={thongBao.MaThongBao} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-medium text-gray-900">{notification.title}</h3>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(notification.type)}`}>
-                            {getTypeText(notification.type)}
+                          <h3 className="text-lg font-medium text-gray-900">{thongBao.TieuDe}</h3>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(thongBao.LoaiThongBao)}`}>
+                            {getTypeText(thongBao.LoaiThongBao)}
                           </span>
                         </div>
 
-                        <p className="text-gray-600 mb-3">{notification.content}</p>
+                        <p className="text-gray-600 mb-3">{thongBao.NoiDung}</p>
 
                         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
                           <span>
                             <i className="ri-user-line mr-1"></i>
-                            {notification.targetAudience === 'all'
+                            {thongBao.DoiTuongNhan === 'all'
                               ? 'Tất cả'
-                              : `${notification.targetRooms?.length ?? 0} phòng`}
+                              : `${thongBao.CacPhongNhan?.length ?? 0} phòng`}
                           </span>
                           <span>
                             <i className="ri-calendar-line mr-1"></i>
-                            Tạo lúc: {notification.createdAt}
+                            Tạo lúc: {thongBao.ThoiGianTao}
                           </span>
 
-                          {notification.status === 'sent' && (
+                          {thongBao.TrangThai === 'sent' && (
                             <>
                               <span>
                                 <i className="ri-send-plane-line mr-1"></i>
-                                Đã gửi: {notification.sentAt}
+                                Đã gửi: {thongBao.ThoiGianGui}
                               </span>
                               <span>
                                 <i className="ri-eye-line mr-1"></i>
-                                {notification.readCount}/{notification.totalRecipients} đã đọc
+                                {thongBao.SoNguoiDoc}/{thongBao.TongSoNguoiNhan} đã đọc
                               </span>
                             </>
                           )}
 
-                          {isScheduled && notification.scheduledAt && (
+                          {isScheduled && thongBao.ThoiGianHenGio && (
                             <span>
                               <i className="ri-time-line mr-1"></i>
-                              Gửi lúc: {notification.scheduledAt}
+                              Gửi lúc: {thongBao.ThoiGianHenGio}
                             </span>
                           )}
 
@@ -477,7 +457,7 @@ export default function Notifications() {
                         </div>
 
                         {/* Inline schedule editor cho Nháp */}
-                        {isDraft && scheduleEditId === notification.id && (
+                        {isDraft && scheduleEditId === thongBao.MaThongBao && (
                           <div className="mt-4 flex flex-wrap items-center gap-2">
                             <input
                               type="datetime-local"
@@ -486,7 +466,7 @@ export default function Notifications() {
                               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
                             />
                             <button
-                              onClick={() => saveScheduleForDraft(notification.id)}
+                              onClick={() => saveScheduleForDraft(thongBao.MaThongBao)}
                               className="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700"
                             >
                               Lưu lịch
@@ -504,7 +484,7 @@ export default function Notifications() {
                       <div className="flex space-x-2 ml-4">
                         <button
                           onClick={() => {
-                            setSelectedNotification(notification);
+                            setSelectedThongBao(thongBao);
                             setShowModal(true);
                           }}
                           className="text-indigo-600 hover:text-indigo-900"
@@ -516,7 +496,7 @@ export default function Notifications() {
                         {/* Gửi ngay (chỉ cho nháp) */}
                         {isDraft && (
                           <button
-                            onClick={() => handleSendNotification(notification)}
+                            onClick={() => handleSendThongBao(thongBao)}
                             className="text-green-600 hover:text-green-900"
                             title="Gửi ngay"
                           >
@@ -527,7 +507,7 @@ export default function Notifications() {
                         {/* Đặt giờ (chỉ cho nháp) */}
                         {isDraft && (
                           <button
-                            onClick={() => openScheduleForDraft(notification.id)}
+                            onClick={() => openScheduleForDraft(thongBao.MaThongBao)}
                             className="text-yellow-600 hover:text-yellow-800"
                             title="Đặt giờ gửi"
                           >
@@ -538,7 +518,7 @@ export default function Notifications() {
                         {/* Nhanh +1 giờ (chỉ cho đang lên lịch) */}
                         {isScheduled && (
                           <button
-                            onClick={() => handleQuickPlus1Hour(notification.id)}
+                            onClick={() => handleQuickPlus1Hour(thongBao)}
                             className="text-blue-600 hover:text-blue-800"
                             title="Đặt lại: gửi sau 1 giờ"
                           >
@@ -547,7 +527,7 @@ export default function Notifications() {
                         )}
 
                         <button
-                          onClick={() => handleDeleteNotification(notification)}
+                          onClick={() => handleDeleteThongBao(thongBao)}
                           className="text-red-600 hover:text-red-900"
                           title="Xóa"
                         >
@@ -571,13 +551,13 @@ export default function Notifications() {
         {/* Notification Modal */}
         {showModal && (
           <NotificationModal
-            notification={selectedNotification}
-            rooms={rooms}
+            thongBao={selectedThongBao}
+            phongTros={phongTros}
             onClose={() => {
               setShowModal(false);
-              setSelectedNotification(null);
+              setSelectedThongBao(null);
             }}
-            onSubmit={selectedNotification ? handleUpdateNotification : handleAddNotification}
+            onSubmit={selectedThongBao ? handleUpdateThongBao : handleAddThongBao}
           />
         )}
 
@@ -620,76 +600,69 @@ function StatCard({ icon, color, label, value }: { icon: string; color: 'blue' |
    NotificationModal
    ========================= */
 interface NotificationModalProps {
-  notification?: Notification | null;
-  rooms: Room[];
+  thongBao?: ThongBaoHeThong | null;
+  phongTros: PhongTro[];
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: ThongBaoHeThongCreateInput) => void;
 }
 
-function NotificationModal({ notification, rooms, onClose, onSubmit }: NotificationModalProps) {
-  const [formData, setFormData] = useState({
-    title: notification?.title || '',
-    content: notification?.content || '',
-    type: (notification?.type || 'general') as Notification['type'],
-    targetAudience: (notification?.targetAudience || 'all') as Notification['targetAudience'],
-    status: (notification?.status || 'draft') as Notification['status'],
-    scheduledAt: notification?.scheduledAt || '',
+function NotificationModal({ thongBao, phongTros, onClose, onSubmit }: NotificationModalProps) {
+  const [formData, setFormData] = useState<ThongBaoHeThongCreateInput>({
+    TieuDe: thongBao?.TieuDe || '',
+    NoiDung: thongBao?.NoiDung || '',
+    LoaiThongBao: thongBao?.LoaiThongBao || 'general',
+    DoiTuongNhan: thongBao?.DoiTuongNhan || 'all',
+    TrangThai: thongBao?.TrangThai || 'draft',
+    ThoiGianHenGio: thongBao?.ThoiGianHenGio || '',
   });
 
   // --- State chọn phòng giống Bulk Invoice ---
   const [selectedBuilding, setSelectedBuilding] = useState<'all' | string>('all');
-  const [roomState, setRoomState] = useState<(Room & { selected: boolean })[]>([]);
+  const [phongState, setPhongState] = useState<(PhongTro & { selected: boolean })[]>([]);
 
-  // khởi tạo roomState và pre-select nếu đang sửa notification specific
+  // khởi tạo phongState và pre-select nếu đang sửa
   useEffect(() => {
-    const init = rooms.map(r => ({
-      ...r,
-      selected: notification?.targetAudience === 'specific'
-        ? (notification?.targetRooms || []).includes(r.room)
-        : false,
+    const init = phongTros.map((p) => ({
+      ...p,
+      selected:
+        thongBao?.DoiTuongNhan === 'specific' ? (thongBao?.CacPhongNhan || []).includes(p.MaPhong) : false,
     }));
-    setRoomState(init);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rooms, notification?.id]);
+    setPhongState(init);
+  }, [phongTros, thongBao?.MaThongBao]);
 
   const getBuildings = useMemo(() => {
-    const set = new Set(rooms.map(r => r.building));
+    const set = new Set(phongTros.map((p) => p.TenDay || 'Unknown'));
     return Array.from(set).sort();
-  }, [rooms]);
+  }, [phongTros]);
 
-  const filteredRooms = useMemo(() => {
-    return roomState.filter(r => selectedBuilding === 'all' ? true : r.building === selectedBuilding);
-  }, [roomState, selectedBuilding]);
+  const filteredPhongs = useMemo(() => {
+    return phongState.filter((p) => (selectedBuilding === 'all' ? true : (p.TenDay || 'Unknown') === selectedBuilding));
+  }, [phongState, selectedBuilding]);
 
-  const allFilteredSelected = filteredRooms.length > 0 && filteredRooms.every(r => r.selected);
-  const anyFilteredSelected = filteredRooms.some(r => r.selected);
+  const allFilteredSelected = filteredPhongs.length > 0 && filteredPhongs.every((p) => p.selected);
 
   const toggleSelectAllFiltered = () => {
-    setRoomState(prev =>
-      prev.map(r => (selectedBuilding === 'all' || r.building === selectedBuilding)
-        ? { ...r, selected: !allFilteredSelected }
-        : r
+    setPhongState((prev) =>
+      prev.map((p) =>
+        selectedBuilding === 'all' || (p.TenDay || 'Unknown') === selectedBuilding ? { ...p, selected: !allFilteredSelected } : p
       )
     );
   };
 
-  const toggleRoom = (id: string) => {
-    setRoomState(prev => prev.map(r => r.id === id ? { ...r, selected: !r.selected } : r));
+  const togglePhong = (maPhong: number) => {
+    setPhongState((prev) => prev.map((p) => (p.MaPhong === maPhong ? { ...p, selected: !p.selected } : p)));
   };
 
-  const selectedRooms = roomState.filter(r => r.selected);
+  const selectedPhongs = phongState.filter((p) => p.selected);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const submitData = {
+    const submitData: ThongBaoHeThongCreateInput = {
       ...formData,
-      targetRooms:
-        formData.targetAudience === 'specific'
-          ? selectedRooms.map(r => r.room) // lưu theo số phòng
-          : [],
+      CacPhongNhan: formData.DoiTuongNhan === 'specific' ? selectedPhongs.map((p) => p.MaPhong) : undefined,
     };
 
-    if (submitData.targetAudience === 'specific' && submitData.targetRooms.length === 0) {
+    if (submitData.DoiTuongNhan === 'specific' && (!submitData.CacPhongNhan || submitData.CacPhongNhan.length === 0)) {
       alert('Vui lòng chọn ít nhất một phòng.');
       return;
     }
@@ -703,7 +676,7 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              {notification ? 'Chỉnh sửa thông báo' : 'Tạo thông báo mới'}
+              {thongBao ? 'Chỉnh sửa thông báo' : 'Tạo thông báo mới'}
             </h2>
             <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600">
               <i className="ri-close-line text-xl"></i>
@@ -719,8 +692,8 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                   <input
                     type="text"
                     required
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    value={formData.TieuDe}
+                    onChange={(e) => setFormData({ ...formData, TieuDe: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                     placeholder="Nhập tiêu đề thông báo"
                   />
@@ -731,8 +704,8 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                     <label className="block text-sm font-medium text-gray-700 mb-2">Loại thông báo *</label>
                     <select
                       required
-                      value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value as Notification['type'] })}
+                      value={formData.LoaiThongBao}
+                      onChange={(e) => setFormData({ ...formData, LoaiThongBao: e.target.value as any })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-8"
                     >
                       <option value="general">Thông báo chung</option>
@@ -746,8 +719,8 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
                     <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value as Notification['status'] })}
+                      value={formData.TrangThai}
+                      onChange={(e) => setFormData({ ...formData, TrangThai: e.target.value as any })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus-border-transparent text-sm pr-8"
                     >
                       <option value="draft">Lưu bản nháp</option>
@@ -757,13 +730,13 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                   </div>
                 </div>
 
-                {formData.status === 'scheduled' && (
+                {formData.TrangThai === 'scheduled' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Thời gian gửi</label>
                     <input
                       type="datetime-local"
-                      value={formData.scheduledAt}
-                      onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                      value={formData.ThoiGianHenGio}
+                      onChange={(e) => setFormData({ ...formData, ThoiGianHenGio: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                     />
                   </div>
@@ -774,8 +747,8 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                   <textarea
                     required
                     rows={6}
-                    value={formData.content}
-                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                    value={formData.NoiDung}
+                    onChange={(e) => setFormData({ ...formData, NoiDung: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                     placeholder="Nhập nội dung thông báo"
                   />
@@ -788,8 +761,8 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                   <label className="block text-sm font-medium text-gray-700 mb-2">Đối tượng nhận *</label>
                   <select
                     required
-                    value={formData.targetAudience}
-                    onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value as Notification['targetAudience'] })}
+                    value={formData.DoiTuongNhan}
+                    onChange={(e) => setFormData({ ...formData, DoiTuongNhan: e.target.value as any })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-8"
                   >
                     <option value="all">Tất cả khách thuê</option>
@@ -797,7 +770,7 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                   </select>
                 </div>
 
-                {formData.targetAudience === 'specific' && (
+                {formData.DoiTuongNhan === 'specific' && (
                   <>
                     <div className="flex justify-between items-center">
                       <h3 className="font-semibold text-gray-900">Chọn phòng nhận thông báo</h3>
@@ -809,7 +782,9 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                         >
                           <option value="all">Tất cả dãy</option>
                           {getBuildings.map((b) => (
-                            <option key={b} value={b}>{b}</option>
+                            <option key={b} value={b}>
+                              {b}
+                            </option>
                           ))}
                         </select>
                         <button
@@ -817,7 +792,7 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                           onClick={toggleSelectAllFiltered}
                           className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 whitespace-nowrap"
                         >
-                          {allFilteredSelected ? 'Bỏ chọn tất cả' : (anyFilteredSelected ? 'Chọn hết (lọc)' : 'Chọn tất cả')}
+                          {allFilteredSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
                         </button>
                       </div>
                     </div>
@@ -828,36 +803,22 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-4 py-3 text-left">
-                                <input
-                                  type="checkbox"
-                                  checked={allFilteredSelected}
-                                  onChange={toggleSelectAllFiltered}
-                                  className="text-blue-600"
-                                />
+                                <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAllFiltered} className="text-blue-600" />
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dãy</th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phòng</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Khách thuê</th>
-                              {/* Đã bỏ Tiền thuê & Điện (kWh) */}
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Số người</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredRooms.map((r) => (
-                              <tr key={r.id} className={`hover:bg-gray-50 ${r.selected ? 'bg-blue-50' : ''}`}>
+                            {filteredPhongs.map((p) => (
+                              <tr key={p.MaPhong} className={`hover:bg-gray-50 ${p.selected ? 'bg-blue-50' : ''}`}>
                                 <td className="px-4 py-3">
-                                  <input
-                                    type="checkbox"
-                                    checked={r.selected}
-                                    onChange={() => toggleRoom(r.id)}
-                                    className="text-blue-600"
-                                  />
+                                  <input type="checkbox" checked={p.selected} onChange={() => togglePhong(p.MaPhong)} className="text-blue-600" />
                                 </td>
-                                <td className="px-4 py-3 text-sm text-gray-900">{r.building}</td>
-                                <td className="px-4 py-3 text-sm font-medium text-gray-900">{r.room}</td>
-                                <td className="px-4 py-3 text-sm text-gray-900">{r.tenantName}</td>
-                                {/* Bỏ hiển thị rentAmount & electricityUsage */}
-                                <td className="px-4 py-3 text-sm text-gray-900">{r.waterUsage}</td>
+                                <td className="px-4 py-3 text-sm text-gray-900">{p.TenDay}</td>
+                                <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.TenPhong}</td>
+                                <td className="px-4 py-3 text-sm text-gray-900">{p.TrangThai}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -868,7 +829,7 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                     <div className="bg-green-50 p-3 rounded-lg">
                       <div className="text-sm">
                         <span className="text-gray-600">Số phòng đã chọn:</span>
-                        <span className="font-semibold text-green-700 ml-2">{selectedRooms.length}</span>
+                        <span className="font-semibold text-green-700 ml-2">{selectedPhongs.length}</span>
                       </div>
                     </div>
                   </>
@@ -888,7 +849,7 @@ function NotificationModal({ notification, rooms, onClose, onSubmit }: Notificat
                 type="submit"
                 className="flex-1 bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition duration-200 whitespace-nowrap"
               >
-                {notification ? 'Cập nhật' : 'Tạo thông báo'}
+                {thongBao ? 'Cập nhật' : 'Tạo thông báo'}
               </button>
             </div>
           </form>

@@ -1,4 +1,5 @@
 import httpClient from '../lib/http-client';
+import { ChiTietThongBao } from '../types/thong-bao';
 
 export interface ThongBao {
   MaThongBao: number;
@@ -17,8 +18,10 @@ export interface CreateThongBaoRequest {
 }
 
 const THONGBAO_API_URL = '/admin/thong-bao';
+const USER_THONGBAO_API_URL = '/thong-bao';
 
 class ThongBaoService {
+  // Admin APIs
   getAll(signal?: AbortSignal) {
     return httpClient.get<{ data: ThongBao[] }>(THONGBAO_API_URL, { signal });
   }
@@ -33,6 +36,19 @@ class ThongBaoService {
 
   delete(id: number) {
     return httpClient.delete(`${THONGBAO_API_URL}/${id}`);
+  }
+
+  // User APIs - Notifications for current user
+  getUserNotifications(signal?: AbortSignal) {
+    return httpClient.get<{ data: ChiTietThongBao[] }>(USER_THONGBAO_API_URL, { signal });
+  }
+
+  markAsRead(id: number) {
+    return httpClient.post<{ data: ChiTietThongBao }>(`${USER_THONGBAO_API_URL}/${id}/mark-as-read`);
+  }
+
+  markAllAsRead() {
+    return httpClient.post(`${USER_THONGBAO_API_URL}/mark-all-as-read`);
   }
 }
 

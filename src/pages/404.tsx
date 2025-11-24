@@ -1,8 +1,11 @@
 
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { getDefaultRouteForRole } from '@/router/utils';
 
 export default function NotFoundPage() {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center px-4">
@@ -31,11 +34,14 @@ export default function NotFoundPage() {
         {/* Action Buttons */}
         <div className="space-y-4">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              const defaultRoute = getDefaultRouteForRole(user);
+              navigate(defaultRoute);
+            }}
             className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
           >
             <i className="ri-home-line mr-2"></i>
-            Về trang chủ
+            {user ? 'Về trang chính' : 'Về trang chủ'}
           </button>
           
           <button
@@ -51,28 +57,78 @@ export default function NotFoundPage() {
         <div className="mt-8 p-4 bg-white rounded-lg border border-gray-200">
           <h3 className="font-semibold text-gray-900 mb-2">Gợi ý</h3>
           <div className="text-sm text-gray-600 space-y-1">
-            <div className="flex items-center justify-center space-x-4">
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="text-blue-600 hover:text-blue-700"
-              >
-                Dashboard
-              </button>
-              <span>•</span>
-              <button
-                onClick={() => navigate('/rooms')}
-                className="text-blue-600 hover:text-blue-700"
-              >
-                Quản lý phòng
-              </button>
-              <span>•</span>
-              <button
-                onClick={() => navigate('/tenants')}
-                className="text-blue-600 hover:text-blue-700"
-              >
-                Khách thuê
-              </button>
-            </div>
+            {!isAuthenticated && (
+              <div className="flex items-center justify-center space-x-4">
+                <button
+                  onClick={() => navigate('/login')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Đăng nhập
+                </button>
+                <span>•</span>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Đăng ký
+                </button>
+                <span>•</span>
+                <button
+                  onClick={() => navigate('/available-rooms')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Phòng trống
+                </button>
+              </div>
+            )}
+            {isAuthenticated && user && (user.MaQuyen === 1 || user.MaQuyen === 2) && (
+              <div className="flex items-center justify-center space-x-4">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Dashboard
+                </button>
+                <span>•</span>
+                <button
+                  onClick={() => navigate('/rooms')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Quản lý phòng
+                </button>
+                <span>•</span>
+                <button
+                  onClick={() => navigate('/tenants')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Khách thuê
+                </button>
+              </div>
+            )}
+            {isAuthenticated && user && user.MaQuyen === 3 && (
+              <div className="flex items-center justify-center space-x-4">
+                <button
+                  onClick={() => navigate('/customer-dashboard')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Trang chính
+                </button>
+                <span>•</span>
+                <button
+                  onClick={() => navigate('/available-rooms')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Phòng trống
+                </button>
+                <span>•</span>
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="text-blue-600 hover:text-blue-700"
+                >
+                  Hồ sơ
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

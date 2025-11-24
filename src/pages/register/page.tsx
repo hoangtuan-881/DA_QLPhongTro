@@ -1,11 +1,13 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import authService from '@/services/auth.service';
+import { useAuth } from '@/contexts/AuthContext';
 import { getErrorMessage, getValidationErrors } from '@/lib/http-client';
+import { getDefaultRouteForRole } from '@/router/utils';
 
 export default function Register() {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
 
@@ -213,7 +215,7 @@ export default function Register() {
     try {
       setLoading(true);
 
-      await authService.register({
+      const user = await register({
         TenDangNhap: formData.username,
         HoTen: formData.fullName,
         SDT: formData.phone,
@@ -222,8 +224,9 @@ export default function Register() {
         password_confirmation: formData.confirmPassword
       });
 
-      // Redirect to dashboard after successful registration
-      navigate('/dashboard');
+      // Redirect to appropriate dashboard based on user role
+      const defaultRoute = getDefaultRouteForRole(user);
+      navigate(defaultRoute);
     } catch (error) {
       // Get validation errors from API
       const validationErrors = getValidationErrors(error);

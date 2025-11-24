@@ -1,24 +1,49 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useToast } from '../../../hooks/useToast';
+import customerService, {
+    type ThongTinPhong,
+    type HoaDonKhachThue,
+    type CreateYeuCauSuaChuaRequest,
+    type CreateViPhamRequest
+} from '@/services/customer.service';
+import { getErrorMessage } from '@/lib/http-client';
 
 
-// ===== Mock helpers & data (replace with API calls) =====
-const currency = (n: number) => n.toLocaleString('vi-VN') + 'đ';
-
-// Example: your app may already store selected tenant/room in context
-const MOCK_TENANT = {
-    name: 'Nguyễn Văn A',
-    room: 'A101',
-    block: 'Dãy A',
+// ===== Helpers =====
+const currency = (n: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(n);
 };
 
-// Utilities tariff
-const PRICE = {
-    electricity: 3500, // đ/kWh
-    water: 60000, // đ/Người/Tháng
-    internet: 50000, // đ/Phòng/Tháng (gói cơ bản)
-    trash: 40000, // đ/Phòng/Tháng
-    parking: 100000, // đ/Phòng/Tháng
+// ===== VietQR Config =====
+const VIETQR_CONFIG = {
+    BANK_ID: 'MB',                    // Mã ngân hàng (MB=MBBank, VCB=Vietcombank, TCB=Techcombank, etc.)
+    ACCOUNT_NO: '0987654321',         // Số tài khoản nhận tiền
+    ACCOUNT_NAME: 'NGUYEN VAN A',     // Tên chủ tài khoản
+    TEMPLATE: 'compact'               // compact, compact2, qr_only, print
+};
+
+/**
+ * Tạo URL ảnh QR VietQR động
+ * @param amount Số tiền cần thanh toán
+ * @param addInfo Nội dung chuyển khoản (VD: "HD-2024-001" hoặc mã hóa đơn)
+ * @returns URL ảnh QR code
+ */
+const generateVietQRUrl = (amount: number, addInfo: string): string => {
+    const baseUrl = 'https://img.vietqr.io/image';
+    const { BANK_ID, ACCOUNT_NO, ACCOUNT_NAME, TEMPLATE } = VIETQR_CONFIG;
+
+    const params = new URLSearchParams({
+        amount: amount.toString(),
+        addInfo: addInfo,
+        accountName: ACCOUNT_NAME
+    });
+
+    return `${baseUrl}/${BANK_ID}-${ACCOUNT_NO}-${TEMPLATE}.png?${params.toString()}`;
 };
 
 type Severity = 'minor' | 'moderate' | 'serious' | 'critical';
@@ -35,25 +60,46 @@ const RULE_OPTIONS = [
 export default function CustomerOverview() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
+    // API Data
+    const [tenantInfo, setTenantInfo] = useState<ThongTinPhong | null>(null);
+    const [latestInvoice, setLatestInvoice] = useState<HoaDonKhachThue | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [refreshKey, setRefreshKey] = useState(0);
+
     // Quick action modals
     const [showRepairModal, setShowRepairModal] = useState(false);
     const [showPayModal, setShowPayModal] = useState(false);
     const [showViolationModal, setShowViolationModal] = useState(false);
     const toast = useToast();
 
-    useEffect(() => {
-        if (showViolationModal) {
-            setViolationForm(v => ({
-                ...v,
-                tenantName: MOCK_TENANT.name,
-                room: MOCK_TENANT.room,
-                building: MOCK_TENANT.block,
-                reportedBy: MOCK_TENANT.name,
-                // reportDate giữ mặc định hôm nay
-            }));
-        }
-    }, [showViolationModal]);
+    // ===== Violation Form States =====
+    const [violationForm, setViolationForm] = useState({
+        MaPhong: 0,           // Phòng vi phạm (chọn từ dropdown)
+        MaKhachThue: 0,       // Khách thuê vi phạm (chọn sau khi chọn phòng)
+        building: '',         // Tên dãy trọ (hiển thị)
+        ruleTitle: '',
+        description: '',
+        severity: 'minor' as Severity,
+        reportDate: new Date().toISOString().slice(0, 10),
+        reportedBy: '',
+    });
 
+    // Danh sách phòng trong cùng dãy trọ
+    const [availableRooms, setAvailableRooms] = useState<Array<{
+        MaPhong: number;
+        TenPhong: string;
+    }>>([]);
+
+    // Danh sách khách thuê trong phòng được chọn
+    const [tenantsByRoom, setTenantsByRoom] = useState<Array<{
+        MaKhachThue: number;
+        HoTen: string;
+    }>>([]);
+
+    const [loadingRooms, setLoadingRooms] = useState(false);
+    const [loadingTenants, setLoadingTenants] = useState(false);
+
+    // ===== Repair Form States =====
     const [repairForm, setRepairForm] = useState({
         title: '',
         category: '',
@@ -64,7 +110,6 @@ export default function CustomerOverview() {
         photos: [] as File[],
     });
 
-    // nếu bạn đang dùng toast/confirm như Violation:
     const [confirmDialog, setConfirmDialog] = useState({
         isOpen: false,
         title: '',
@@ -73,54 +118,159 @@ export default function CustomerOverview() {
         onConfirm: () => { },
     });
 
-    const [violationForm, setViolationForm] = useState({
-        tenantName: '',
-        room: '',
-        building: '',
-        ruleTitle: '',
-        description: '',
-        severity: 'minor' as Severity,
-        reportDate: new Date().toISOString().slice(0, 10),
-        reportedBy: '',
-    });
+    // Fetch tenant info and latest invoice
+    useEffect(() => {
+        const controller = new AbortController();
 
-    // === Last month invoice (computed dynamically) ===
-    const today = new Date();
-    const firstOfThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastMonthDate = new Date(firstOfThisMonth);
-    lastMonthDate.setMonth(firstOfThisMonth.getMonth() - 1);
+        const fetchData = async () => {
+            try {
+                // Fetch room info (required)
+                const roomRes = await customerService.getRoomInfo(controller.signal);
 
-    const invoiceMonthLabel = lastMonthDate.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+                if (!controller.signal.aborted) {
+                    setTenantInfo(roomRes.data.data);
+                }
 
-    // Example consumption
-    const usage = {
-        electricity: { start: 1250, end: 1312 }, // kWh index
-        water: { people: 2 }, // persons
-        internetPlan: 'Internet 1',
-        notes: 'Đọc số điện ngày 01, nước tính theo đầu người.',
+                // Fetch latest invoice (optional - may not exist)
+                try {
+                    const invoiceRes = await customerService.getLatestInvoice(controller.signal);
+                    if (!controller.signal.aborted) {
+                        setLatestInvoice(invoiceRes.data.data);
+                    }
+                } catch (invoiceError: any) {
+                    // Invoice not found is OK - tenant may not have invoice yet
+                    if (invoiceError.response?.status !== 404) {
+                        console.warn('Error fetching invoice:', getErrorMessage(invoiceError));
+                    }
+                }
+
+                if (!controller.signal.aborted) {
+                    setLoading(false);
+                }
+            } catch (error: any) {
+                if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+                    toast.error({ title: 'Lỗi tải dữ liệu', message: getErrorMessage(error) });
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchData();
+        return () => controller.abort();
+    }, [refreshKey]);
+
+    // Load danh sách phòng khi mở modal
+    useEffect(() => {
+        if (!showViolationModal) return;
+
+        const controller = new AbortController();
+
+        const fetchRooms = async () => {
+            setLoadingRooms(true);
+            try {
+                const response = await customerService.getRoomsInBuilding(controller.signal);
+                if (!controller.signal.aborted) {
+                    setAvailableRooms(response.data.data || []);
+                }
+            } catch (error: any) {
+                if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+                    toast.error({ title: 'Lỗi tải danh sách phòng', message: getErrorMessage(error) });
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setLoadingRooms(false);
+                }
+            }
+        };
+
+        // Set thông tin người báo cáo
+        if (tenantInfo) {
+            setViolationForm(v => ({
+                ...v,
+                building: tenantInfo.phongTro.dayTro.TenDay,
+                reportedBy: tenantInfo.HoTen,
+            }));
+        }
+
+        fetchRooms();
+        return () => controller.abort();
+    }, [showViolationModal, tenantInfo]);
+
+    // Load danh sách khách thuê khi chọn phòng
+    useEffect(() => {
+        if (!violationForm.MaPhong) {
+            setTenantsByRoom([]);
+            return;
+        }
+
+        const controller = new AbortController();
+
+        const fetchTenants = async () => {
+            setLoadingTenants(true);
+            try {
+                const response = await customerService.getTenantsByRoom(violationForm.MaPhong, controller.signal);
+                if (!controller.signal.aborted) {
+                    const tenants = response.data.data || [];
+                    setTenantsByRoom(tenants);
+
+                    // Auto-select khách thuê đầu tiên (chủ phòng)
+                    if (tenants.length > 0) {
+                        setViolationForm(v => ({
+                            ...v,
+                            MaKhachThue: tenants[0].MaKhachThue
+                        }));
+                    }
+                }
+            } catch (error: any) {
+                if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+                    toast.error({ title: 'Lỗi tải khách thuê', message: getErrorMessage(error) });
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setLoadingTenants(false);
+                }
+            }
+        };
+
+        fetchTenants();
+        return () => controller.abort();
+    }, [violationForm.MaPhong]);
+
+    // Invoice month label from API data
+    const invoiceMonthLabel = latestInvoice?.Thang || 'N/A';
+
+    // Invoice items from API
+    const items = latestInvoice?.chiTietHoaDon || [];
+
+    // Totals from API
+    const totals = {
+        subtotal: latestInvoice?.TongTien || 0,
+        previousBalance: 0,
+        discounts: 0,
+        lateFees: 0,
+        totalDue: latestInvoice?.ConLai || 0
     };
 
-    const items = useMemo(() => {
-        const rent = { key: 'rent', label: 'Tiền thuê phòng', qty: 1, unit: 'tháng', price: 2_600_000, amount: 2_600_000 };
-        const elecQty = Math.max(usage.electricity.end - usage.electricity.start, 0);
-        const electricity = { key: 'electricity', label: 'Điện', qty: elecQty, unit: 'kWh', price: PRICE.electricity, amount: elecQty * PRICE.electricity };
-        const water = { key: 'water', label: 'Nước', qty: usage.water.people, unit: 'Người', price: PRICE.water, amount: usage.water.people * PRICE.water };
-        const internet = { key: 'internet', label: 'Internet (gói cơ bản)', qty: 1, unit: 'Phòng', price: PRICE.internet, amount: PRICE.internet };
-        const trash = { key: 'trash', label: 'Rác', qty: 1, unit: 'Phòng', price: PRICE.trash, amount: PRICE.trash };
-        const parking = { key: 'parking', label: 'Gửi xe', qty: 1, unit: 'Phòng', price: PRICE.parking, amount: PRICE.parking };
+    // Due date from API
+    const dueDate = latestInvoice?.NgayHetHan ? new Date(latestInvoice.NgayHetHan) : new Date();
 
-        return [rent, electricity, water, internet, trash, parking];
-    }, []);
+    // Generate VietQR URL
+    const qrCodeUrl = useMemo(() => {
+        if (!latestInvoice) return '';
 
-    const totals = useMemo(() => {
-        const subtotal = items.reduce((s, i) => s + i.amount, 0);
-        const adjustments = { previousBalance: 0, discounts: 0, lateFees: 0 };
-        const totalDue = subtotal + adjustments.previousBalance + adjustments.lateFees - adjustments.discounts;
-        return { subtotal, ...adjustments, totalDue };
-    }, [items]);
+        // Tạo nội dung chuyển khoản từ mã hóa đơn hoặc tháng
+        const addInfo = latestInvoice.MaHoaDon
+            ? `HD${latestInvoice.MaHoaDon}`
+            : `HD-${latestInvoice.Thang}`;
 
-    const dueDate = new Date(firstOfThisMonth); // thường hạn thanh toán ngày 05 của tháng hiện tại
-    dueDate.setDate(5);
+        return generateVietQRUrl(totals.totalDue, addInfo);
+    }, [latestInvoice, totals.totalDue]);
+
+    // Refresh data function
+    const refreshData = () => {
+        setLoading(true);
+        setRefreshKey(prev => prev + 1);
+    };
 
     const handleRepairFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setRepairForm((f) => ({ ...f, photos: e.target.files ? Array.from(e.target.files) : [] }));
@@ -139,16 +289,42 @@ export default function CustomerOverview() {
     };
 
     const doSubmitRepair = async () => {
-        // TODO: nếu có API thì gọi ở đây. Ví dụ:
-        // await api.createMaintenanceRequest({
-        //   ...repairForm,
-        //   images: repairForm.photos, // hoặc upload trước rồi gửi URL
-        // });
+        try {
+            // Map UI values to API enum values
+            const categoryMap: Record<string, 'electrical' | 'plumbing' | 'appliance' | 'furniture' | 'other'> = {
+                'Điện': 'electrical',
+                'Hệ thống nước': 'plumbing',
+                'Điện lạnh': 'appliance',
+                'Nội thất': 'furniture',
+                'Khác': 'other'
+            };
 
-        setShowRepairModal(false);
-        resetRepairForm();
-        // nếu bạn có useToast như Violation: success({ title: 'Đã gửi yêu cầu sửa chữa!' });
-        toast.success({ title: 'Thành công', message: 'Đã gửi yêu cầu sửa chữa!' });
+            const priorityMap: Record<string, 'low' | 'medium' | 'high' | 'urgent'> = {
+                'Thấp': 'low',
+                'Trung bình': 'medium',
+                'Cao': 'high',
+                'Khẩn cấp': 'urgent'
+            };
+
+            const requestData: CreateYeuCauSuaChuaRequest = {
+                MaKhachThue: tenantInfo?.MaKhachThue,  // Gửi MaKhachThue từ thông tin user hiện tại
+                TieuDe: repairForm.title,
+                MoTa: repairForm.description,
+                PhanLoai: categoryMap[repairForm.category] || 'other',
+                MucDoUuTien: priorityMap[repairForm.priority] || 'medium',
+                GhiChu: repairForm.notes || undefined,
+                HinhAnhMinhChung: [] // TODO: Upload photos first if needed
+            };
+
+            await customerService.createMaintenanceRequest(requestData);
+
+            setShowRepairModal(false);
+            resetRepairForm();
+            toast.success({ title: 'Thành công', message: 'Đã gửi yêu cầu sửa chữa!' });
+            refreshData();
+        } catch (error) {
+            toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+        }
     };
 
     const handleSubmitRepair = (e: React.FormEvent) => {
@@ -172,24 +348,65 @@ export default function CustomerOverview() {
         });
     };
 
-    const submitAddViolation = () => {
+    const submitAddViolation = async () => {
+        // Validate required fields
+        if (!violationForm.MaPhong || violationForm.MaPhong === 0) {
+            toast.warning({ title: 'Cảnh báo', message: 'Vui lòng chọn Phòng vi phạm.' });
+            return;
+        }
+        if (!violationForm.MaKhachThue || violationForm.MaKhachThue === 0) {
+            toast.warning({ title: 'Cảnh báo', message: 'Vui lòng chọn Khách thuê vi phạm.' });
+            return;
+        }
         if (!violationForm.ruleTitle || !violationForm.description) {
             toast.warning({ title: 'Cảnh báo', message: 'Vui lòng chọn Nội quy và nhập Mô tả.' });
             return;
         }
-        // TODO: gọi API nếu có, ví dụ:
-        // await api.createViolationReport(violationForm);
 
-        setShowViolationModal(false);
-        // reset những trường mà KH sẽ nhập lại lần sau
-        setViolationForm(v => ({
-            ...v,
-            ruleTitle: '',
-            description: '',
-            severity: 'minor',
-            reportDate: new Date().toISOString().slice(0, 10),
-        }));
-        toast.success({ title: 'Thành công', message: 'Đã gửi báo cáo vi phạm!' });
+        try {
+            // Map ruleTitle to MaNoiQuy (find from RULE_OPTIONS)
+            const ruleOption = RULE_OPTIONS.find(r => r.title === violationForm.ruleTitle);
+            if (!ruleOption) {
+                toast.error({ title: 'Lỗi', message: 'Không tìm thấy nội quy được chọn' });
+                return;
+            }
+
+            // Map severity values (UI uses Vietnamese keys)
+            const severityMap: Record<string, 'nhe' | 'vua' | 'nghiem_trong' | 'rat_nghiem_trong'> = {
+                'minor': 'nhe',
+                'moderate': 'vua',
+                'serious': 'nghiem_trong',
+                'critical': 'rat_nghiem_trong'
+            };
+
+            const requestData: CreateViPhamRequest = {
+                MaKhachThue: violationForm.MaKhachThue,
+                MaNoiQuy: parseInt(ruleOption.id),
+                MoTa: violationForm.description,
+                MucDo: severityMap[violationForm.severity] || 'nhe',
+                NgayBaoCao: violationForm.reportDate
+            };
+
+            await customerService.createViolation(requestData);
+
+            setShowViolationModal(false);
+            // Reset form
+            setViolationForm(v => ({
+                ...v,
+                MaPhong: 0,
+                MaKhachThue: 0,
+                ruleTitle: '',
+                description: '',
+                severity: 'minor',
+                reportDate: new Date().toISOString().slice(0, 10),
+            }));
+            setAvailableRooms([]);
+            setTenantsByRoom([]);
+            toast.success({ title: 'Thành công', message: 'Đã gửi báo cáo vi phạm!' });
+            refreshData();
+        } catch (error) {
+            toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+        }
     };
 
     // ===== Render =====
@@ -197,6 +414,27 @@ export default function CustomerOverview() {
         <div className="flex h-screen bg-gray-50">
             <div className="flex-1 flex flex-col overflow-hidden">
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
+                    {loading ? (
+                        <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                                <i className="ri-loader-4-line animate-spin text-4xl text-indigo-600"></i>
+                                <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
+                            </div>
+                        </div>
+                    ) : !tenantInfo ? (
+                        <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                                <i className="ri-error-warning-line text-4xl text-red-500"></i>
+                                <p className="mt-4 text-gray-600">Không tìm thấy thông tin phòng</p>
+                                <button
+                                    onClick={refreshData}
+                                    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                                >
+                                    Tải lại
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
                     <div className="max-w-7xl mx-auto space-y-6">
                         {/* Quick Actions */}
                         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -247,16 +485,35 @@ export default function CustomerOverview() {
                             <div className="p-6 border-b border-gray-200">
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                                        <i className="ri-bill-line text-indigo-600 mr-2" /> Hóa đơn {invoiceMonthLabel}
+                                        <i className="ri-bill-line text-indigo-600 mr-2" />
+                                        {latestInvoice ? `Hóa đơn ${invoiceMonthLabel}` : 'Hóa đơn'}
                                     </h2>
-                                    <div className="flex items-center gap-2">
-                                        <span className="inline-flex px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Chưa thanh toán</span>
-                                    </div>
+                                    {latestInvoice && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="inline-flex px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                                                {latestInvoice.TrangThai || 'Chưa thanh toán'}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
-                                <p className="text-sm text-gray-600 mt-1">Hạn thanh toán: {dueDate.toLocaleDateString('vi-VN')}</p>
+                                {latestInvoice && (
+                                    <p className="text-sm text-gray-600 mt-1">
+                                        Hạn thanh toán: {dueDate.toLocaleDateString('vi-VN')}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="p-6">
+                                {!latestInvoice ? (
+                                    <div className="text-center py-12">
+                                        <i className="ri-bill-line text-6xl text-gray-300"></i>
+                                        <p className="mt-4 text-gray-600">Chưa có hóa đơn nào</p>
+                                        <p className="text-sm text-gray-500 mt-2">
+                                            Hóa đơn sẽ được tạo vào đầu tháng
+                                        </p>
+                                    </div>
+                                ) : (
+                                <div>
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50">
@@ -269,34 +526,28 @@ export default function CustomerOverview() {
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
-                                            {items.map((i) => (
-                                                <tr key={i.key} className="hover:bg-gray-50">
-                                                    <td className="px-6 py-4 text-sm text-gray-900">{i.label}</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-700">{i.qty}</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-700">{i.unit}</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-900 text-right">{currency(i.price)}</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">{currency(i.amount)}</td>
+                                            {items.map((item) => (
+                                                <tr key={item.id || item.noiDung} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 text-sm text-gray-900">{item.noiDung}</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-700">{item.soLuong}</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-700">-</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-900 text-right">{currency(Number(item.donGia))}</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">{currency(Number(item.thanhTien))}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
                                 </div>
 
-                                {/* Usage notes */}
-                                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                                        <div className="text-gray-600">Chỉ số điện</div>
-                                        <div className="font-medium text-gray-900 mt-1">{usage.electricity.start} → {usage.electricity.end} kWh</div>
+                                {/* Invoice notes */}
+                                {latestInvoice?.GhiChu && (
+                                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                        <p className="text-sm text-blue-800">
+                                            <i className="ri-information-line mr-2"></i>
+                                            {latestInvoice.GhiChu}
+                                        </p>
                                     </div>
-                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                                        <div className="text-gray-600">Số người tính nước</div>
-                                        <div className="font-medium text-gray-900 mt-1">{usage.water.people} người</div>
-                                    </div>
-                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                                        <div className="text-gray-600">Gói Internet</div>
-                                        <div className="font-medium text-gray-900 mt-1">{usage.internetPlan} ({currency(PRICE.internet)}/tháng)</div>
-                                    </div>
-                                </div>
+                                )}
 
                                 {/* Totals */}
                                 <div className="mt-6 flex flex-col items-end">
@@ -335,12 +586,12 @@ export default function CustomerOverview() {
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Notes */}
-                                <p className="text-xs text-gray-500 mt-4">Ghi chú: {usage.notes}</p>
+                                </div>
+                                )}
                             </div>
                         </section>
                     </div>
+                    )}
                 </main>
             </div>
 
@@ -496,12 +747,24 @@ export default function CustomerOverview() {
                             </p>
 
                             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                                {/* Đặt ảnh QR tĩnh tại public/qr-payment.png hoặc đổi đường dẫn tuỳ bạn */}
-                                <img
-                                    src="/qr-payment.png"
-                                    alt="QR thanh toán"
-                                    className="w-full h-auto rounded-md"
-                                />
+                                {qrCodeUrl ? (
+                                    <img
+                                        src={qrCodeUrl}
+                                        alt="QR thanh toán VietQR"
+                                        className="w-full h-auto rounded-md"
+                                        onError={(e) => {
+                                            // Fallback nếu VietQR không load được
+                                            (e.target as HTMLImageElement).src = '/qr-payment.png';
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center h-64 text-gray-400">
+                                        <div className="text-center">
+                                            <i className="ri-qr-code-line text-6xl"></i>
+                                            <p className="mt-2 text-sm">Chưa có hóa đơn</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <ul className="mt-4 text-xs text-gray-500 space-y-1">
@@ -544,47 +807,74 @@ export default function CustomerOverview() {
                         <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
                             <h2 className="text-xl font-bold text-gray-900 mb-6">Báo cáo vi phạm</h2>
 
+                            {loadingRooms ? (
+                                <div className="text-center p-8">Đang tải danh sách phòng...</div>
+                            ) : (
                             <form
                                 className="space-y-4"
                                 onSubmit={(e) => { e.preventDefault(); submitAddViolation(); }}
                             >
-                                {/* Thông tin khách - CHỈ HIỂN THỊ, KHÔNG CHO SỬA */}
+                                {/* Chọn phòng và khách thuê */}
                                 <div className="grid grid-cols-2 gap-4">
+                                    {/* Dropdown chọn phòng vi phạm */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Khách thuê</label>
-                                        <input
-                                            type="text"
-                                            value={violationForm.tenantName}
-                                            readOnly
-                                            className="w-full border border-gray-200 bg-gray-50 text-gray-700 rounded-lg px-3 py-2"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Phòng</label>
-                                        <input
-                                            type="text"
-                                            value={violationForm.room}
-                                            readOnly
-                                            className="w-full border border-gray-200 bg-gray-50 text-gray-700 rounded-lg px-3 py-2"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Dãy trọ</label>
-                                        <input
-                                            type="text"
-                                            value={violationForm.building}
-                                            readOnly
-                                            className="w-full border border-gray-200 bg-gray-50 text-gray-700 rounded-lg px-3 py-2"
-                                        />
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Phòng vi phạm *
+                                        </label>
+                                        <select
+                                            value={violationForm.MaPhong}
+                                            onChange={(e) => {
+                                                const maPhong = Number(e.target.value);
+                                                setViolationForm(v => ({
+                                                    ...v,
+                                                    MaPhong: maPhong,
+                                                    MaKhachThue: 0  // Reset khách thuê khi đổi phòng
+                                                }));
+                                            }}
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                            required
+                                        >
+                                            <option value={0}>Chọn phòng</option>
+                                            {availableRooms.map((room) => (
+                                                <option key={room.MaPhong} value={room.MaPhong}>
+                                                    {room.TenPhong}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
 
-                                    {/* Nội quy vi phạm - KHÁCH chọn */}
+                                    {/* Dropdown chọn khách thuê */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Khách thuê vi phạm *
+                                        </label>
+                                        <select
+                                            value={violationForm.MaKhachThue}
+                                            onChange={(e) => setViolationForm(v => ({ ...v, MaKhachThue: Number(e.target.value) }))}
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                                            disabled={!violationForm.MaPhong || loadingTenants}
+                                            required
+                                        >
+                                            <option value={0}>
+                                                {!violationForm.MaPhong ? 'Chọn phòng trước' : loadingTenants ? 'Đang tải...' : 'Chọn khách thuê'}
+                                            </option>
+                                            {tenantsByRoom.map((tenant) => (
+                                                <option key={tenant.MaKhachThue} value={tenant.MaKhachThue}>
+                                                    {tenant.HoTen}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Nội quy vi phạm */}
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Nội quy vi phạm *</label>
                                         <select
                                             value={violationForm.ruleTitle}
                                             onChange={e => setViolationForm(v => ({ ...v, ruleTitle: e.target.value }))}
-                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
                                             required
                                         >
                                             <option value="">Chọn nội quy</option>
@@ -648,6 +938,36 @@ export default function CustomerOverview() {
                                     </button>
                                 </div>
                             </form>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* === Confirm Dialog === */}
+            {confirmDialog.isOpen && (
+                <div className="fixed inset-0 z-[60] overflow-y-auto">
+                    <div className="flex items-center justify-center min-h-screen px-4">
+                        <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setConfirmDialog(d => ({ ...d, isOpen: false }))} />
+                        <div className="relative bg-white rounded-lg max-w-md w-full p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{confirmDialog.title}</h3>
+                            <p className="text-sm text-gray-600 mb-6">{confirmDialog.message}</p>
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirmDialog(d => ({ ...d, isOpen: false }))}
+                                    className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={confirmDialog.onConfirm}
+                                    className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+                                >
+                                    Xác nhận
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

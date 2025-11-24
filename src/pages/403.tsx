@@ -1,8 +1,11 @@
 
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { getDefaultRouteForRole } from '@/router/utils';
 
 export default function Forbidden() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center px-4">
@@ -31,11 +34,14 @@ export default function Forbidden() {
         {/* Action Buttons */}
         <div className="space-y-4">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              const defaultRoute = getDefaultRouteForRole(user);
+              navigate(defaultRoute);
+            }}
             className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-red-700 transition-colors whitespace-nowrap"
           >
             <i className="ri-home-line mr-2"></i>
-            Về trang chủ
+            {user ? 'Về trang chính' : 'Về trang chủ'}
           </button>
           
           <button

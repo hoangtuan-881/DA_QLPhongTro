@@ -655,17 +655,17 @@ export default function Contracts() {
                             <button onClick={() => setSelectedContract(contract)} className="text-indigo-600 hover:text-indigo-900 cursor-pointer" title="Xem chi tiết">
                               <i className="ri-eye-line"></i>
                             </button>
-                            <button onClick={() => openEdit(contract)} className="text-green-600 hover:text-green-900 cursor-pointer" title="Chỉnh sửa">
+                            {/* <button onClick={() => openEdit(contract)} className="text-green-600 hover:text-green-900 cursor-pointer" title="Chỉnh sửa">
                               <i className="ri-edit-line"></i>
-                            </button>
+                            </button> */}
                             {contract.TrangThai === 'DangHieuLuc' && isInFinalMonth(contract.NgayKetThuc) && (
                               <button onClick={() => openRenewal(contract)} className="text-blue-600 hover:text-blue-900 cursor-pointer" title="Gia hạn hợp đồng">
                                 <i className="ri-refresh-line"></i>
                               </button>
                             )}
-                            <button onClick={() => openDelete(contract)} className="text-red-600 hover:text-red-900 cursor-pointer" title="Xóa hợp đồng">
+                            {/* <button onClick={() => openDelete(contract)} className="text-red-600 hover:text-red-900 cursor-pointer" title="Xóa hợp đồng">
                               <i className="ri-delete-bin-line"></i>
-                            </button>
+                            </button> */}
                           </div>
                         </td>
                       </tr>

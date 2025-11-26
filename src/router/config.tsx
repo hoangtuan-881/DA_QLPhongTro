@@ -30,6 +30,7 @@ const Profile = lazy(() => import('../pages/profile/page'));
 const TestToast = lazy(() => import('../pages/test-toast/page'));
 const Forbidden = lazy(() => import('../pages/403'));
 const PageNotFound = lazy(() => import('../pages/404'));
+const Employees = lazy(() => import('../pages/employee-management/page'));
 
 const routes: RouteObject[] = [
   {
@@ -131,7 +132,15 @@ const routes: RouteObject[] = [
   {
     path: '*',
     element: <PageNotFound />
-  }
+  },
+  {
+    path: '/employees',
+    element: (
+      <RoleProtectedRoute allowedRoles={[1, 2]}>
+        <Employees />
+      </RoleProtectedRoute>
+    )
+  },
 ];
 
 export default routes;

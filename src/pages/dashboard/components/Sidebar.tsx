@@ -79,10 +79,15 @@ const menuItems = [
     path: '/user-management'
   },
   {
+    icon: 'ri-team-line',
+    label: 'Quản lý nhân viên',
+    path: '/employees'
+  },
+  {
     icon: 'ri-settings-3-line',
     label: 'Cài đặt',
     path: '/settings'
-  }
+  },
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {

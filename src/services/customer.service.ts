@@ -30,46 +30,33 @@ export interface ThongTinPhong {
   };
 }
 
-// Thông tin hợp đồng của khách thuê (ChiTietHopDongKhachThueResource)
+// Thông tin hợp đồng của khách thuê - ✅ PascalCase khớp Backend
 export interface ThongTinHopDong {
-  MaHopDong: number;
   SoHopDong: string;
+  TenPhong: string;
+  TenKhachThue: string;
+  SDT: string;
+  TrangThai: string;
+  NgayKy: string;
   NgayBatDau: string;
   NgayKetThuc: string;
+  TienThueHangThang: number;
   TienCoc: number;
-  TrangThai: string;
-  GhiChu?: string;
-  phongTro: {
-    MaPhong: number;
-    TenPhong: string;
-    GiaThue: number;
-    dayTro: {
-      MaDay: number;
-      TenDay: string;
-    };
-  };
-  khachThue: {
-    MaKhachThue: number;
-    HoTen: string;
-    SDT1?: string;
-    Email?: string;
-  };
-  dichVu?: Array<{
-    MaDichVu: number;
+  DichVu: Array<{
     TenDichVu: string;
-    DonGia: number;
-    DonVi: string;
+    DonGiaApDung: number;
+    DonViTinh: string;
   }>;
 }
 
-// Chi tiết hóa đơn
+// Chi tiết hóa đơn - ✅ PascalCase khớp Backend
 export interface ChiTietHoaDonKhachThue {
-  id?: number;
-  maHoaDon?: number;
-  noiDung: string;
-  soLuong: number;
-  donGia: number;
-  thanhTien: number;
+  MaChiTiet: number;
+  MaHoaDon: number;
+  NoiDung: string;
+  SoLuong: number;
+  DonGia: number;
+  ThanhTien: number;
 }
 
 // Hóa đơn của khách thuê (HoaDonResource)

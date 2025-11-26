@@ -527,12 +527,12 @@ export default function CustomerOverview() {
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200">
                                             {items.map((item) => (
-                                                <tr key={item.id || item.noiDung} className="hover:bg-gray-50">
-                                                    <td className="px-6 py-4 text-sm text-gray-900">{item.noiDung}</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-700">{item.soLuong}</td>
+                                                <tr key={item.MaChiTiet} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 text-sm text-gray-900">{item.NoiDung}</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-700">{item.SoLuong}</td>
                                                     <td className="px-6 py-4 text-sm text-gray-700">-</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-900 text-right">{currency(Number(item.donGia))}</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">{currency(Number(item.thanhTien))}</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-900 text-right">{currency(Number(item.DonGia))}</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">{currency(Number(item.ThanhTien))}</td>
                                                 </tr>
                                             ))}
                                         </tbody>

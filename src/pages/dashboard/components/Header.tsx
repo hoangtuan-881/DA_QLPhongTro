@@ -1,8 +1,7 @@
-
 import { useState, useEffect, useRef } from 'react';
 import UserMenu from '@/components/base/UserMenu';
-import canhBaoService from '@/services/canh-bao.service';
-import { CanhBao } from '@/types/canh-bao';
+import thongBaoService from '@/services/thong-bao.service';
+import { ChiTietThongBao } from '@/types/thong-bao';
 import { getErrorMessage } from '@/lib/http-client';
 
 interface HeaderProps {
@@ -11,30 +10,30 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
-  const [alerts, setAlerts] = useState<CanhBao[]>([]);
+  const [notifications, setNotifications] = useState<ChiTietThongBao[]>([]);
   const [loading, setLoading] = useState(true);
   const notificationRef = useRef<HTMLDivElement>(null);
 
-  // Fetch alerts
+  // Fetch notifications
   useEffect(() => {
     const controller = new AbortController();
 
-    const fetchAlerts = async () => {
+    const fetchNotifications = async () => {
       try {
-        const response = await canhBaoService.getMyAlerts(controller.signal);
+        const response = await thongBaoService.getUserNotifications(controller.signal);
         if (!controller.signal.aborted) {
-          setAlerts(response.data.data || []);
+          setNotifications(response.data.data || []);
           setLoading(false);
         }
       } catch (error: any) {
         if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
-          console.error('Error fetching alerts:', getErrorMessage(error));
+          console.error('Error fetching notifications:', getErrorMessage(error));
           setLoading(false);
         }
       }
     };
 
-    fetchAlerts();
+    fetchNotifications();
     return () => controller.abort();
   }, []);
 
@@ -57,31 +56,31 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
   const handleMarkAsRead = async (id: number) => {
     try {
-      await canhBaoService.markAsRead(id);
-      setAlerts(prev =>
-        prev.map(alert =>
-          alert.MaCanhBao === id
-            ? { ...alert, TrangThai: 'DA_DOC' as const }
-            : alert
+      await thongBaoService.markAsRead(id);
+      setNotifications(prev =>
+        prev.map(notification =>
+          notification.MaChiTiet === id
+            ? { ...notification, TrangThaiDoc: 'da_doc' as const }
+            : notification
         )
       );
     } catch (error) {
-      console.error('Error marking alert as read:', getErrorMessage(error));
+      console.error('Error marking notification as read:', getErrorMessage(error));
     }
   };
 
   const handleMarkAllAsRead = async () => {
     try {
-      await canhBaoService.markAllAsRead();
-      setAlerts(prev =>
-        prev.map(alert => ({ ...alert, TrangThai: 'DA_DOC' as const }))
+      await thongBaoService.markAllAsRead();
+      setNotifications(prev =>
+        prev.map(notification => ({ ...notification, TrangThaiDoc: 'da_doc' as const }))
       );
     } catch (error) {
       console.error('Error marking all as read:', getErrorMessage(error));
     }
   };
 
-  const unreadCount = alerts.filter(a => a.TrangThai === 'CHUA_DOC').length;
+  const unreadCount = notifications.filter(n => n.TrangThaiDoc === 'chua_doc').length;
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -142,42 +141,40 @@ export default function Header({ onMenuClick }: HeaderProps) {
                       Đang tải...
                     </div>
                   )}
-                  {!loading && alerts.length === 0 && (
+                  {!loading && notifications.length === 0 && (
                     <div className="p-4 text-center text-sm text-gray-500">
-                      Không có cảnh báo nào
+                      Không có thông báo nào
                     </div>
                   )}
-                  {!loading && alerts.map((alert) => (
+                  {!loading && notifications.map((notification) => (
                     <div
-                      key={alert.MaCanhBao}
+                      key={notification.MaChiTiet}
                       onClick={() => {
-                        if (alert.TrangThai === 'CHUA_DOC') {
-                          handleMarkAsRead(alert.MaCanhBao);
+                        if (notification.TrangThaiDoc === 'chua_doc') {
+                          handleMarkAsRead(notification.MaChiTiet);
                         }
-                        if (alert.LienKet) {
-                          window.location.href = alert.LienKet;
-                        }
+                        // No link navigation for now
                       }}
                       className={`p-4 hover:bg-gray-50 border-b border-gray-100 cursor-pointer ${
-                        alert.TrangThai === 'CHUA_DOC' ? 'bg-blue-50' : ''
+                        notification.TrangThaiDoc === 'chua_doc' ? 'bg-blue-50' : ''
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <p className={`text-sm ${
-                          alert.TrangThai === 'CHUA_DOC' ? 'font-semibold text-gray-900' : 'text-gray-700'
+                          notification.TrangThaiDoc === 'chua_doc' ? 'font-semibold text-gray-900' : 'text-gray-700'
                         }`}>
-                          {alert.NoiDung}
+                          {notification.ThongBao.NoiDung}
                         </p>
-                        {alert.TrangThai === 'CHUA_DOC' && (
+                        {notification.TrangThaiDoc === 'chua_doc' && (
                           <span className="w-2 h-2 bg-blue-500 rounded-full ml-2 mt-1.5"></span>
                         )}
                       </div>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-                          {alert.LoaiCanhBao}
+                          {notification.ThongBao.Loai}
                         </span>
                         <p className="text-xs text-gray-500">
-                          {alert.ThoiGianGui}
+                          {notification.ThongBao.ThoiGianGuiThucTe}
                         </p>
                       </div>
                     </div>

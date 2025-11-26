@@ -3,9 +3,10 @@
  * Handles system configuration settings API calls
  */
 
-import httpClient, { ApiResponse } from '@/lib/http-client';
+import httpClient from '@/lib/http-client';
+import type { ApiResponse } from '@/lib/http-client';
 import { API_ENDPOINTS } from '@/config/api';
-import { AxiosResponse } from 'axios';
+import type { AxiosResponse } from 'axios';
 
 // System Setting Interface (matching backend CaiDatHeThong model - PascalCase Vietnamese)
 export interface CaiDatHeThong {

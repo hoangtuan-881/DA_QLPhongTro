@@ -1,8 +1,8 @@
 import { API_ENDPOINTS } from '../config/api';
 import { BaseApiService } from './base-api.service';
-import { ApiResponse } from '../types/api.types';
 import httpClient from '@/lib/http-client';
-import { AxiosResponse } from 'axios';
+import type { ApiResponse } from '@/lib/http-client';
+import type { AxiosResponse } from 'axios';
 
 export interface PhieuDatCocCreateInput {
   MaPhong: number;

@@ -112,7 +112,7 @@ export default function Notifications() {
     setConfirmMessage(`Bạn có chắc chắn muốn gửi thông báo "${thongBao.TieuDe}" không?`);
     setConfirmAction(() => async () => {
       try {
-        await thongBaoService.update(thongBao.MaThongBao, { TrangThai: 'sent' });
+        await thongBaoService.send(thongBao.MaThongBao);
         success({ title: `Đã gửi thông báo "${thongBao.TieuDe}" thành công!` });
         setShowConfirmDialog(false);
         refreshData();
@@ -193,9 +193,7 @@ export default function Notifications() {
     setConfirmMessage(`Bạn có chắc chắn muốn gửi tất cả ${draftThongBaos.length} thông báo nháp không?`);
     setConfirmAction(() => async () => {
       try {
-        await Promise.all(
-          draftThongBaos.map((tb) => thongBaoService.update(tb.MaThongBao, { TrangThai: 'sent' }))
-        );
+        await thongBaoService.sendAllDrafts();
         success({ title: `Đã gửi ${draftThongBaos.length} thông báo thành công!` });
         setShowConfirmDialog(false);
         refreshData();

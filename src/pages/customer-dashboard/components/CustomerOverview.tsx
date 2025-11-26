@@ -19,6 +19,30 @@ const currency = (n: number) => {
     }).format(n);
 };
 
+// Helper: Map trạng thái hóa đơn sang màu sắc badge (match với TrangThaiHoaDonEnum)
+const getInvoiceStatusStyle = (
+    status: 'moi_tao' | 'da_thanh_toan_mot_phan' | 'da_thanh_toan' | 'qua_han',
+    statusText?: string,
+    statusColor?: string
+) => {
+    // Map enum values từ backend
+    const statusMap: Record<string, { bg: string; text: string; label: string }> = {
+        'moi_tao': { bg: 'bg-blue-50', text: 'text-blue-700', label: 'Mới tạo' },
+        'da_thanh_toan_mot_phan': { bg: 'bg-orange-50', text: 'text-orange-700', label: 'Đã thanh toán một phần' },
+        'da_thanh_toan': { bg: 'bg-green-50', text: 'text-green-700', label: 'Đã thanh toán' },
+        'qua_han': { bg: 'bg-red-50', text: 'text-red-700', label: 'Quá hạn' },
+    };
+
+    const defaultStyle = statusMap[status] || { bg: 'bg-gray-50', text: 'text-gray-700', label: 'Không xác định' };
+
+    // Ưu tiên dùng label từ backend nếu có
+    if (statusText) {
+        defaultStyle.label = statusText;
+    }
+
+    return defaultStyle;
+};
+
 // ===== VietQR Config =====
 const VIETQR_CONFIG = {
     BANK_ID: 'MB',                    // Mã ngân hàng (MB=MBBank, VCB=Vietcombank, TCB=Techcombank, etc.)
@@ -277,6 +301,33 @@ export default function CustomerOverview() {
     const refreshData = () => {
         setLoading(true);
         setRefreshKey(prev => prev + 1);
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!latestInvoice) return;
+
+        try {
+            const response = await customerService.downloadInvoicePdf(latestInvoice.MaHoaDon);
+
+            // Tạo URL từ blob
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+
+            // Tạo link download
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `hoa-don-${latestInvoice.Thang}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+
+            // Cleanup
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            toast.success({ title: 'Thành công', message: 'Đã tải xuống hóa đơn PDF' });
+        } catch (error) {
+            toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+        }
     };
 
     const handleRepairFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -539,19 +590,23 @@ export default function CustomerOverview() {
                                 <p className="text-sm text-gray-600">Báo hỏng và đặt lịch kỹ thuật</p>
                             </button>
 
-                            <button
-                                onClick={() => setShowPayModal(true)}
-                                className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm hover:shadow cursor-pointer text-left group"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="p-2 rounded-lg bg-green-50">
-                                        <i className="ri-money-dollar-circle-line text-green-600 text-xl" />
+                            {/* Chỉ hiển thị nút Thanh toán nếu chưa thanh toán hoặc chưa có hóa đơn */}
+                            {(!latestInvoice || latestInvoice.TrangThai !== 'da_thanh_toan') && (
+                                <button
+                                    onClick={() => setShowPayModal(true)}
+                                    className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm hover:shadow cursor-pointer text-left group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="p-2 rounded-lg bg-green-50">
+                                            <i className="ri-money-dollar-circle-line text-green-600 text-xl" />
+                                        </div>
+                                        <i className="ri-arrow-right-line text-gray-300 group-hover:text-green-500" />
                                     </div>
-                                    <i className="ri-arrow-right-line text-gray-300 group-hover:text-green-500" />
-                                </div>
-                                <h3 className="mt-3 font-semibold text-gray-900">Thanh toán</h3>
-                                <p className="text-sm text-gray-600">Xem & thanh toán hóa đơn</p>
-                            </button>
+                                    <h3 className="mt-3 font-semibold text-gray-900">Thanh toán</h3>
+                                    <p className="text-sm text-gray-600">Xem & thanh toán hóa đơn</p>
+                                </button>
+                            )}
+
                             <button
                                 onClick={() => setShowViolationModal(true)}
                                 className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm hover:shadow cursor-pointer text-left group"
@@ -575,13 +630,21 @@ export default function CustomerOverview() {
                                         <i className="ri-bill-line text-indigo-600 mr-2" />
                                         {latestInvoice ? `Hóa đơn ${invoiceMonthLabel}` : 'Hóa đơn'}
                                     </h2>
-                                    {latestInvoice && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="inline-flex px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">
-                                                {latestInvoice.TrangThai || 'Chưa thanh toán'}
-                                            </span>
-                                        </div>
-                                    )}
+                                    {latestInvoice && (() => {
+                                        const statusStyle = getInvoiceStatusStyle(
+                                            latestInvoice.TrangThai,
+                                            latestInvoice.TrangThaiText,
+                                            latestInvoice.TrangThaiColor
+                                        );
+                                        return (
+                                            <div className="flex items-center gap-2">
+                                                <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${statusStyle.bg} ${statusStyle.text}`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${statusStyle.text.replace('text-', 'bg-')}`}></span>
+                                                    {statusStyle.label}
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                                 {latestInvoice && (
                                     <p className="text-sm text-gray-600 mt-1">
@@ -660,17 +723,40 @@ export default function CustomerOverview() {
                                             <span className="text-gray-900">{currency(totals.totalDue)}</span>
                                         </div>
 
-                                        <div className="flex gap-3 mt-2">
-                                            <button
-                                                className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
-                                                onClick={() => setShowPayModal(true)}
-                                            >
-                                                Thanh toán ngay
-                                            </button>
-                                            <button className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50">
-                                                Tải PDF
-                                            </button>
-                                        </div>
+                                        {/* Chỉ hiển thị nút thanh toán nếu chưa thanh toán */}
+                                        {latestInvoice.TrangThai !== 'da_thanh_toan' ? (
+                                            <div className="flex gap-3 mt-2">
+                                                <button
+                                                    className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+                                                    onClick={() => setShowPayModal(true)}
+                                                >
+                                                    Thanh toán ngay
+                                                </button>
+                                                <button
+                                                    className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 inline-flex items-center"
+                                                    onClick={handleDownloadPdf}
+                                                >
+                                                    <i className="ri-download-line mr-1.5"></i>
+                                                    Tải PDF
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="mt-4 space-y-3">
+                                                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                                                    <div className="flex items-center text-green-700">
+                                                        <i className="ri-checkbox-circle-line text-xl mr-2"></i>
+                                                        <span className="text-sm font-medium">Hóa đơn đã được thanh toán</span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 inline-flex items-center justify-center"
+                                                    onClick={handleDownloadPdf}
+                                                >
+                                                    <i className="ri-download-line mr-1.5"></i>
+                                                    Tải PDF hóa đơn
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 </div>

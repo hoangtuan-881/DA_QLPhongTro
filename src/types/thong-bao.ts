@@ -59,3 +59,22 @@ export interface ChiTietThongBao {
     ThoiGianGuiThucTe: string | null;
   };
 }
+
+/**
+ * ThongBao (Admin) Types
+ */
+export interface ThongBao {
+  MaThongBao: number;
+  TieuDe: string;
+  NoiDung: string;
+  LoaiThongBao: string;
+  NgayGui: string;
+  NguoiGui: number;
+}
+
+export interface CreateThongBaoRequest {
+  TieuDe: string;
+  NoiDung: string;
+  LoaiThongBao: string;
+  NguoiNhan: number[];
+}

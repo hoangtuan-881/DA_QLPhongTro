@@ -4,7 +4,8 @@
  */
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, authService, LoginRequest, RegisterRequest } from '@/services/auth.service';
+import { authService } from '@/services/auth.service';
+import type { User, LoginRequest, RegisterRequest } from '@/services/auth.service';
 import { getErrorMessage } from '@/lib/http-client';
 
 interface AuthContextType {

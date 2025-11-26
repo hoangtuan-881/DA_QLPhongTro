@@ -70,7 +70,9 @@ export interface HoaDonKhachThue {
   TongTien: number;
   DaThanhToan: number;
   ConLai: number;
-  TrangThai: string;
+  TrangThai: 'moi_tao' | 'da_thanh_toan_mot_phan' | 'da_thanh_toan' | 'qua_han';
+  TrangThaiText?: string; // Label từ backend
+  TrangThaiColor?: string; // Color từ backend
   GhiChu?: string;
   phongTro?: {
     MaPhong: number;
@@ -280,6 +282,17 @@ class CustomerService {
         HoTen: string;
       }>
     }>(`${CUSTOMER_API_URL}/tenants-by-room/${maPhong}`, { signal });
+  }
+
+  /**
+   * Tải PDF hóa đơn
+   * GET /customer/invoices/:id/pdf
+   */
+  async downloadInvoicePdf(maHoaDon: number) {
+    const response = await httpClient.get(`${CUSTOMER_API_URL}/invoices/${maHoaDon}/pdf`, {
+      responseType: 'blob', // Quan trọng: để nhận binary data
+    });
+    return response;
   }
 }
 

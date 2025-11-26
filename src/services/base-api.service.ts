@@ -3,8 +3,9 @@
  * Generic CRUD operations for all API services
  */
 
-import httpClient, { ApiResponse } from '@/lib/http-client';
-import { AxiosResponse } from 'axios';
+import httpClient from '@/lib/http-client';
+import type { ApiResponse } from '@/lib/http-client';
+import type { AxiosResponse } from 'axios';
 
 export interface PaginationParams {
   page?: number;

@@ -3,9 +3,10 @@
  * Handles user profile operations
  */
 
-import httpClient, { ApiResponse } from '@/lib/http-client';
+import httpClient from '@/lib/http-client';
+import type { ApiResponse } from '@/lib/http-client';
 import { API_ENDPOINTS } from '@/config/api';
-import { AxiosResponse } from 'axios';
+import type { AxiosResponse } from 'axios';
 
 // Account Info
 export interface TaiKhoan {

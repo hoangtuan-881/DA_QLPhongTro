@@ -3,9 +3,10 @@
  * Handles user authentication and authorization
  */
 
-import httpClient, { ApiResponse } from '@/lib/http-client';
+import httpClient from '@/lib/http-client';
+import type { ApiResponse } from '@/lib/http-client';
 import { API_ENDPOINTS, STORAGE_KEYS } from '@/config/api';
-import { AxiosResponse } from 'axios';
+import type { AxiosResponse } from 'axios';
 
 // User Type
 export interface User {

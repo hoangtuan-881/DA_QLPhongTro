@@ -23,6 +23,14 @@ class ThongBaoHeThongService {
   async delete(id: number) {
     return httpClient.delete(`${this.endpoint}/${id}`);
   }
+
+  async send(id: number) {
+    return httpClient.post<{ data: ThongBaoHeThong }>(`${this.endpoint}/${id}/send`);
+  }
+
+  async sendAllDrafts() {
+    return httpClient.post<{ data: { sent: number; message: string } }>(`${this.endpoint}/send-all-drafts`);
+  }
 }
 
 export default new ThongBaoHeThongService();

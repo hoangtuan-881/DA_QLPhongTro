@@ -1,21 +1,5 @@
 import httpClient from '../lib/http-client';
-import { ChiTietThongBao } from '../types/thong-bao';
-
-export interface ThongBao {
-  MaThongBao: number;
-  TieuDe: string;
-  NoiDung: string;
-  LoaiThongBao: string;
-  NgayGui: string;
-  NguoiGui: number;
-}
-
-export interface CreateThongBaoRequest {
-  TieuDe: string;
-  NoiDung: string;
-  LoaiThongBao: string;
-  NguoiNhan: number[];
-}
+import { ChiTietThongBao, ThongBao, CreateThongBaoRequest } from '../types/thong-bao';
 
 const THONGBAO_API_URL = '/admin/thong-bao';
 const USER_THONGBAO_API_URL = '/thong-bao';

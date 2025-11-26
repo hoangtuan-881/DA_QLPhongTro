@@ -3,7 +3,8 @@
  * Configured with interceptors for authentication and error handling
  */
 
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosError } from 'axios';
+import type { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import { API_BASE_URL, API_TIMEOUT, STORAGE_KEYS, HTTP_STATUS } from '@/config/api';
 
 // API Response Type

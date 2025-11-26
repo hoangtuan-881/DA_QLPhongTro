@@ -5,8 +5,8 @@
 
 import { BaseApiService } from './base-api.service';
 import { API_ENDPOINTS } from '@/config/api';
-import { AxiosResponse } from 'axios';
-import { ApiResponse } from '@/lib/http-client';
+import type { AxiosResponse } from 'axios';
+import type { ApiResponse } from '@/lib/http-client';
 
 // DayTro Interface (matching backend DayTroResource - PascalCase Vietnamese)
 export interface DayTro {

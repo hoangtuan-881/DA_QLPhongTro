@@ -122,12 +122,14 @@ export default function Contracts() {
   // edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingContract, setEditingContract] = useState<HopDong | null>(null);
+  const [editingDichVuIds, setEditingDichVuIds] = useState<number[]>([]);
   const [editForm, setEditForm] = useState({
     SoHopDong: '',
     NgayKy: '',
     NgayBatDau: '',
     NgayKetThuc: '',
     TienCoc: 0,
+    TienThueHangThang: 0,
     GhiChu: '',
   });
 
@@ -284,8 +286,14 @@ export default function Contracts() {
       NgayBatDau: formatToYYYYMMDD(parseDate(contract.NgayBatDau)),
       NgayKetThuc: formatToYYYYMMDD(parseDate(contract.NgayKetThuc)),
       TienCoc: Number(contract.TienCoc) || 0,
+      TienThueHangThang: Number(contract.TienThueHangThang) || 0,
       GhiChu: contract.GhiChu || '',
     });
+    // Load dịch vụ đã áp dụng
+    const currentDichVuIds = contract.hopDongDichVus?.map(dv => dv.MaDichVu) || [];
+    setEditingDichVuIds(currentDichVuIds);
+    // Đóng modal chi tiết trước khi mở modal sửa
+    setSelectedContract(null);
     setShowEditModal(true);
   };
 
@@ -315,10 +323,12 @@ export default function Contracts() {
             NgayKetThuc: editForm.NgayKetThuc,
             TienCoc: editForm.TienCoc,
             GhiChu: editForm.GhiChu,
+            DichVuIds: editingDichVuIds,
           };
           await hopDongService.update(editingContract.MaHopDong, updateData);
           setShowEditModal(false);
           setEditingContract(null);
+          setEditingDichVuIds([]);
           success({ title: 'Cập nhật hợp đồng thành công!' });
           refreshData();
         } catch (err) {
@@ -332,6 +342,8 @@ export default function Contracts() {
   const openRenewal = (contract: HopDong) => {
     setRenewingContract(contract);
     setRenewalData({ NgayKetThuc: '' });
+    // Đóng modal chi tiết trước khi mở modal gia hạn
+    setSelectedContract(null);
     setShowRenewalModal(true);
   };
 
@@ -374,6 +386,8 @@ export default function Contracts() {
   const openTerminate = (contract: HopDong) => {
     setTerminatingContract(contract);
     setTerminationData({ GhiChu: '' });
+    // Đóng modal chi tiết trước khi mở modal chấm dứt
+    setSelectedContract(null);
     setShowTerminateModal(true);
   };
 
@@ -700,7 +714,7 @@ export default function Contracts() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSelectedContract(null)}></div>
-            <div className="relative bg-white rounded-lg max-w-4xl w-full p-6">
+            <div className="relative bg-white rounded-lg max-w-4xl w-full p-6 max-h-screen overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Chi tiết hợp đồng</h2>
                 <button onClick={() => setSelectedContract(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -709,26 +723,135 @@ export default function Contracts() {
               </div>
 
               <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Thông tin hợp đồng</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between"><span className="text-gray-600">Số hợp đồng:</span><span className="font-medium">{selectedContract.SoHopDong}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Ngày ký:</span><span className="font-medium">{selectedContract.NgayKy}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Ngày bắt đầu:</span><span className="font-medium">{selectedContract.NgayBatDau}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Ngày kết thúc:</span><span className="font-medium">{selectedContract.NgayKetThuc}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Trạng thái:</span><span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedContract.TrangThai)}`}>{getStatusText(selectedContract.TrangThai)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Số lần gia hạn:</span><span className="font-medium">{selectedContract.SoLanGiaHan}</span></div>
+                {/* Left Column */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Thông tin khách thuê & phòng</h3>
+
+                  {/* Khách thuê */}
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-3">Khách thuê</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Họ tên:</span>
+                        <span className="font-medium">{selectedContract.khachThue?.HoTen || selectedContract.TenKhachThue}</span>
+                      </div>
+                      {selectedContract.khachThue?.SDT1 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Số điện thoại:</span>
+                          <span className="font-medium">{selectedContract.khachThue.SDT1}</span>
+                        </div>
+                      )}
+                      {selectedContract.khachThue?.Email && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Email:</span>
+                          <span className="font-medium text-xs">{selectedContract.khachThue.Email}</span>
+                        </div>
+                      )}
+                      {selectedContract.khachThue?.CCCD && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">CCCD:</span>
+                          <span className="font-medium">{selectedContract.khachThue.CCCD}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Phòng trọ */}
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-3">Thông tin phòng</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Dãy:</span>
+                        <span className="font-medium">{selectedContract.phongTro?.TenDay || selectedContract.TenDay}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Phòng:</span>
+                        <span className="font-medium">{selectedContract.phongTro?.TenPhong || selectedContract.TenPhong}</span>
+                      </div>
+                      {selectedContract.phongTro?.LoaiPhong && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Loại phòng:</span>
+                          <span className="font-medium">{selectedContract.phongTro.LoaiPhong}</span>
+                        </div>
+                      )}
+                      {selectedContract.phongTro?.DienTich && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Diện tích:</span>
+                          <span className="font-medium">{selectedContract.phongTro.DienTich}m²</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tiền thuê:</span>
+                        <span className="font-medium text-green-600">{Number(selectedContract.TienThueHangThang || 0).toLocaleString('vi-VN')}đ/tháng</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tiền cọc:</span>
+                        <span className="font-medium text-blue-600">{Number(selectedContract.TienCoc || 0).toLocaleString('vi-VN')}đ</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dịch vụ áp dụng */}
+                  {selectedContract.hopDongDichVus && selectedContract.hopDongDichVus.length > 0 && (
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-3">Dịch vụ áp dụng</h4>
+                      <div className="space-y-2">
+                        {selectedContract.hopDongDichVus.map((dv) => (
+                          <div key={dv.MaHopDongDichVu} className="flex justify-between text-sm border-b border-green-100 pb-2 last:border-0 last:pb-0">
+                            <span className="font-medium text-gray-700">{dv.TenDichVu}</span>
+                            <span className="text-gray-600">{Number(dv.GiaApDung || 0).toLocaleString('vi-VN')}đ/{dv.DonViTinh}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-3">Thông tin khách thuê & phòng</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between"><span className="text-gray-600">Tên khách thuê:</span><span className="font-medium">{selectedContract.TenKhachThue}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Dãy:</span><span className="font-medium">{selectedContract.TenDay}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Phòng:</span><span className="font-medium">{selectedContract.TenPhong}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Tiền thuê:</span><span className="font-medium text-green-600">{Number(selectedContract.TienThueHangThang || 0).toLocaleString('vi-VN')}đ/tháng</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Tiền cọc:</span><span className="font-medium text-blue-600">{Number(selectedContract.TienCoc || 0).toLocaleString('vi-VN')}đ</span></div>
+                {/* Right Column */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Chi tiết hợp đồng</h3>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Số hợp đồng</label>
+                      <div className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">{selectedContract.SoHopDong}</div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày ký hợp đồng</label>
+                      <div className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">{selectedContract.NgayKy}</div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
+                        <div className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">{selectedContract.NgayBatDau}</div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc</label>
+                        <div className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">{selectedContract.NgayKetThuc}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                        <span className={`inline-flex px-3 py-2 text-sm font-semibold rounded-lg ${getStatusColor(selectedContract.TrangThai)}`}>
+                          {getStatusText(selectedContract.TrangThai)}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Số lần gia hạn</label>
+                        <div className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50">{selectedContract.SoLanGiaHan}</div>
+                      </div>
+                    </div>
+
+                    {selectedContract.GhiChu && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                        <div className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 min-h-[80px]">{selectedContract.GhiChu}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -744,7 +867,6 @@ export default function Contracts() {
                   <button onClick={() => openTerminate(selectedContract)} className="flex-1 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 cursor-pointer whitespace-nowrap">Chấm dứt</button>
                 )}
 
-                <button onClick={() => openDelete(selectedContract)} className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 cursor-pointer whitespace-nowrap">Xóa hợp đồng</button>
                 <button onClick={() => setSelectedContract(null)} className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 cursor-pointer whitespace-nowrap">Đóng</button>
               </div>
             </div>
@@ -950,48 +1072,137 @@ export default function Contracts() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowEditModal(false)}></div>
-            <div className="relative bg-white rounded-lg max-w-2xl w-full p-6">
+            <div className="relative bg-white rounded-lg max-w-4xl w-full p-6 max-h-screen overflow-y-auto">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Chỉnh sửa hợp đồng</h2>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số hợp đồng *</label>
-                  <input type="text" value={editForm.SoHopDong} onChange={(e) => setEditForm({ ...editForm, SoHopDong: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+              <div className="grid grid-cols-2 gap-6">
+                {/* Left Column - Tenant & Room Info (Read-only) */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Thông tin khách thuê & phòng</h3>
+
+                  {/* Khách thuê */}
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-3">Khách thuê</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Họ tên:</span>
+                        <span className="font-medium">{editingContract.khachThue?.HoTen || editingContract.TenKhachThue}</span>
+                      </div>
+                      {editingContract.khachThue?.SDT1 && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Số điện thoại:</span>
+                          <span className="font-medium">{editingContract.khachThue.SDT1}</span>
+                        </div>
+                      )}
+                      {editingContract.khachThue?.Email && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Email:</span>
+                          <span className="font-medium text-xs">{editingContract.khachThue.Email}</span>
+                        </div>
+                      )}
+                      {editingContract.khachThue?.CCCD && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">CCCD:</span>
+                          <span className="font-medium">{editingContract.khachThue.CCCD}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Phòng trọ */}
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-3">Thông tin phòng</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Dãy:</span>
+                        <span className="font-medium">{editingContract.phongTro?.TenDay || editingContract.TenDay}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Phòng:</span>
+                        <span className="font-medium">{editingContract.phongTro?.TenPhong || editingContract.TenPhong}</span>
+                      </div>
+                      {editingContract.phongTro?.LoaiPhong && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Loại phòng:</span>
+                          <span className="font-medium">{editingContract.phongTro.LoaiPhong}</span>
+                        </div>
+                      )}
+                      {editingContract.phongTro?.DienTich && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Diện tích:</span>
+                          <span className="font-medium">{editingContract.phongTro.DienTich}m²</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Right Column - Editable Contract Details */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-gray-900">Chi tiết hợp đồng</h3>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày ký</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Số hợp đồng *</label>
+                    <input type="text" value={editForm.SoHopDong} onChange={(e) => setEditForm({ ...editForm, SoHopDong: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày ký hợp đồng</label>
                     <input type="date" value={editForm.NgayKy} onChange={(e) => setEditForm({ ...editForm, NgayKy: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
                   </div>
-                  <div></div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu *</label>
-                    <input type="date" value={editForm.NgayBatDau} onChange={(e) => setEditForm({ ...editForm, NgayBatDau: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu *</label>
+                      <input type="date" value={editForm.NgayBatDau} onChange={(e) => setEditForm({ ...editForm, NgayBatDau: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc *</label>
+                      <input type="date" value={editForm.NgayKetThuc} onChange={(e) => setEditForm({ ...editForm, NgayKetThuc: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ngày kết thúc *</label>
-                    <input type="date" value={editForm.NgayKetThuc} onChange={(e) => setEditForm({ ...editForm, NgayKetThuc: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tiền cọc (VNĐ) *</label>
+                      <input type="number" value={editForm.TienCoc} onChange={(e) => setEditForm({ ...editForm, TienCoc: parseInt(e.target.value || '0', 10) || 0 })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tiền thuê (VNĐ) *</label>
+                      <input type="number" value={editForm.TienThueHangThang} onChange={(e) => setEditForm({ ...editForm, TienThueHangThang: parseInt(e.target.value || '0', 10) || 0 })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tiền cọc (VNĐ)</label>
-                  <input type="number" value={editForm.TienCoc} onChange={(e) => setEditForm({ ...editForm, TienCoc: parseInt(e.target.value || '0', 10) || 0 })} className="w-full border border-gray-300 rounded-lg px-3 py-2" />
-                </div>
+                  <div>
+                    <h4 className="block text-sm font-medium text-gray-700 mb-2">Dịch vụ áp dụng</h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {dichVus.filter(s => s.TrangThaiHoatDong === true).map(s => (
+                        <label key={s.MaDichVu} className="flex items-start gap-3 p-2 rounded border border-gray-200 hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={editingDichVuIds.includes(s.MaDichVu)}
+                            onChange={(e) => setEditingDichVuIds(prev => e.target.checked ? [...prev, s.MaDichVu] : prev.filter((id: number) => id !== s.MaDichVu))}
+                          />
+                          <div className="text-sm">
+                            <div className="font-medium">{s.TenDichVu} <span className="text-gray-500">• {Number(s.DonGia || 0).toLocaleString('vi-VN')}đ/{s.DonViTinh}</span></div>
+                            {s.MoTa && <div className="text-gray-500">{s.MoTa}</div>}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
-                  <textarea value={editForm.GhiChu} onChange={(e) => setEditForm({ ...editForm, GhiChu: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={3} />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                    <textarea value={editForm.GhiChu} onChange={(e) => setEditForm({ ...editForm, GhiChu: e.target.value })} className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={3} placeholder="Ghi chú thêm về hợp đồng..." />
+                  </div>
                 </div>
               </div>
 
               <div className="flex gap-3 mt-6 pt-6 border-t">
-                <button onClick={() => { setShowEditModal(false); setEditingContract(null); }} className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 cursor-pointer">Hủy</button>
-                <button onClick={handleUpdateContract} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer">Cập nhật</button>
+                <button onClick={() => { setShowEditModal(false); setEditingContract(null); }} className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 cursor-pointer whitespace-nowrap">Hủy</button>
+                <button onClick={handleUpdateContract} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap">Cập nhật</button>
               </div>
             </div>
           </div>

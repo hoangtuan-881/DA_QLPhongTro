@@ -832,7 +832,7 @@ export default function Payments() {
   const handleCollectPayment = (hoaDon: HoaDon) => {
     setSelectedHoaDonForPayment(hoaDon);
     setPaymentData({
-      amount: hoaDon.ConLai,
+      amount: Number(hoaDon.ConLai || 0),
       method: 'cash',
       note: '',
       date: new Date().toISOString().split('T')[0]
@@ -907,7 +907,7 @@ export default function Payments() {
     const roomName = hoaDon.phongTro?.TenPhong || `Phòng ${hoaDon.MaPhong}`;
     setNotificationData({
       title: `Nhắc nhở thanh toán - ${roomName}`,
-      content: `Kính gửi ${tenantName},\n\nBạn có hóa đơn tháng ${hoaDon.Thang} chưa thanh toán với số tiền ${hoaDon.ConLai.toLocaleString('vi-VN')}đ.\n\nHạn thanh toán: ${new Date(hoaDon.NgayHetHan).toLocaleDateString('vi-VN')}\n\nVui lòng thanh toán sớm để tránh phát sinh phí phạt.\n\nTrân trọng,\nBan quản lý`,
+      content: `Kính gửi ${tenantName},\n\nBạn có hóa đơn tháng ${hoaDon.Thang} chưa thanh toán với số tiền ${Number(hoaDon.ConLai || 0).toLocaleString('vi-VN')}đ.\n\nHạn thanh toán: ${new Date(hoaDon.NgayHetHan).toLocaleDateString('vi-VN')}\n\nVui lòng thanh toán sớm để tránh phát sinh phí phạt.\n\nTrân trọng,\nBan quản lý`,
       type: 'payment',
       sendMethod: 'app'
     });
@@ -950,9 +950,18 @@ export default function Payments() {
     });
   };
 
-  const handleViewDetail = (hoaDon: HoaDon) => {
-    setSelectedHoaDon(hoaDon);
-    setShowDetailModal(true);
+  const handleViewDetail = async (hoaDon: HoaDon) => {
+    try {
+      // Fetch chi tiết đầy đủ từ API
+      const response = await hoaDonService.getById(hoaDon.MaHoaDon);
+      setSelectedHoaDon(response.data.data);
+      setShowDetailModal(true);
+    } catch (err) {
+      error({
+        title: 'Lỗi tải chi tiết hóa đơn',
+        message: getErrorMessage(err)
+      });
+    }
   };
 
   const handleSelectRoom = (roomId: string) => {
@@ -1625,10 +1634,8 @@ export default function Payments() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">
-                            {hoaDon.chiTietHoaDon?.find(ct => ct.noiDung?.includes('Tiền thuê'))?.thanhTien
-                              ? formatCurrency(typeof hoaDon.chiTietHoaDon.find(ct => ct.noiDung?.includes('Tiền thuê'))?.thanhTien === 'string'
-                                  ? parseFloat(hoaDon.chiTietHoaDon.find(ct => ct.noiDung?.includes('Tiền thuê'))?.thanhTien || '0')
-                                  : hoaDon.chiTietHoaDon.find(ct => ct.noiDung?.includes('Tiền thuê'))?.thanhTien || 0)
+                            {hoaDon.chiTietHoaDon?.find(ct => ct.NoiDung?.includes('Tiền thuê'))?.ThanhTien
+                              ? formatCurrency(hoaDon.chiTietHoaDon.find(ct => ct.NoiDung?.includes('Tiền thuê'))?.ThanhTien || '0')
                               : '-'}
                           </div>
                         </td>
@@ -1636,10 +1643,10 @@ export default function Payments() {
                           {hoaDon.chiTietHoaDon && hoaDon.chiTietHoaDon.length > 0 ? (
                             <div className="text-sm text-gray-900">
                               {hoaDon.chiTietHoaDon
-                                .filter(ct => !ct.noiDung?.includes('Tiền thuê'))
+                                .filter(ct => !ct.NoiDung?.includes('Tiền thuê'))
                                 .map((ct, idx) => (
-                                  <div key={ct.id || idx} className="text-xs">
-                                    {ct.noiDung}: {formatCurrency(typeof ct.thanhTien === 'string' ? parseFloat(ct.thanhTien) : ct.thanhTien || 0)}
+                                  <div key={ct.MaChiTiet || idx} className="text-xs">
+                                    {ct.NoiDung}: {formatCurrency(ct.ThanhTien || '0')}
                                   </div>
                                 ))}
                             </div>
@@ -2726,29 +2733,31 @@ export default function Payments() {
                         <div className="space-y-3">
                           {selectedHoaDon.chiTietHoaDon && selectedHoaDon.chiTietHoaDon.length > 0 ? (
                             <div className="space-y-2">
-                              {selectedHoaDon.chiTietHoaDon.map((chiTiet, index) => (
-                                <div key={chiTiet.id || index} className="border-b border-gray-200 pb-2 last:border-0">
-                                  <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                      <div className="text-gray-900 font-medium">{chiTiet?.noiDung || 'Chi phí'}</div>
-                                      {chiTiet?.soLuong && chiTiet?.donGia && (
-                                        <div className="text-xs text-gray-500 mt-1">
-                                          {typeof chiTiet.soLuong === 'string' ? parseFloat(chiTiet.soLuong) : chiTiet.soLuong} x {(typeof chiTiet.donGia === 'string' ? parseFloat(chiTiet.donGia) : chiTiet.donGia).toLocaleString('vi-VN')}đ
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="text-right ml-4">
-                                      {chiTiet?.thanhTien ? (
+                              {selectedHoaDon.chiTietHoaDon.map((chiTiet, index) => {
+                                const soLuong = parseFloat(chiTiet.SoLuong || '0');
+                                const donGia = parseFloat(chiTiet.DonGia || '0');
+                                const thanhTien = parseFloat(chiTiet.ThanhTien || '0');
+
+                                return (
+                                  <div key={chiTiet.MaChiTiet || index} className="border-b border-gray-200 pb-2 last:border-0">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <div className="text-gray-900 font-medium">{chiTiet?.NoiDung || 'Chi phí'}</div>
+                                        {soLuong > 0 && donGia > 0 && (
+                                          <div className="text-xs text-gray-500 mt-1">
+                                            {soLuong} x {donGia.toLocaleString('vi-VN')}đ
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="text-right ml-4">
                                         <span className="font-semibold text-gray-900">
-                                          {(typeof chiTiet.thanhTien === 'string' ? parseFloat(chiTiet.thanhTien) : chiTiet.thanhTien).toLocaleString('vi-VN')}đ
+                                          {thanhTien.toLocaleString('vi-VN')}đ
                                         </span>
-                                      ) : (
-                                        <span className="text-gray-400 text-sm">Chưa có</span>
-                                      )}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="text-gray-500 text-sm">Chưa có chi tiết hóa đơn</div>
@@ -2757,16 +2766,16 @@ export default function Payments() {
                           <div className="border-t-2 border-gray-300 pt-3 mt-3">
                             <div className="flex justify-between text-lg font-bold">
                               <span>Tổng cộng:</span>
-                              <span className="text-green-600">{selectedHoaDon.TongTien.toLocaleString('vi-VN')}đ</span>
+                              <span className="text-green-600">{Number(selectedHoaDon.TongTien || 0).toLocaleString('vi-VN')}đ</span>
                             </div>
                             <div className="flex justify-between text-sm text-gray-600 mt-1">
                               <span>Đã thanh toán:</span>
-                              <span>{selectedHoaDon.DaThanhToan.toLocaleString('vi-VN')}đ</span>
+                              <span>{Number(selectedHoaDon.DaThanhToan || 0).toLocaleString('vi-VN')}đ</span>
                             </div>
-                            {selectedHoaDon.ConLai > 0 && (
+                            {Number(selectedHoaDon.ConLai || 0) > 0 && (
                               <div className="flex justify-between text-sm font-medium text-red-600 mt-1">
                                 <span>Còn lại:</span>
-                                <span>{selectedHoaDon.ConLai.toLocaleString('vi-VN')}đ</span>
+                                <span>{Number(selectedHoaDon.ConLai || 0).toLocaleString('vi-VN')}đ</span>
                               </div>
                             )}
                           </div>
@@ -2842,15 +2851,15 @@ export default function Payments() {
                         </div>
                         <div>
                           <span className="text-gray-600">Tổng tiền:</span>
-                          <span className="font-medium ml-2">{selectedHoaDonForPayment.TongTien.toLocaleString('vi-VN')}đ</span>
+                          <span className="font-medium ml-2">{Number(selectedHoaDonForPayment.TongTien || 0).toLocaleString('vi-VN')}đ</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Đã thanh toán:</span>
-                          <span className="font-medium ml-2 text-green-600">{selectedHoaDonForPayment.DaThanhToan.toLocaleString('vi-VN')}đ</span>
+                          <span className="font-medium ml-2 text-green-600">{Number(selectedHoaDonForPayment.DaThanhToan || 0).toLocaleString('vi-VN')}đ</span>
                         </div>
                         <div className="col-span-2">
                           <span className="text-gray-600">Còn lại:</span>
-                          <span className="font-bold ml-2 text-red-600 text-lg">{selectedHoaDonForPayment.ConLai.toLocaleString('vi-VN')}đ</span>
+                          <span className="font-bold ml-2 text-red-600 text-lg">{Number(selectedHoaDonForPayment.ConLai || 0).toLocaleString('vi-VN')}đ</span>
                         </div>
                       </div>
                     </div>
@@ -2971,7 +2980,7 @@ export default function Payments() {
                         </div>
                         <div>
                           <span className="text-gray-600">Số tiền cần thu:</span>
-                          <span className="font-bold ml-2 text-red-600">{selectedHoaDonForNotification.ConLai.toLocaleString('vi-VN')}đ</span>
+                          <span className="font-bold ml-2 text-red-600">{Number(selectedHoaDonForNotification.ConLai || 0).toLocaleString('vi-VN')}đ</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Hạn thanh toán:</span>
@@ -3075,7 +3084,7 @@ export default function Payments() {
                         </div>
                         <div>
                           <span className="text-gray-600">Tổng tiền hiện tại:</span>
-                          <span className="font-medium ml-2">{selectedHoaDonForCharges.TongTien.toLocaleString('vi-VN')}đ</span>
+                          <span className="font-medium ml-2">{Number(selectedHoaDonForCharges.TongTien || 0).toLocaleString('vi-VN')}đ</span>
                         </div>
                       </div>
                     </div>

@@ -25,6 +25,14 @@ export default function ContractInfo() {
         }
       } catch (error: any) {
         if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          // 404 = không có hợp đồng (empty state sẽ xử lý) - không hiển thị toast
+          if (error.response?.status === 404) {
+            console.info('Khách thuê chưa có hợp đồng');
+            setLoading(false);
+            return;
+          }
+
+          // Chỉ hiển thị toast cho lỗi thực sự (500, network, etc.)
           console.error('Lỗi tải hợp đồng:', getErrorMessage(error));
           toast.error({
             title: 'Lỗi tải dữ liệu',
@@ -80,15 +88,58 @@ export default function ContractInfo() {
   // Empty state
   if (!contractInfo) {
     return (
-      <div className="text-center py-12">
-        <i className="ri-file-text-line text-6xl text-gray-400 mb-4"></i>
-        <p className="text-gray-500">Không tìm thấy thông tin hợp đồng</p>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="mb-6">
+            <i className="ri-file-text-line text-6xl text-gray-400"></i>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-3">
+            Chưa có hợp đồng thuê
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Bạn chưa có hợp đồng thuê phòng hiện tại hoặc hợp đồng đã hết hiệu lực.
+          </p>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
+            <div className="flex items-start">
+              <i className="ri-lightbulb-line text-amber-600 text-xl mr-3 mt-0.5"></i>
+              <div>
+                <h4 className="font-medium text-amber-900 mb-2">Hướng dẫn</h4>
+                <ul className="text-sm text-amber-800 space-y-1.5">
+                  <li>• Liên hệ ban quản lý để ký hợp đồng mới</li>
+                  <li>• Chuẩn bị CCCD/CMND và giấy tờ cần thiết</li>
+                  <li>• Đọc kỹ điều khoản trước khi ký kết</li>
+                  <li>• Giữ lại bản hợp đồng để theo dõi</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start text-left">
+              <i className="ri-customer-service-line text-blue-600 text-xl mr-3 mt-0.5"></i>
+              <div>
+                <h4 className="font-medium text-blue-900 mb-2">Cần hỗ trợ?</h4>
+                <p className="text-sm text-blue-800">
+                  Liên hệ ban quản lý qua hotline <strong>1900 xxxx</strong> hoặc email{' '}
+                  <strong>support@phongtro.com</strong> để được tư vấn chi tiết.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Hợp đồng thuê</h1>
+        <p className="text-gray-600">Thông tin chi tiết về hợp đồng của bạn</p>
+      </div>
+
       {/* Thông tin hợp đồng */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex justify-between items-center mb-6">

@@ -1,5 +1,28 @@
 import httpClient from '../lib/http-client';
+import { PhongTro } from './phong-tro.service';
+import { HopDong } from './hop-dong.service';
 
+// Interface cho Chi tiết hóa đơn
+export interface ChiTietHoaDon {
+  MaChiTiet: number;
+  MaHoaDon: number;
+  NoiDung: string;
+  SoLuong: string;
+  DonGia: string;
+  ThanhTien: string;
+}
+
+// Interface cho Thanh toán
+export interface ThanhToan {
+  MaThanhToan: number;
+  MaHoaDon: number;
+  SoTien: string;
+  NgayThanhToan: string;
+  PhuongThuc: string;
+  GhiChu?: string | null;
+}
+
+// Interface chính cho Hóa đơn - KHỚP VỚI BACKEND
 export interface HoaDon {
   MaHoaDon: number;
   MaPhong: number;
@@ -7,45 +30,17 @@ export interface HoaDon {
   Thang: string;
   NgayLap: string;
   NgayHetHan: string;
-  TongTien: number;
-  DaThanhToan: number;
-  ConLai: number;
+  TongTien: string;  // Backend trả về string
+  DaThanhToan: string;  // Backend trả về string
+  ConLai: string;  // Backend trả về string
   TrangThai: string;
-  GhiChu?: string;
+  GhiChu?: string | null;
 
-  // Relations (nếu Backend trả về)
-  phongTro?: {
-    MaPhong: number;
-    TenPhong: string;
-    MaDay?: number;
-    DayTro?: {
-      MaDay: number;
-      TenDay: string;
-    };
-  };
-  hopDong?: {
-    MaHopDong: number;
-    SoHopDong: string;
-    TenKhachThue?: string;
-    khachThue?: {
-      MaKhachThue: number;
-      HoTen: string;
-      CCCD?: string;
-      SDT1?: string;
-      Email?: string;
-    };
-  };
+  // Relations - KHỚP VỚI BACKEND
+  phongTro?: PhongTro;
+  hopDong?: HopDong;
   chiTietHoaDon?: ChiTietHoaDon[];
-  thanhToan?: any[];
-}
-
-export interface ChiTietHoaDon {
-  id?: number;
-  maHoaDon?: number;
-  noiDung: string;
-  soLuong: number | string;
-  donGia: number | string;
-  thanhTien: number | string;
+  thanhToan?: ThanhToan[];
 }
 
 export interface CreateHoaDonRequest {

@@ -149,6 +149,13 @@ export default function CustomerOverview() {
                 }
             } catch (error: any) {
                 if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+                    // 404 = không có phòng (empty state sẽ xử lý) - không hiển thị toast
+                    if (error.response?.status === 404) {
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Chỉ hiển thị toast cho lỗi thực sự (500, network, etc.)
                     toast.error({ title: 'Lỗi tải dữ liệu', message: getErrorMessage(error) });
                     setLoading(false);
                 }
@@ -421,21 +428,101 @@ export default function CustomerOverview() {
                                 <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
                             </div>
                         </div>
-                    ) : !tenantInfo ? (
-                        <div className="flex items-center justify-center h-full">
-                            <div className="text-center">
-                                <i className="ri-error-warning-line text-4xl text-red-500"></i>
-                                <p className="mt-4 text-gray-600">Không tìm thấy thông tin phòng</p>
-                                <button
-                                    onClick={refreshData}
-                                    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                                >
-                                    Tải lại
-                                </button>
-                            </div>
-                        </div>
                     ) : (
                     <div className="max-w-7xl mx-auto space-y-6">
+                        {!tenantInfo ? (
+                            /* Empty State - Chưa có phòng */
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+                                <div className="max-w-2xl mx-auto">
+                                    <div className="text-center mb-8">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-4">
+                                            <i className="ri-home-smile-line text-3xl text-blue-600"></i>
+                                        </div>
+                                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                                            Chưa có thông tin phòng
+                                        </h3>
+                                        <p className="text-gray-600">
+                                            Bạn chưa được phân phòng hoặc chưa có hợp đồng thuê hiện tại.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                        {/* Hướng dẫn */}
+                                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                            <div className="flex items-start">
+                                                <i className="ri-roadmap-line text-green-600 text-xl mr-3 mt-0.5"></i>
+                                                <div>
+                                                    <h4 className="font-medium text-green-900 mb-2">Các bước tiếp theo</h4>
+                                                    <ol className="text-sm text-green-800 space-y-1.5 list-decimal list-inside">
+                                                        <li>Liên hệ ban quản lý để xem phòng</li>
+                                                        <li>Chọn phòng phù hợp với nhu cầu</li>
+                                                        <li>Chuẩn bị giấy tờ và ký hợp đồng</li>
+                                                        <li>Đóng tiền cọc và nhận phòng</li>
+                                                    </ol>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Thông tin liên hệ */}
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                            <div className="flex items-start">
+                                                <i className="ri-customer-service-line text-blue-600 text-xl mr-3 mt-0.5"></i>
+                                                <div>
+                                                    <h4 className="font-medium text-blue-900 mb-2">Liên hệ hỗ trợ</h4>
+                                                    <ul className="text-sm text-blue-800 space-y-1.5">
+                                                        <li className="flex items-center">
+                                                            <i className="ri-phone-line mr-2"></i>
+                                                            Hotline: <strong className="ml-1">1900 xxxx</strong>
+                                                        </li>
+                                                        <li className="flex items-center">
+                                                            <i className="ri-mail-line mr-2"></i>
+                                                            Email: <strong className="ml-1">support@phongtro.com</strong>
+                                                        </li>
+                                                        <li className="flex items-center">
+                                                            <i className="ri-time-line mr-2"></i>
+                                                            Giờ làm việc: 8:00 - 17:00 (T2-T6)
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Thông tin hữu ích */}
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                                        <div className="flex items-start">
+                                            <i className="ri-lightbulb-line text-amber-600 text-xl mr-3 mt-0.5"></i>
+                                            <div>
+                                                <h4 className="font-medium text-amber-900 mb-2">Lưu ý quan trọng</h4>
+                                                <ul className="text-sm text-amber-800 space-y-1">
+                                                    <li>• Chuẩn bị CCCD/CMND và giấy tờ cá nhân</li>
+                                                    <li>• Đọc kỹ nội quy và điều khoản hợp đồng</li>
+                                                    <li>• Kiểm tra tình trạng phòng trước khi nhận</li>
+                                                    <li>• Giữ liên lạc với ban quản lý qua hệ thống này</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-center">
+                                        <button
+                                            onClick={refreshData}
+                                            className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
+                                        >
+                                            <i className="ri-refresh-line mr-2"></i>
+                                            Tải lại thông tin
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                        {/* Page Header */}
+                        <div className="mb-8">
+                            <h1 className="text-2xl font-bold text-gray-900 mb-2">Trang cá nhân</h1>
+                            <p className="text-gray-600">Quản lý thông tin phòng trọ của bạn</p>
+                        </div>
+
                         {/* Quick Actions */}
                         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <button
@@ -590,6 +677,8 @@ export default function CustomerOverview() {
                                 )}
                             </div>
                         </section>
+                        </>
+                        )}
                     </div>
                     )}
                 </main>

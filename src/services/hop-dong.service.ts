@@ -4,10 +4,22 @@ import { KhachThue } from './khach-thue.service';
 import { DichVu } from './dich-vu.service';
 
 // =================== INTERFACES ===================
+// Interface cho dịch vụ trong hợp đồng (pivot table)
+export interface HopDongDichVu {
+  MaHopDongDichVu: number;
+  MaDichVu: number;
+  TenDichVu: string;
+  DonViTinh: string;
+  GiaApDung: string;
+  SoLuong: number;
+}
+
 // Interface này dựa trên HopDongResource của Laravel
 export interface HopDong {
   MaHopDong: number;
   SoHopDong: string;
+  MaPhong: number;
+  MaKhachThue: number;
   NgayBatDau: string; // 'DD/MM/YYYY'
   NgayKetThuc: string; // 'DD/MM/YYYY'
   NgayKy: string; // 'DD/MM/YYYY'
@@ -17,10 +29,10 @@ export interface HopDong {
   SoLanGiaHan: number;
   GhiChu?: string | null;
 
-  // Dữ liệu từ các quan hệ (eager-loaded)
-  phong?: PhongTro;
+  // Dữ liệu từ các quan hệ (eager-loaded) - KHỚP VỚI BACKEND
+  phongTro?: PhongTro;
   khachThue?: KhachThue;
-  dichVus?: DichVu[];
+  hopDongDichVus?: HopDongDichVu[];
 
   // Các trường được làm phẳng để tiện sử dụng
   TenKhachThue: string;

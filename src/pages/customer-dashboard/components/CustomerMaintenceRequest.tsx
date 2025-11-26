@@ -229,6 +229,12 @@ export default function MaintenanceRequest() {
 
   return (
     <div className="max-w-7xl mx-auto">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Yêu cầu sửa chữa</h1>
+        <p className="text-gray-600">Quản lý các yêu cầu sửa chữa và bảo trì</p>
+      </div>
+
       {/* Header section */}
       <div className="flex justify-end items-center mb-6">
         <button

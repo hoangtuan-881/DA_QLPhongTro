@@ -217,6 +217,129 @@ export default function Maintenance() {
     }
   };
 
+  // ===== Handler Functions =====
+  const handleViewDetail = (request: MaintenanceRequest) => {
+    setSelectedRequest(request);
+    setShowDetailModal(true);
+  };
+
+  const handleCreateRequest = async () => {
+    if (!newRequest.MaKhachThue || !newRequest.TieuDe || !newRequest.MoTa) {
+      warning({ title: 'Cảnh báo', message: 'Vui lòng điền đầy đủ thông tin bắt buộc' });
+      return;
+    }
+
+    try {
+      await maintenanceService.create(newRequest);
+      success({ title: 'Thành công', message: 'Tạo yêu cầu bảo trì thành công' });
+      setShowAddModal(false);
+      setNewRequest({
+        MaKhachThue: 0,
+        TieuDe: '',
+        MoTa: '',
+        PhanLoai: 'electrical',
+        MucDoUuTien: 'medium',
+        GhiChu: '',
+        ChiPhiThucTe: undefined,
+        HinhAnhMinhChung: []
+      });
+      refreshRequestsData();
+    } catch (err) {
+      error({ title: 'Lỗi', message: getErrorMessage(err) });
+    }
+  };
+
+  const handleUpdate = (request: MaintenanceRequest) => {
+    setSelectedRequest(request);
+    setUpdateData({
+      TrangThai: request.status as 'pending' | 'on_hold' | 'in_progress' | 'completed' | 'cancelled',
+      GhiChu: request.notes || '',
+      ChiPhiThucTe: request.actualCost,
+      HinhAnhMinhChung: []
+    });
+    setShowUpdateModal(true);
+  };
+
+  const handleAssign = (request: MaintenanceRequest) => {
+    setSelectedRequest(request);
+    setAssignData({
+      MaNhanVienPhanCong: null,
+      GhiChu: ''
+    });
+    setShowAssignModal(true);
+  };
+
+  const handleAssignTechnician = async () => {
+    if (!selectedRequest || !assignData.MaNhanVienPhanCong) {
+      warning({ title: 'Cảnh báo', message: 'Vui lòng chọn nhân viên' });
+      return;
+    }
+
+    try {
+      const payload: MaintenanceRequestAssign = {
+        MaNhanVienPhanCong: assignData.MaNhanVienPhanCong,
+        GhiChu: assignData.GhiChu
+      };
+      await maintenanceService.assign(selectedRequest.id, payload);
+      success({ title: 'Thành công', message: 'Phân công nhân viên thành công' });
+      setShowAssignModal(false);
+      setSelectedRequest(null);
+      refreshRequestsData();
+    } catch (err) {
+      error({ title: 'Lỗi', message: getErrorMessage(err) });
+    }
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!selectedRequest || !updateData.TrangThai) {
+      warning({ title: 'Cảnh báo', message: 'Vui lòng chọn trạng thái' });
+      return;
+    }
+
+    try {
+      await maintenanceService.updateStatus(selectedRequest.id, updateData);
+      success({ title: 'Thành công', message: 'Cập nhật trạng thái thành công' });
+      setShowUpdateModal(false);
+      setSelectedRequest(null);
+      refreshRequestsData();
+    } catch (err) {
+      error({ title: 'Lỗi', message: getErrorMessage(err) });
+    }
+  };
+
+  const handleQuickStatusChange = async (id: number, status: string) => {
+    try {
+      await maintenanceService.updateStatus(id, {
+        TrangThai: status as 'pending' | 'on_hold' | 'in_progress' | 'completed' | 'cancelled',
+        GhiChu: '',
+        ChiPhiThucTe: undefined,
+        HinhAnhMinhChung: []
+      });
+      success({ title: 'Thành công', message: 'Cập nhật trạng thái thành công' });
+      refreshRequestsData();
+    } catch (err) {
+      error({ title: 'Lỗi', message: getErrorMessage(err) });
+    }
+  };
+
+  const handleDeleteRequest = (id: number) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Xác nhận xóa',
+      message: 'Bạn có chắc chắn muốn xóa yêu cầu bảo trì này?',
+      onConfirm: async () => {
+        try {
+          await maintenanceService.delete(id);
+          success({ title: 'Thành công', message: 'Xóa yêu cầu thành công' });
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+          refreshRequestsData();
+        } catch (err) {
+          error({ title: 'Lỗi', message: getErrorMessage(err) });
+        }
+      }
+    });
+  };
+
   const filteredRequests = requests.filter(request => {
     const statusMatch = filterStatus === 'all' || request.status === filterStatus;
     const priorityMatch = filterPriority === 'all' || request.priority === filterPriority;
@@ -488,38 +611,25 @@ export default function Maintenance() {
                     <h2 className="text-xl font-bold text-gray-900 mb-6">Tạo yêu cầu bảo trì mới</h2>
 
                     <form className="space-y-4">
-                      {/* HÀNG 1: DÃY, PHÒNG, NGƯỜI BÁO CÁO */}
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Dãy trọ *</label>
-                          <input
-                            type="text"
-                            value={newRequest.building}
-                            onChange={(e) => setNewRequest({ ...newRequest, building: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                            placeholder="VD: Dãy A"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Phòng *</label>
-                          <input
-                            type="text"
-                            value={newRequest.room}
-                            onChange={(e) => setNewRequest({ ...newRequest, room: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                            placeholder="VD: A101"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Người báo cáo *</label>
-                          <input
-                            type="text"
-                            value={newRequest.reportedBy}
-                            onChange={(e) => setNewRequest({ ...newRequest, reportedBy: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                            placeholder="Tên khách thuê"
-                          />
-                        </div>
+                      {/* HÀNG 1: KHÁCH THUÊ */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Khách thuê *</label>
+                        {loadingTenants ? (
+                          <div className="text-gray-500 text-sm">Đang tải...</div>
+                        ) : (
+                          <select
+                            value={newRequest.MaKhachThue || ''}
+                            onChange={(e) => setNewRequest({ ...newRequest, MaKhachThue: Number(e.target.value) })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
+                          >
+                            <option value="">Chọn khách thuê</option>
+                            {allTenants.map(tenant => (
+                              <option key={tenant.MaKhachThue} value={tenant.MaKhachThue}>
+                                {tenant.HoTen} - {tenant.TenPhong || 'Chưa có phòng'}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
 
                       {/* HÀNG 2: DANH MỤC, MỨC ĐỘ */}
@@ -527,8 +637,8 @@ export default function Maintenance() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục</label>
                           <select
-                            value={newRequest.category}
-                            onChange={(e) => setNewRequest({ ...newRequest, category: e.target.value })}
+                            value={newRequest.PhanLoai}
+                            onChange={(e) => setNewRequest({ ...newRequest, PhanLoai: e.target.value })}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                           >
                             <option value="electrical">Điện</option>
@@ -541,8 +651,8 @@ export default function Maintenance() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Mức độ ưu tiên</label>
                           <select
-                            value={newRequest.priority}
-                            onChange={(e) => setNewRequest({ ...newRequest, priority: e.target.value })}
+                            value={newRequest.MucDoUuTien}
+                            onChange={(e) => setNewRequest({ ...newRequest, MucDoUuTien: e.target.value })}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                           >
                             <option value="low">Thấp</option>
@@ -558,8 +668,8 @@ export default function Maintenance() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Tiêu đề *</label>
                         <input
                           type="text"
-                          value={newRequest.title}
-                          onChange={(e) => setNewRequest({ ...newRequest, title: e.target.value })}
+                          value={newRequest.TieuDe}
+                          onChange={(e) => setNewRequest({ ...newRequest, TieuDe: e.target.value })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           placeholder="Mô tả ngắn gọn vấn đề"
                         />
@@ -569,15 +679,27 @@ export default function Maintenance() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết *</label>
                         <textarea
-                          value={newRequest.description}
-                          onChange={(e) => setNewRequest({ ...newRequest, description: e.target.value })}
+                          value={newRequest.MoTa}
+                          onChange={(e) => setNewRequest({ ...newRequest, MoTa: e.target.value })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           rows={4}
                           placeholder="Mô tả chi tiết vấn đề cần sửa chữa..."
                         ></textarea>
                       </div>
 
-                      {/* HÀNG 5: NÚT BẤM */}
+                      {/* HÀNG 5: GHI CHÚ */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+                        <textarea
+                          value={newRequest.GhiChu}
+                          onChange={(e) => setNewRequest({ ...newRequest, GhiChu: e.target.value })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          rows={2}
+                          placeholder="Ghi chú thêm (nếu có)..."
+                        ></textarea>
+                      </div>
+
+                      {/* HÀNG 6: NÚT BẤM */}
                       <div className="flex gap-3 pt-4">
                         <button
                           type="button"
@@ -612,22 +734,29 @@ export default function Maintenance() {
                     <form className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Chọn nhân viên *</label>
-                        <select
-                          value={assignData.technician}
-                          onChange={(e) => setAssignData({ ...assignData, technician: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
-                        >
-                          <option value="">Chọn nhân viên</option>
-                          <option value="Tuấn">Tuấn</option>
-                          <option value="My">My</option>
-                        </select>
+                        {loadingNhanViens ? (
+                          <div className="text-gray-500 text-sm">Đang tải...</div>
+                        ) : (
+                          <select
+                            value={assignData.MaNhanVienPhanCong || ''}
+                            onChange={(e) => setAssignData({ ...assignData, MaNhanVienPhanCong: Number(e.target.value) })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
+                          >
+                            <option value="">Chọn nhân viên</option>
+                            {allNhanViens.map(nv => (
+                              <option key={nv.MaNV} value={nv.MaNV}>
+                                {nv.HoTen}{nv.SDT ? ` - ${nv.SDT}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
                         <textarea
-                          value={assignData.notes}
-                          onChange={(e) => setAssignData({ ...assignData, notes: e.target.value })}
+                          value={assignData.GhiChu}
+                          onChange={(e) => setAssignData({ ...assignData, GhiChu: e.target.value })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           rows={3}
                           placeholder="Ghi chú thêm về công việc..."
@@ -667,11 +796,11 @@ export default function Maintenance() {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái mới *</label>
                         <select
-                          value={updateData.status}
-                          onChange={(e) => setUpdateData({ ...updateData, status: e.target.value })}
+                          value={updateData.TrangThai}
+                          onChange={(e) => setUpdateData({ ...updateData, TrangThai: e.target.value as 'pending' | 'on_hold' | 'in_progress' | 'completed' | 'cancelled' })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
                         >
-                          <option value="">Chọn trạng thái</option>
+                          <option value="pending">Chờ xử lý</option>
                           <option value="in_progress">Đang thực hiện</option>
                           <option value="on_hold">Tạm dừng</option>
                           <option value="completed">Hoàn thành</option>
@@ -680,17 +809,28 @@ export default function Maintenance() {
                       </div>
 
                       <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Chi phí thực tế</label>
+                        <input
+                          type="number"
+                          value={updateData.ChiPhiThucTe || ''}
+                          onChange={(e) => setUpdateData({ ...updateData, ChiPhiThucTe: e.target.value ? Number(e.target.value) : undefined })}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                          placeholder="Nhập chi phí (nếu có)"
+                        />
+                      </div>
+
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú cập nhật</label>
                         <textarea
-                          value={updateData.notes}
-                          onChange={(e) => setUpdateData({ ...updateData, notes: e.target.value })}
+                          value={updateData.GhiChu}
+                          onChange={(e) => setUpdateData({ ...updateData, GhiChu: e.target.value })}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
                           rows={3}
                           placeholder="Ghi chú về tiến độ, vấn đề gặp phải..."
                         />
                       </div>
 
-                      {updateData.status === 'completed' && (
+                      {updateData.TrangThai === 'completed' && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh hoàn thành</label>
                           <input

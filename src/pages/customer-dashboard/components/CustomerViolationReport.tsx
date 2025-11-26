@@ -151,6 +151,12 @@ export default function CustomerViolationReport() {
     return (
         <>
             <div className="space-y-6">
+                {/* Page Header */}
+                <div className="mb-8">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Vi phạm nội quy</h1>
+                    <p className="text-gray-600">Lịch sử vi phạm và báo cáo mới</p>
+                </div>
+
                 {/* Lịch sử vi phạm */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <div className="flex justify-between items-center mb-4">

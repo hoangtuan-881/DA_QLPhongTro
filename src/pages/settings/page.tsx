@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
+import { caiDatHeThongService } from '../../services/cai-dat-he-thong.service';
+import { getErrorMessage } from '../../lib/http-client';
 
 interface SystemSettings {
   siteName: string;
@@ -20,14 +22,18 @@ interface SystemSettings {
   maintenanceMode: boolean;
   maxLoginAttempts: number;
   sessionTimeout: number;
-  // removed pricing-related fields:
-  // defaultRentPrice, electricityPrice, waterPrice, servicePrice, depositRate, paymentDueDays
+}
+
+interface PricingSettings {
+  gia_dien: string;
+  gia_nuoc_nguoi: string;
 }
 
 export default function Settings() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
   const [hasChanges, setHasChanges] = useState(false);
+  const [loading, setLoading] = useState(false);
   const toast = useToast();
 
   const [settings, setSettings] = useState<SystemSettings>({
@@ -49,6 +55,59 @@ export default function Settings() {
     sessionTimeout: 30
   });
 
+  const [pricingSettings, setPricingSettings] = useState<PricingSettings>({
+    gia_dien: '3500',
+    gia_nuoc_nguoi: '60000'
+  });
+
+  const [originalPricing, setOriginalPricing] = useState<PricingSettings>({
+    gia_dien: '3500',
+    gia_nuoc_nguoi: '60000'
+  });
+
+  // Fetch pricing settings from API
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchPricingSettings = async () => {
+      try {
+        setLoading(true);
+        const response = await caiDatHeThongService.getAll(controller.signal);
+
+        if (!controller.signal.aborted && response.data.data) {
+          const settingsMap: Record<string, string> = {};
+          response.data.data.forEach((setting) => {
+            settingsMap[setting.KeyCaiDat] = setting.GiaTri;
+          });
+
+          const newPricing: PricingSettings = {
+            gia_dien: settingsMap['gia_dien'] || '3500',
+            gia_nuoc_nguoi: settingsMap['gia_nuoc_nguoi'] || '60000'
+          };
+
+          setPricingSettings(newPricing);
+          setOriginalPricing(newPricing);
+        }
+      } catch (error: any) {
+        if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          console.error('Error fetching pricing settings:', error);
+          toast.error({
+            title: 'Lỗi tải cài đặt',
+            message: getErrorMessage(error)
+          });
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchPricingSettings();
+
+    return () => controller.abort();
+  }, []);
+
   const handleSettingChange = (key: keyof SystemSettings, value: any) => {
     setSettings(prev => ({
       ...prev,
@@ -57,41 +116,77 @@ export default function Settings() {
     setHasChanges(true);
   };
 
-  const handleSaveSettings = () => {
-    // Simulate API call
-    setTimeout(() => {
+  const handlePricingChange = (key: keyof PricingSettings, value: string) => {
+    setPricingSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
+    setHasChanges(true);
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      setLoading(true);
+
+      // Save pricing settings if on pricing tab
+      if (activeTab === 'pricing') {
+        await caiDatHeThongService.updateBulk([
+          { key: 'gia_dien', value: pricingSettings.gia_dien },
+          { key: 'gia_nuoc_nguoi', value: pricingSettings.gia_nuoc_nguoi }
+        ]);
+
+        setOriginalPricing(pricingSettings);
+        toast.success({
+          title: 'Lưu cài đặt thành công!',
+          message: 'Giá dịch vụ đã được cập nhật'
+        });
+      } else {
+        // Simulate API call for other settings
+        await new Promise(resolve => setTimeout(resolve, 500));
+        toast.success({
+          title: 'Lưu cài đặt thành công!',
+          message: 'Tất cả thay đổi đã được áp dụng'
+        });
+      }
+
       setHasChanges(false);
-      toast.success({
-        title: 'Lưu cài đặt thành công!',
-        message: 'Tất cả thay đổi đã được áp dụng'
+    } catch (error: any) {
+      toast.error({
+        title: 'Lỗi lưu cài đặt',
+        message: getErrorMessage(error)
       });
-    }, 500);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleResetSettings = () => {
     if (confirm('Bạn có chắc chắn muốn khôi phục cài đặt mặc định?')) {
-      // Reset to default values (simple approach: reload initial object)
-      setSettings({
-        siteName: 'Hệ thống quản lý trọ',
-        siteDescription: 'Quản lý nhà trọ hiện đại và tiện lợi',
-        contactEmail: 'contact@tro.com',
-        contactPhone: '0901234567',
-        address: '123 Đường ABC, Quận 1, TP.HCM',
-        timezone: 'Asia/Ho_Chi_Minh',
-        currency: 'VNĐ',
-        language: 'vi',
-        dateFormat: 'dd/MM/yyyy',
-        emailNotifications: true,
-        smsNotifications: false,
-        autoBackup: true,
-        backupTime: '02:00',
-        maintenanceMode: false,
-        maxLoginAttempts: 5,
-        sessionTimeout: 30
-      });
+      if (activeTab === 'pricing') {
+        setPricingSettings(originalPricing);
+      } else {
+        setSettings({
+          siteName: 'Hệ thống quản lý trọ',
+          siteDescription: 'Quản lý nhà trọ hiện đại và tiện lợi',
+          contactEmail: 'contact@tro.com',
+          contactPhone: '0901234567',
+          address: '123 Đường ABC, Quận 1, TP.HCM',
+          timezone: 'Asia/Ho_Chi_Minh',
+          currency: 'VNĐ',
+          language: 'vi',
+          dateFormat: 'dd/MM/yyyy',
+          emailNotifications: true,
+          smsNotifications: false,
+          autoBackup: true,
+          backupTime: '02:00',
+          maintenanceMode: false,
+          maxLoginAttempts: 5,
+          sessionTimeout: 30
+        });
+      }
       setHasChanges(true);
       toast.info({
-        title: 'Đã khôi phục cài đặt mặc định',
+        title: 'Đã khôi phục cài đặt',
         message: 'Vui lòng lưu để áp dụng thay đổi'
       });
     }
@@ -101,7 +196,7 @@ export default function Settings() {
     { id: 'general', name: 'Chung', icon: 'ri-settings-line' },
     { id: 'notifications', name: 'Thông báo', icon: 'ri-notification-line' },
     { id: 'security', name: 'Bảo mật', icon: 'ri-shield-line' },
-    // pricing removed
+    { id: 'pricing', name: 'Giá dịch vụ', icon: 'ri-money-dollar-circle-line' },
     { id: 'system', name: 'Hệ thống', icon: 'ri-computer-line' }
   ];
 
@@ -124,6 +219,9 @@ export default function Settings() {
                 <div className="flex space-x-3">
                   <button
                     onClick={() => {
+                      if (activeTab === 'pricing') {
+                        setPricingSettings(originalPricing);
+                      }
                       setHasChanges(false);
                       toast.info({
                         title: 'Đã hủy thay đổi',
@@ -131,15 +229,17 @@ export default function Settings() {
                       });
                     }}
                     className="border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition duration-200 whitespace-nowrap"
+                    disabled={loading}
                   >
                     Hủy thay đổi
                   </button>
                   <button
                     onClick={handleSaveSettings}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-200 whitespace-nowrap"
+                    disabled={loading}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-200 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <i className="ri-save-line mr-2"></i>
-                    Lưu cài đặt
+                    {loading ? 'Đang lưu...' : 'Lưu cài đặt'}
                   </button>
                 </div>
               )}
@@ -311,6 +411,86 @@ export default function Settings() {
                               />
                               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
                             </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pricing Settings */}
+                  {activeTab === 'pricing' && (
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Cài đặt giá dịch vụ</h3>
+                        <p className="text-sm text-gray-600 mb-6">
+                          Cấu hình giá điện và nước được sử dụng khi tạo hóa đơn tự động
+                        </p>
+
+                        {loading && (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                          </div>
+                        )}
+
+                        {!loading && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex items-center mb-3">
+                                <i className="ri-flashlight-line text-2xl text-blue-600 mr-3"></i>
+                                <div>
+                                  <div className="font-medium text-gray-900">Giá điện</div>
+                                  <div className="text-xs text-gray-600">VNĐ/kWh</div>
+                                </div>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                step="100"
+                                value={pricingSettings.gia_dien}
+                                onChange={(e) => handlePricingChange('gia_dien', e.target.value)}
+                                className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                placeholder="Nhập giá điện"
+                              />
+                              <p className="text-xs text-gray-600 mt-2">
+                                Giá hiện tại: {parseInt(pricingSettings.gia_dien).toLocaleString('vi-VN')} VNĐ/kWh
+                              </p>
+                            </div>
+
+                            <div className="p-4 bg-cyan-50 border border-cyan-200 rounded-lg">
+                              <div className="flex items-center mb-3">
+                                <i className="ri-drop-line text-2xl text-cyan-600 mr-3"></i>
+                                <div>
+                                  <div className="font-medium text-gray-900">Giá nước</div>
+                                  <div className="text-xs text-gray-600">VNĐ/người/tháng</div>
+                                </div>
+                              </div>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1000"
+                                value={pricingSettings.gia_nuoc_nguoi}
+                                onChange={(e) => handlePricingChange('gia_nuoc_nguoi', e.target.value)}
+                                className="w-full px-3 py-2 border border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm"
+                                placeholder="Nhập giá nước"
+                              />
+                              <p className="text-xs text-gray-600 mt-2">
+                                Giá hiện tại: {parseInt(pricingSettings.gia_nuoc_nguoi).toLocaleString('vi-VN')} VNĐ/người
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          <div className="flex">
+                            <i className="ri-information-line text-yellow-600 mr-3 flex-shrink-0 mt-1"></i>
+                            <div className="text-sm text-gray-700">
+                              <p className="font-medium mb-1">Lưu ý</p>
+                              <ul className="list-disc list-inside space-y-1 text-gray-600">
+                                <li>Thay đổi giá sẽ áp dụng cho các hóa đơn mới được tạo</li>
+                                <li>Hóa đơn đã tạo sẽ giữ nguyên giá tại thời điểm xuất</li>
+                                <li>Giá được lưu vào database, không cần deploy code để thay đổi</li>
+                              </ul>
+                            </div>
                           </div>
                         </div>
                       </div>

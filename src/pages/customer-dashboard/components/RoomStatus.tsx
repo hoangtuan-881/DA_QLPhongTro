@@ -37,6 +37,14 @@ export default function RoomStatus() {
         }
       } catch (error: any) {
         if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+          // 404 = không có phòng (empty state sẽ xử lý) - không hiển thị toast
+          if (error.response?.status === 404) {
+            console.info('Khách thuê chưa có phòng');
+            setLoading(false);
+            return;
+          }
+
+          // Chỉ hiển thị toast cho lỗi thực sự (500, network, etc.)
           console.error('Lỗi tải trạng thái phòng:', getErrorMessage(error));
           toast.error({
             title: 'Lỗi tải dữ liệu',
@@ -92,15 +100,70 @@ export default function RoomStatus() {
   // Empty state
   if (!thongTinPhong) {
     return (
-      <div className="text-center py-12">
-        <i className="ri-home-4-line text-6xl text-gray-400 mb-4"></i>
-        <p className="text-gray-500">Không tìm thấy thông tin phòng</p>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <div className="max-w-lg mx-auto text-center">
+          <div className="mb-6">
+            <i className="ri-home-4-line text-6xl text-gray-400"></i>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-3">
+            Chưa có thông tin phòng
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Bạn chưa được phân phòng hoặc chưa có hợp đồng thuê hiện tại.
+            Vui lòng liên hệ ban quản lý để được hỗ trợ tìm phòng phù hợp.
+          </p>
+
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-left">
+            <div className="flex items-start">
+              <i className="ri-search-line text-green-600 text-xl mr-3 mt-0.5"></i>
+              <div>
+                <h4 className="font-medium text-green-900 mb-2">Quy trình thuê phòng</h4>
+                <ol className="text-sm text-green-800 space-y-1.5 list-decimal list-inside">
+                  <li>Liên hệ ban quản lý để xem phòng</li>
+                  <li>Chọn phòng phù hợp với nhu cầu</li>
+                  <li>Chuẩn bị giấy tờ và ký hợp đồng</li>
+                  <li>Đóng tiền cọc và nhận phòng</li>
+                  <li>Đăng ký các dịch vụ cần thiết</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start text-left">
+              <i className="ri-information-line text-blue-600 text-xl mr-3 mt-0.5"></i>
+              <div>
+                <h4 className="font-medium text-blue-900 mb-2">Thông tin liên hệ</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li className="flex items-center">
+                    <i className="ri-phone-line mr-2"></i>
+                    Hotline: <strong className="ml-1">1900 xxxx</strong>
+                  </li>
+                  <li className="flex items-center">
+                    <i className="ri-mail-line mr-2"></i>
+                    Email: <strong className="ml-1">support@phongtro.com</strong>
+                  </li>
+                  <li className="flex items-center">
+                    <i className="ri-time-line mr-2"></i>
+                    Giờ làm việc: 8:00 - 17:00 (Thứ 2 - Thứ 6)
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Trạng thái phòng</h1>
+        <p className="text-gray-600">Thông tin chi tiết về phòng trọ của bạn</p>
+      </div>
+
       {/* Thông tin phòng */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">

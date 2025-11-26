@@ -130,6 +130,12 @@ export default function CustomerInvoices() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
+            {/* Page Header */}
+            <div className="mb-8">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Hóa đơn</h1>
+                <p className="text-gray-600">Quản lý và thanh toán hóa đơn hàng tháng</p>
+            </div>
+
             {/* ===== Hóa đơn mới nhất (tổng quan) ===== */}
             <section className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200">

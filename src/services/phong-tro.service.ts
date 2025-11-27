@@ -47,7 +47,7 @@ export interface PhongTro {
 }
 
 export type PhongTroCreateInput = Omit<PhongTro,
-  'MaPhong' | 'TenDay' | 'TenLoaiPhong' | 'dayTro' | 'loaiPhong' | 'khachThue' | 'dichVuDangKy' | 'thietBis'
+  'MaPhong' | 'TenDay' | 'TenLoaiPhong' | 'LoaiPhong' | 'GiaThue' | 'TienCoc' | 'dayTro' | 'loaiPhong' | 'khachThue' | 'dichVuDangKy' | 'thietBis'
 >;
 
 export type PhongTroUpdateInput = Partial<PhongTroCreateInput>;

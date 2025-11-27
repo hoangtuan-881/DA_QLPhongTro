@@ -3,6 +3,7 @@ import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
+import Pagination from '../../components/base/Pagination';
 import phongTroService, { PhongTro, PhongTroCreateInput, PhongTroUpdateInput } from '../../services/phong-tro.service';
 import dayTroService, { DayTro, DayTroCreateInput, DayTroUpdateInput } from '../../services/day-tro.service';
 import loaiPhongService, { LoaiPhong } from '../../services/loai-phong.service';
@@ -10,7 +11,10 @@ import dichVuService, { DichVu } from '../../services/dich-vu.service';
 import loaiDichVuService, { LoaiDichVu } from '../../services/loai-dich-vu.service';
 import thietBiService, { ThietBi, ThietBiCreateInput } from '../../services/thiet-bi.service';
 import khachThueService, { KhachThue } from '../../services/khach-thue.service';
+import uploadService from '../../services/upload.service';
+import hopDongService from '../../services/hop-dong.service';
 import { getErrorMessage } from '../../lib/http-client';
+import { getImageUrl } from '../../lib/image-helper';
 
 
 
@@ -72,7 +76,17 @@ export default function Rooms() {
   const [loadingKhachThue, setLoadingKhachThue] = useState(false);
 
   // Change room states
-  const [changeRoomData, setChangeRoomData] = useState<{ fromRoom: PhongTro | null; toRoom: string }>({ fromRoom: null, toRoom: '' });
+  const [changeRoomData, setChangeRoomData] = useState<{
+    fromRoom: PhongTro | null;
+    toRoom: string;
+    lyDo: string;
+    ngayChuyển: string;
+  }>({
+    fromRoom: null,
+    toRoom: '',
+    lyDo: '',
+    ngayChuyển: new Date().toISOString().split('T')[0] // Default: today
+  });
 
   // Grid/List view and bulk operations
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -87,14 +101,21 @@ export default function Rooms() {
     loading: false
   });
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+
   const toast = useToast();
 
   // State cho form "Thêm Phòng Mới"
   const [newRoomData, setNewRoomData] = useState({
     number: '',
     building: '',
-    type: '' // Sẽ được set sau khi fetch loaiPhongs
+    type: '', // Sẽ được set sau khi fetch loaiPhongs
+    HinhAnh: '' // URL hình ảnh
   });
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
 
   // ====== FETCH DATA ======
   useEffect(() => {
@@ -148,6 +169,11 @@ export default function Rooms() {
     fetchDayTros();
     return () => controller.abort();
   }, [refreshKey]);
+
+  // Reset page khi filter thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, filterStatus, filterType, searchTerm]);
 
   // Fetch Loại Phòng
   useEffect(() => {
@@ -241,8 +267,6 @@ export default function Rooms() {
         return 'bg-green-100 text-green-800';
       case 'Đã thuê':
         return 'bg-blue-100 text-blue-800';
-      case 'Đã cho thuê':
-        return 'bg-blue-100 text-blue-800';
       case 'Bảo trì':
         return 'bg-yellow-100 text-yellow-800';
       case 'Đã cọc':
@@ -278,6 +302,27 @@ export default function Rooms() {
     return matchesBuilding && matchesStatus && matchesType && matchesSearch;
   });
 
+  // ====== PAGINATION ======
+  const totalPages = Math.ceil(filteredPhongTros.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, filteredPhongTros.length);
+
+  // Phòng hiển thị theo trang
+  const paginatedPhongTros = filteredPhongTros.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (perPage: number) => {
+    setItemsPerPage(perPage);
+    setCurrentPage(1);
+  };
+
   // ====== BULK SELECTION ======
   const handleSelectAll = () => {
     if (selectedRooms.length === filteredPhongTros.length) {
@@ -292,7 +337,7 @@ export default function Rooms() {
   };
 
   // ====== BULK OPS ======
-  const handleBulkStatusChange = (newTrangThai: 'Trống' | 'Đã cho thuê' | 'Bảo trì') => {
+  const handleBulkStatusChange = (newTrangThai: 'Trống' | 'Đã thuê' | 'Bảo trì') => {
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận thay đổi trạng thái',
@@ -323,7 +368,7 @@ export default function Rooms() {
   };
 
   const handleBulkDelete = () => {
-    const occupiedPhongTros = phongTros.filter(phongTro => selectedRooms.includes(phongTro.MaPhong) && phongTro.TrangThai === 'Đã cho thuê');
+    const occupiedPhongTros = phongTros.filter(phongTro => selectedRooms.includes(phongTro.MaPhong) && phongTro.TrangThai === 'Đã thuê');
 
     if (occupiedPhongTros.length > 0) {
       toast.error({
@@ -360,7 +405,7 @@ export default function Rooms() {
 
   // ====== SINGLE ROOM OPS ======
   const handleDeleteRoom = (phongTro: PhongTro) => {
-    if (phongTro.TrangThai === 'Đã cho thuê') {
+    if (phongTro.TrangThai === 'Đã thuê') {
       toast.error({
         title: 'Không thể xóa',
         message: 'Phòng đang được thuê. Vui lòng trả phòng trước khi xóa.'
@@ -396,7 +441,12 @@ export default function Rooms() {
   };
 
   const handleChangeRoom = (phongTro: PhongTro) => {
-    setChangeRoomData({ fromRoom: phongTro, toRoom: '' });
+    setChangeRoomData({
+      fromRoom: phongTro,
+      toRoom: '',
+      lyDo: '',
+      ngayChuyển: new Date().toISOString().split('T')[0]
+    });
     setShowChangeRoomModal(true);
   };
 
@@ -478,16 +528,26 @@ export default function Rooms() {
     setNewRoomData({
       number: '',
       building: buildingName,
-      type: loaiPhongs[0]?.TenLoaiPhong || ''
+      type: loaiPhongs[0]?.TenLoaiPhong || '',
+      HinhAnh: ''
     });
     setShowAddModal(true);
     // Không cần setSelectedBuilding nữa
   };
 
-  // Chuyển phòng: chuyển tenant/members/dịch vụ từ phòng A → phòng B (phòng B phải available)
+  // Helper: Convert DD/MM/YYYY to YYYY-MM-DD
+  const convertDateFormat = (ddmmyyyy: string): string => {
+    const parts = ddmmyyyy.split('/');
+    if (parts.length !== 3) return ddmmyyyy;
+    return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+  };
+
+  // Chuyển phòng: Chấm dứt hợp đồng cũ, tạo hợp đồng mới cho phòng mới
   const handleConfirmChangeRoom = async () => {
     const from = changeRoomData.fromRoom;
     const toNumber = changeRoomData.toRoom;
+    const { lyDo, ngayChuyển } = changeRoomData;
+
     if (!from || !toNumber) return;
 
     // Tìm phòng đích
@@ -503,21 +563,110 @@ export default function Rooms() {
     }
 
     try {
-      // Update phòng cũ về trạng thái trống
-      await phongTroService.update(from.MaPhong, { TrangThai: 'Trống' });
+      toast.info({ title: 'Đang xử lý...', message: 'Vui lòng đợi' });
 
-      // Update phòng mới sang trạng thái đã cho thuê
-      await phongTroService.update(toPhong.MaPhong, { TrangThai: 'Đã cho thuê' });
+      // 0. Refresh danh sách phòng trước để đảm bảo data mới nhất
+      const phongTrosRefreshResponse = await phongTroService.getAll();
+      const latestPhongTros = phongTrosRefreshResponse.data.data || [];
+
+      // Kiểm tra lại cả 2 phòng có tồn tại không
+      const fromPhongExists = latestPhongTros.find(p => p.MaPhong === from.MaPhong);
+      const toPhongExists = latestPhongTros.find(p => p.MaPhong === toPhong.MaPhong);
+
+      if (!fromPhongExists) {
+        toast.error({
+          title: 'Lỗi',
+          message: `Phòng ${from.TenPhong} không còn tồn tại. Vui lòng refresh trang.`
+        });
+        refreshData();
+        return;
+      }
+
+      if (!toPhongExists) {
+        toast.error({
+          title: 'Lỗi',
+          message: `Phòng ${toPhong.TenPhong} không còn tồn tại. Vui lòng refresh trang.`
+        });
+        refreshData();
+        return;
+      }
+
+      // Kiểm tra lại trạng thái phòng đích
+      if (toPhongExists.TrangThai !== 'Trống') {
+        toast.error({
+          title: 'Không thể đổi',
+          message: `Phòng ${toPhong.TenPhong} hiện không còn trống (${toPhongExists.TrangThai}). Vui lòng chọn phòng khác.`
+        });
+        refreshData();
+        return;
+      }
+
+      // 1. Lấy danh sách hợp đồng để tìm hợp đồng hiện tại của phòng cũ
+      const hopDongsResponse = await hopDongService.getAll();
+      const hopDongs = hopDongsResponse.data.data || [];
+
+      // Tìm hợp đồng đang hiệu lực của phòng cũ
+      const activeContract = hopDongs.find(
+        hd => hd.MaPhong === from.MaPhong && hd.TrangThai === 'DangHieuLuc'
+      );
+
+      if (!activeContract) {
+        toast.error({
+          title: 'Lỗi',
+          message: 'Không tìm thấy hợp đồng đang hiệu lực của phòng này'
+        });
+        return;
+      }
+
+      // 2. Chấm dứt hợp đồng cũ
+      const ghiChuChamDut = `Chấm dứt do chuyển sang phòng ${toPhong.TenPhong}. Lý do: ${lyDo || 'Không có'}`;
+      await hopDongService.terminate(activeContract.MaHopDong, { GhiChu: ghiChuChamDut });
+
+      // 3. Tạo hợp đồng mới cho phòng mới với cùng thông tin
+      const soHopDongMoi = `HD${Date.now()}`; // Generate unique contract number
+
+      // Lấy danh sách dịch vụ từ hợp đồng cũ
+      const dichVuIds = activeContract.hopDongDichVus?.map(dv => dv.MaDichVu) || [];
+
+      // Convert NgayKetThuc từ DD/MM/YYYY sang YYYY-MM-DD
+      const ngayKetThucFormatted = convertDateFormat(activeContract.NgayKetThuc);
+
+      const newContractData = {
+        SoHopDong: soHopDongMoi,
+        MaPhong: toPhong.MaPhong,
+        MaKhachThue: activeContract.MaKhachThue,
+        NgayKy: ngayChuyển,
+        NgayBatDau: ngayChuyển,
+        NgayKetThuc: ngayKetThucFormatted, // ✅ Đã convert sang YYYY-MM-DD
+        TienCoc: parseFloat(activeContract.TienCoc || '0'),
+        TienThueHangThang: parseFloat(activeContract.TienThueHangThang || '0'),
+        GhiChu: `Hợp đồng mới sau khi chuyển từ phòng ${from.TenPhong}. ${lyDo || ''}`,
+        DichVuIds: dichVuIds
+      };
+
+      await hopDongService.create(newContractData);
+
+      // 4. Cập nhật trạng thái phòng
+      await phongTroService.update(from.MaPhong, { TrangThai: 'Trống' });
+      await phongTroService.update(toPhong.MaPhong, { TrangThai: 'Đã thuê' });
 
       toast.success({
         title: 'Chuyển phòng thành công',
-        message: `Đã chuyển khách từ phòng ${from.TenPhong} sang phòng ${toNumber}`
+        message: `Đã chuyển khách từ phòng ${from.TenPhong} sang phòng ${toPhong.TenPhong}. Hợp đồng cũ đã chấm dứt và hợp đồng mới đã được tạo.`
       });
+
       setShowChangeRoomModal(false);
-      setChangeRoomData({ fromRoom: null, toRoom: '' });
+      setChangeRoomData({
+        fromRoom: null,
+        toRoom: '',
+        lyDo: '',
+        ngayChuyển: new Date().toISOString().split('T')[0]
+      });
       refreshData();
     } catch (error) {
       toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
+      // Refresh data để đảm bảo UI sync với backend
+      refreshData();
     }
   };
 
@@ -725,6 +874,15 @@ export default function Rooms() {
     }
 
     try {
+      let imageUrl: string | null = null;
+
+      // Upload hình ảnh nếu có
+      if (selectedImageFile) {
+        toast.info({ title: 'Đang tải lên hình ảnh...', message: 'Vui lòng đợi' });
+        const uploadResponse = await uploadService.uploadImage(selectedImageFile);
+        imageUrl = uploadResponse.data.data.url; // Backend: { message, data: { url, path, filename } }
+      }
+
       const createData: PhongTroCreateInput = {
         MaDay: dayTro.MaDay,
         MaLoaiPhong: loaiPhong.MaLoaiPhong,
@@ -733,7 +891,9 @@ export default function Rooms() {
         DienTich: loaiPhong.DienTich,
         TrangThai: 'Trống',
         MoTa: null,
-        TienNghi: loaiPhong.TienNghi
+        TienNghi: loaiPhong.TienNghi,
+        HinhAnh: imageUrl,
+        GiaThueHienTai: null
       };
 
       await phongTroService.create(createData);
@@ -747,8 +907,11 @@ export default function Rooms() {
       setNewRoomData({
         number: '',
         building: '',
-        type: loaiPhongs[0]?.TenLoaiPhong || ''
+        type: loaiPhongs[0]?.TenLoaiPhong || '',
+        HinhAnh: ''
       });
+      setSelectedImageFile(null);
+      setImagePreview('');
       refreshData();
     } catch (error) {
       toast.error({ title: 'Lỗi', message: getErrorMessage(error) });
@@ -1027,25 +1190,46 @@ export default function Rooms() {
             {!loading && viewMode === 'grid' && (
               // Grid View
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredPhongTros.map((phongTro) => (
+                {paginatedPhongTros.map((phongTro) => (
                   <div key={phongTro.MaPhong} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedRooms.includes(phongTro.MaPhong)}
-                            onChange={() => handleSelectRoom(phongTro.MaPhong)}
-                            className="mr-3 h-4 w-4 text-indigo-600 rounded"
-                          />
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{phongTro.TenPhong}</h3>
-                            <p className="text-sm text-gray-600">• {phongTro.TenLoaiPhong}</p>
+                    {/* Hình ảnh phòng */}
+                    <div className="relative h-48 bg-gray-200">
+                      {getImageUrl(phongTro.HinhAnh) ? (
+                        <img
+                          src={getImageUrl(phongTro.HinhAnh)!}
+                          alt={phongTro.TenPhong}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                          <div className="text-center">
+                            <i className="ri-image-line text-4xl text-gray-400 mb-2"></i>
+                            <p className="text-sm text-gray-500">Chưa có hình ảnh</p>
                           </div>
                         </div>
+                      )}
+                      <div className="absolute top-2 right-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(phongTro.TrangThai)}`}>
                           {phongTro.TrangThai}
                         </span>
+                      </div>
+                    </div>
+
+                    <div className="p-6">
+                      <div className="flex items-start mb-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedRooms.includes(phongTro.MaPhong)}
+                          onChange={() => handleSelectRoom(phongTro.MaPhong)}
+                          className="mr-3 h-4 w-4 text-indigo-600 rounded mt-1"
+                        />
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{phongTro.TenPhong}</h3>
+                          <p className="text-sm text-gray-600">• {phongTro.TenLoaiPhong}</p>
+                        </div>
                       </div>
 
                       <div className="space-y-2 mb-4">
@@ -1098,7 +1282,7 @@ export default function Rooms() {
                         </div>
 
                         {/* Quick Actions */}
-                        {phongTro.TrangThai === 'Đã cho thuê' && (
+                        {phongTro.TrangThai === 'Đã thuê' && (
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleChangeRoom(phongTro)}
@@ -1123,6 +1307,23 @@ export default function Rooms() {
               </div>
             )}
 
+            {/* Pagination for Grid View */}
+            {!loading && viewMode === 'grid' && filteredPhongTros.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredPhongTros.length}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                itemsPerPage={itemsPerPage}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                onNext={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+                onPrev={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                itemLabel="phòng"
+              />
+            )}
+
             {/* List View */}
             {!loading && viewMode === 'list' && (
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -1138,6 +1339,7 @@ export default function Rooms() {
                             className="h-4 w-4 text-indigo-600 rounded"
                           />
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hình ảnh</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phòng</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dãy</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại</th>
@@ -1148,7 +1350,7 @@ export default function Rooms() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredPhongTros.map((phongTro) => (
+                      {paginatedPhongTros.map((phongTro) => (
                         <tr key={phongTro.MaPhong} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
@@ -1157,6 +1359,22 @@ export default function Rooms() {
                               onChange={() => handleSelectRoom(phongTro.MaPhong)}
                               className="h-4 w-4 text-indigo-600 rounded"
                             />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {getImageUrl(phongTro.HinhAnh) ? (
+                              <img
+                                src={getImageUrl(phongTro.HinhAnh)!}
+                                alt={phongTro.TenPhong}
+                                className="w-20 h-14 object-cover rounded"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-20 h-14 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded">
+                                <i className="ri-image-line text-xl text-gray-400"></i>
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{phongTro.TenPhong}</div>
@@ -1194,7 +1412,7 @@ export default function Rooms() {
                               >
                                 <i className="ri-edit-line"></i>
                               </button>
-                              {phongTro.TrangThai === 'Đã cho thuê' && (
+                              {phongTro.TrangThai === 'Đã thuê' && (
                                 <>
                                   <button
                                     onClick={() => handleChangeRoom(phongTro)}
@@ -1219,6 +1437,23 @@ export default function Rooms() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination for List View */}
+                {filteredPhongTros.length > 0 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={filteredPhongTros.length}
+                    startIndex={startIndex}
+                    endIndex={endIndex}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={handlePageChange}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                    onNext={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+                    onPrev={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                    itemLabel="phòng"
+                  />
+                )}
               </div>
             )}
 
@@ -1243,6 +1478,27 @@ export default function Rooms() {
                 <button onClick={() => setSelectedPhongTro(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
                   <i className="ri-close-line text-xl"></i>
                 </button>
+              </div>
+
+              {/* Hình ảnh phòng */}
+              <div className="mb-6">
+                {getImageUrl(selectedPhongTro.HinhAnh) ? (
+                  <img
+                    src={getImageUrl(selectedPhongTro.HinhAnh)!}
+                    alt={selectedPhongTro.TenPhong}
+                    className="w-full h-64 object-cover rounded-lg"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-64 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg">
+                    <div className="text-center">
+                      <i className="ri-image-line text-6xl text-gray-400 mb-3"></i>
+                      <p className="text-gray-500">Chưa có hình ảnh</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Detail Content */}
@@ -1316,6 +1572,15 @@ export default function Rooms() {
                     <i className="ri-edit-line mr-2"></i>
                     Chỉnh sửa
                   </button>
+                  {selectedPhongTro.TrangThai === 'Đã thuê' && (
+                    <button
+                      onClick={() => handleChangeRoom(selectedPhongTro)}
+                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 cursor-pointer"
+                    >
+                      <i className="ri-arrow-left-right-line mr-2"></i>
+                      Đổi phòng
+                    </button>
+                  )}
                   <button
                     onClick={() => handleDeleteRoom(selectedPhongTro)}
                     className="px-4 py-2 border border-red-600 text-red-600 rounded-lg hover:bg-red-50 cursor-pointer"
@@ -1521,6 +1786,63 @@ export default function Rooms() {
                   <p className="text-xs text-gray-500 mt-1">
                     Diện tích & giá sẽ tự lấy từ loại phòng khi lưu.
                   </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Hình ảnh
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Kiểm tra kích thước file (max 2MB)
+                        if (file.size > 2 * 1024 * 1024) {
+                          toast.error({ title: 'Lỗi', message: 'Kích thước file không được vượt quá 2MB' });
+                          e.target.value = '';
+                          return;
+                        }
+                        setSelectedImageFile(file);
+                        // Tạo preview
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setImagePreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      } else {
+                        setSelectedImageFile(null);
+                        setImagePreview('');
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Chọn file hình ảnh (JPEG, PNG, JPG, GIF, WEBP). Tối đa 2MB. Để trống nếu muốn dùng hình mặc định.
+                  </p>
+                  {imagePreview && (
+                    <div className="mt-2 relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedImageFile(null);
+                          setImagePreview('');
+                          // Reset input file
+                          const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+                          if (input) input.value = '';
+                        }}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -2473,12 +2795,23 @@ export default function Rooms() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Lý do đổi phòng</label>
-                  <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2" rows={3} placeholder="Nhập lý do đổi phòng..."></textarea>
+                  <textarea
+                    value={changeRoomData.lyDo}
+                    onChange={(e) => setChangeRoomData({ ...changeRoomData, lyDo: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    rows={3}
+                    placeholder="Nhập lý do đổi phòng..."
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Ngày chuyển</label>
-                  <input type="date" className="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                  <input
+                    type="date"
+                    value={changeRoomData.ngayChuyển}
+                    onChange={(e) => setChangeRoomData({ ...changeRoomData, ngayChuyển: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  />
                 </div>
               </div>
 

@@ -78,6 +78,9 @@ export const API_ENDPOINTS = {
 
   // Cai Dat He Thong (System Settings)
   CAI_DAT_HE_THONG: '/admin/cai-dat-he-thong',
+
+  // Upload
+  UPLOAD: '/admin/upload',
 } as const;
 
 // HTTP Status Codes

@@ -1579,7 +1579,7 @@ export default function Payments() {
                         Tiền thuê
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Điện/Nước
+                        Dịch vụ
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Tổng tiền
@@ -1624,102 +1624,102 @@ export default function Payments() {
                               </div>
                             </div>
                           </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            Tháng {hoaDon.Thang}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Hạn: {new Date(hoaDon.NgayHetHan).toLocaleDateString('vi-VN')}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">
-                            {hoaDon.chiTietHoaDon?.find(ct => ct.NoiDung?.includes('Tiền thuê'))?.ThanhTien
-                              ? formatCurrency(hoaDon.chiTietHoaDon.find(ct => ct.NoiDung?.includes('Tiền thuê'))?.ThanhTien || '0')
-                              : '-'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {hoaDon.chiTietHoaDon && hoaDon.chiTietHoaDon.length > 0 ? (
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
-                              {hoaDon.chiTietHoaDon
-                                .filter(ct => !ct.NoiDung?.includes('Tiền thuê'))
-                                .map((ct, idx) => (
-                                  <div key={ct.MaChiTiet || idx} className="text-xs">
-                                    {ct.NoiDung}: {formatCurrency(ct.ThanhTien || '0')}
-                                  </div>
-                                ))}
+                              Tháng {hoaDon.Thang}
                             </div>
-                          ) : (
-                            <div className="text-sm text-gray-500">-</div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {formatCurrency(hoaDon.TongTien)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-green-600">
-                            {formatCurrency(hoaDon.DaThanhToan)}
-                          </div>
-                          {Number(hoaDon.ConLai || 0) > 0 && (
-                            <div className="text-xs text-red-600">
-                              Còn lại: {formatCurrency(hoaDon.ConLai)}
+                            <div className="text-xs text-gray-500">
+                              Hạn: {new Date(hoaDon.NgayHetHan).toLocaleDateString('vi-VN')}
                             </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(hoaDon.TrangThai)}`}>
-                            {getStatusText(hoaDon.TrangThai)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleViewDetail(hoaDon)}
-                              className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
-                              title="Xem chi tiết"
-                            >
-                              <i className="ri-eye-line"></i>
-                            </button>
-                            {hoaDon.TrangThai !== 'da_thanh_toan' && (
-                              <>
-                                <button
-                                  onClick={() => handleAddAdditionalCharge(hoaDon)}
-                                  className="text-orange-600 hover:text-orange-900 cursor-pointer"
-                                  title="Thêm phát sinh"
-                                >
-                                  <i className="ri-add-circle-line"></i>
-                                </button>
-                                <button
-                                  onClick={() => handleCollectPayment(hoaDon)}
-                                  className="text-green-600 hover:text-green-900 cursor-pointer"
-                                  title="Thu tiền"
-                                >
-                                  <i className="ri-money-dollar-circle-line"></i>
-                                </button>
-                                <button
-                                  onClick={() => handleSendPaymentNotification(hoaDon)}
-                                  className="text-blue-600 hover:text-blue-900 cursor-pointer"
-                                  title="Gửi thông báo"
-                                >
-                                  <i className="ri-notification-line"></i>
-                                </button>
-                              </>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-500">
+                              {hoaDon.chiTietHoaDon?.find(ct => ct.NoiDung?.includes('Tiền thuê'))?.ThanhTien
+                                ? formatCurrency(hoaDon.chiTietHoaDon.find(ct => ct.NoiDung?.includes('Tiền thuê'))?.ThanhTien || '0')
+                                : '-'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {hoaDon.chiTietHoaDon && hoaDon.chiTietHoaDon.length > 0 ? (
+                              <div className="text-sm text-gray-900">
+                                {hoaDon.chiTietHoaDon
+                                  .filter(ct => !ct.NoiDung?.includes('Tiền thuê'))
+                                  .map((ct, idx) => (
+                                    <div key={ct.MaChiTiet || idx} className="text-xs">
+                                      {ct.NoiDung}: {formatCurrency(ct.ThanhTien || '0')}
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-gray-500">-</div>
                             )}
-                            <button
-                              onClick={() => handleDeletePayment(hoaDon.MaHoaDon)}
-                              className="text-red-600 hover:text-red-900 cursor-pointer"
-                              title="Xóa"
-                            >
-                              <i className="ri-delete-bin-line"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {formatCurrency(hoaDon.TongTien)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-green-600">
+                              {formatCurrency(hoaDon.DaThanhToan)}
+                            </div>
+                            {Number(hoaDon.ConLai || 0) > 0 && (
+                              <div className="text-xs text-red-600">
+                                Còn lại: {formatCurrency(hoaDon.ConLai)}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(hoaDon.TrangThai)}`}>
+                              {getStatusText(hoaDon.TrangThai)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => handleViewDetail(hoaDon)}
+                                className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
+                                title="Xem chi tiết"
+                              >
+                                <i className="ri-eye-line"></i>
+                              </button>
+                              {hoaDon.TrangThai !== 'da_thanh_toan' && (
+                                <>
+                                  <button
+                                    onClick={() => handleAddAdditionalCharge(hoaDon)}
+                                    className="text-orange-600 hover:text-orange-900 cursor-pointer"
+                                    title="Thêm phát sinh"
+                                  >
+                                    <i className="ri-add-circle-line"></i>
+                                  </button>
+                                  <button
+                                    onClick={() => handleCollectPayment(hoaDon)}
+                                    className="text-green-600 hover:text-green-900 cursor-pointer"
+                                    title="Thu tiền"
+                                  >
+                                    <i className="ri-money-dollar-circle-line"></i>
+                                  </button>
+                                  <button
+                                    onClick={() => handleSendPaymentNotification(hoaDon)}
+                                    className="text-blue-600 hover:text-blue-900 cursor-pointer"
+                                    title="Gửi thông báo"
+                                  >
+                                    <i className="ri-notification-line"></i>
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                onClick={() => handleDeletePayment(hoaDon.MaHoaDon)}
+                                className="text-red-600 hover:text-red-900 cursor-pointer"
+                                title="Xóa"
+                              >
+                                <i className="ri-delete-bin-line"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -2000,7 +2000,7 @@ export default function Payments() {
                 </div>
               </div>
             )
-          }
+            }
 
             {/* Bulk Invoice Modal */}
             {showBulkModal && (

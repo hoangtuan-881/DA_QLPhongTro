@@ -58,17 +58,23 @@ export default function ContractInfo() {
     return statusMap[trangThai || ''] || trangThai || 'N/A';
   };
 
-  // Tính tổng dịch vụ
+  const toNumber = (value: any) =>
+    typeof value === 'string'
+      ? Number(value.replace(/\./g, '')) || 0
+      : Number(value) || 0;
+
   const totalServices = useMemo(() => {
     if (!contractInfo) return 0;
-    return contractInfo.DichVu.reduce((sum, dv) => sum + dv.DonGiaApDung, 0);
+    return contractInfo.DichVu.reduce((sum, dv) => {
+      return sum + toNumber(dv.DonGiaApDung);
+    }, 0);
   }, [contractInfo]);
 
-  // Tổng thanh toán hàng tháng
   const totalMonthly = useMemo(() => {
     if (!contractInfo) return 0;
-    return contractInfo.TienThueHangThang + totalServices;
+    return toNumber(contractInfo.TienThueHangThang) + totalServices;
   }, [contractInfo, totalServices]);
+
 
   const handleViewContract = () => {
     if (!contractInfo) return;

@@ -164,11 +164,19 @@ export default function Bookings() {
     return phongTros.find(p => p.MaPhong === maPhong);
   };
 
-  const availableTenants = khachThues.filter(tenant =>
-    tenant.HoTen.toLowerCase().includes(tenantSearch.toLowerCase()) ||
-    tenant.SDT1.includes(tenantSearch) ||
-    (tenant.CCCD && tenant.CCCD.includes(tenantSearch))
-  );
+  const availableTenants = khachThues.filter(tenant => {
+    // Chỉ lấy khách CHƯA CÓ PHÒNG (để tạo hợp đồng mới)
+    if (tenant.MaPhong) {
+      return false;
+    }
+
+    // Search filter
+    return (
+      tenant.HoTen.toLowerCase().includes(tenantSearch.toLowerCase()) ||
+      tenant.SDT1.includes(tenantSearch) ||
+      (tenant.CCCD && tenant.CCCD.includes(tenantSearch))
+    );
+  });
 
   const availableRooms = phongTros.filter(room => room.TrangThai === 'Trống');
 
@@ -1055,11 +1063,13 @@ export default function Bookings() {
                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
                       >
                         <option value="">-- Chọn khách hàng --</option>
-                        {khachThues.map(k => (
-                          <option key={k.MaKhachThue} value={k.MaKhachThue}>
-                            {k.HoTen} - {k.SDT1}
-                          </option>
-                        ))}
+                        {khachThues
+                          .filter(k => !k.MaPhong)
+                          .map(k => (
+                            <option key={k.MaKhachThue} value={k.MaKhachThue}>
+                              {k.HoTen} - {k.SDT1}
+                            </option>
+                          ))}
                       </select>
                       {selectedBookingCustomer && (
                         <div className="mt-2 p-3 bg-gray-50 rounded-lg text-sm space-y-1">

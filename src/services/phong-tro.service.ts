@@ -11,6 +11,15 @@ export interface ThietBiPhong {
   GhiChu?: string;
 }
 
+export interface HopDongDichVu {
+  MaHopDongDichVu: number;
+  MaDichVu: number;
+  TenDichVu: string;
+  DonViTinh: string;
+  GiaApDung: string;
+  SoLuong: number;
+}
+
 export interface PhongTro {
   MaPhong: number;
   MaDay: number;
@@ -43,6 +52,7 @@ export interface PhongTro {
   };
   khachThue?: any[];
   dichVuDangKy?: any[];
+  hopDongDichVu?: HopDongDichVu[];
   thietBis?: ThietBiPhong[];
 }
 

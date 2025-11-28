@@ -1,6 +1,7 @@
 import httpClient from '../lib/http-client';
 import { PhongTro } from './phong-tro.service';
 import { HopDong } from './hop-dong.service';
+import { NhanVien } from './nhan-vien.service';
 
 // Interface cho Chi tiết hóa đơn
 export interface ChiTietHoaDon {
@@ -27,6 +28,7 @@ export interface HoaDon {
   MaHoaDon: number;
   MaPhong: number;
   MaHopDong?: number;
+  MaNV?: number;
   Thang: string;
   NgayLap: string;
   NgayHetHan: string;
@@ -39,6 +41,7 @@ export interface HoaDon {
   // Relations - KHỚP VỚI BACKEND
   phongTro?: PhongTro;
   hopDong?: HopDong;
+  nhanVien?: NhanVien;
   chiTietHoaDon?: ChiTietHoaDon[];
   thanhToan?: ThanhToan[];
 }

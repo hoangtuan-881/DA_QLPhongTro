@@ -14,6 +14,9 @@ export default function TenantsPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingKhachThue, setEditingKhachThue] = useState<KhachThue | null>(null);
+  const [newVehiclePlate, setNewVehiclePlate] = useState('');
+  const [newKhachThueVehicles, setNewKhachThueVehicles] = useState<string[]>([]);
+  const [newKhachThueVehiclePlate, setNewKhachThueVehiclePlate] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -30,7 +33,6 @@ export default function TenantsPage() {
     DiaChiThuongTru: '',
     NgaySinh: '',
     NoiSinh: '',
-    BienSoXe: '',
     GhiChu: '',
     TenDangNhap: '',
     password: 'password123'
@@ -121,8 +123,46 @@ export default function TenantsPage() {
   });
 
   const handleEditKhachThue = (khachThue: KhachThue) => {
-    setEditingKhachThue({ ...khachThue });
+    setEditingKhachThue({ ...khachThue, xes: khachThue.xes || [] });
+    setNewVehiclePlate('');
     setShowEditModal(true);
+  };
+
+  const handleAddVehicle = () => {
+    if (!editingKhachThue || !newVehiclePlate.trim()) return;
+
+    const newXe = {
+      MaXe: Date.now(), // Temporary ID for new vehicles
+      MaKhachThue: editingKhachThue.MaKhachThue,
+      BienSoXe: newVehiclePlate.trim(),
+      GhiChu: null
+    };
+
+    setEditingKhachThue({
+      ...editingKhachThue,
+      xes: [...(editingKhachThue.xes || []), newXe]
+    });
+    setNewVehiclePlate('');
+  };
+
+  const handleRemoveVehicle = (maXe: number) => {
+    if (!editingKhachThue) return;
+
+    setEditingKhachThue({
+      ...editingKhachThue,
+      xes: (editingKhachThue.xes || []).filter(xe => xe.MaXe !== maXe)
+    });
+  };
+
+  const handleAddNewKhachThueVehicle = () => {
+    if (!newKhachThueVehiclePlate.trim()) return;
+
+    setNewKhachThueVehicles([...newKhachThueVehicles, newKhachThueVehiclePlate.trim()]);
+    setNewKhachThueVehiclePlate('');
+  };
+
+  const handleRemoveNewKhachThueVehicle = (index: number) => {
+    setNewKhachThueVehicles(newKhachThueVehicles.filter((_, i) => i !== index));
   };
 
   const handleDeleteKhachThue = (khachThue: KhachThue) => {
@@ -183,11 +223,12 @@ export default function TenantsPage() {
         DiaChiThuongTru: '',
         NgaySinh: '',
         NoiSinh: '',
-        BienSoXe: '',
         GhiChu: '',
         TenDangNhap: '',
         password: 'password123'
       });
+      setNewKhachThueVehicles([]);
+      setNewKhachThueVehiclePlate('');
       setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
       toast.success({ title: 'Thêm thành công', message: `Đã thêm khách thuê "${formData.HoTen}" vào hệ thống` });
       refreshData();
@@ -414,6 +455,13 @@ export default function TenantsPage() {
                             <span className="font-medium"></span>{' '}
                             {khachThue.DiaChiThuongTru || '-'}
                           </div>
+                          {khachThue.xes && khachThue.xes.length > 0 && (
+                            <div className="text-xs text-gray-600 mt-1">
+                              <span className="font-medium">Xe: </span>
+                              {khachThue.xes.slice(0, 2).map(xe => xe.BienSoXe).join(', ')}
+                              {khachThue.xes.length > 2 && '...'}
+                            </div>
+                          )}
                         </td>
 
                         {/* 3) Phòng đã ở */}
@@ -562,16 +610,27 @@ export default function TenantsPage() {
                       <span className="text-gray-600">Địa chỉ thường trú:</span>
                       <span className="font-medium text-right">{selectedKhachThue.DiaChiThuongTru || '-'}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Biển số xe:</span>
-                      <span className="font-medium">{selectedKhachThue.BienSoXe || '-'}</span>
-                    </div>
                     {selectedKhachThue.GhiChu && (
                       <div>
                         <span className="text-gray-600">Ghi chú:</span>
                         <p className="font-medium mt-1">{selectedKhachThue.GhiChu}</p>
                       </div>
                     )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Vehicles Section */}
+              <div className="mt-6">
+                <h3 className="font-semibold text-gray-900 mb-4">Phương tiện</h3>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Biển số xe:</span>
+                    <span className="font-medium text-right">
+                      {selectedKhachThue.xes && selectedKhachThue.xes.length > 0
+                        ? selectedKhachThue.xes.map(xe => xe.BienSoXe).join(', ')
+                        : '-'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -740,15 +799,48 @@ export default function TenantsPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Biển số xe
+                        Phương tiện
                       </label>
-                      <input
-                        type="text"
-                        value={editingKhachThue.BienSoXe || ''}
-                        onChange={e => setEditingKhachThue({ ...editingKhachThue, BienSoXe: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        placeholder="29A1-12345"
-                      />
+
+                      {/* List of existing vehicles */}
+                      {editingKhachThue.xes && editingKhachThue.xes.length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          {editingKhachThue.xes.map((xe) => (
+                            <div key={xe.MaXe} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                              <i className="ri-motorbike-line text-gray-600"></i>
+                              <span className="flex-1 text-sm font-medium text-gray-900">{xe.BienSoXe}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVehicle(xe.MaXe)}
+                                className="text-red-600 hover:text-red-700 cursor-pointer"
+                                title="Xóa xe"
+                              >
+                                <i className="ri-close-line text-lg"></i>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add new vehicle */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newVehiclePlate}
+                          onChange={e => setNewVehiclePlate(e.target.value)}
+                          onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddVehicle())}
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          placeholder="Nhập biển số xe mới..."
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddVehicle}
+                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap"
+                        >
+                          <i className="ri-add-line"></i>
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Thêm hoặc xóa phương tiện</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -928,15 +1020,48 @@ export default function TenantsPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Biển số xe
+                        Phương tiện
                       </label>
-                      <input
-                        type="text"
-                        value={newKhachThue.BienSoXe || ''}
-                        onChange={e => setNewKhachThue({ ...newKhachThue, BienSoXe: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        placeholder="29A1-12345"
-                      />
+
+                      {/* List of vehicles */}
+                      {newKhachThueVehicles.length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          {newKhachThueVehicles.map((plate, index) => (
+                            <div key={index} className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                              <i className="ri-motorbike-line text-gray-600"></i>
+                              <span className="flex-1 text-sm font-medium text-gray-900">{plate}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveNewKhachThueVehicle(index)}
+                                className="text-red-600 hover:text-red-700 cursor-pointer"
+                                title="Xóa xe"
+                              >
+                                <i className="ri-close-line text-lg"></i>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add new vehicle */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newKhachThueVehiclePlate}
+                          onChange={e => setNewKhachThueVehiclePlate(e.target.value)}
+                          onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddNewKhachThueVehicle())}
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                          placeholder="Nhập biển số xe..."
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddNewKhachThueVehicle}
+                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer whitespace-nowrap"
+                        >
+                          <i className="ri-add-line"></i>
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Thêm biển số xe (có thể thêm sau)</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -334,6 +334,18 @@ export default function Payments() {
           .filter(sd => sd.MaPhong === phong.MaPhong)
           .sort((a, b) => new Date(b.NgayGhi).getTime() - new Date(a.NgayGhi).getTime())[0];
 
+        // Lấy thông tin dịch vụ từ hopDongDichVu
+        const dichVuGuiXe = phong.hopDongDichVu?.find(dv => dv.MaDichVu === 6 || dv.TenDichVu === 'Gửi xe');
+        const parkingCount = dichVuGuiXe?.SoLuong || 0;
+
+        // Lấy Internet plan từ hopDongDichVu (MaDichVu: 3 = Internet 1, 4 = Internet 2)
+        const dichVuInternet = phong.hopDongDichVu?.find(dv => [3, 4].includes(dv.MaDichVu) || dv.TenDichVu?.includes('Internet'));
+        const internetPlan: InternetPlan = dichVuInternet?.MaDichVu === 4 || dichVuInternet?.TenDichVu?.includes('2') ? 2 : 1;
+
+        // Kiểm tra có dịch vụ Rác không (MaDichVu = 5)
+        const dichVuRac = phong.hopDongDichVu?.find(dv => dv.MaDichVu === 5 || dv.TenDichVu === 'Rác');
+        const trashIncluded = !!dichVuRac;
+
         return {
           id: phong.MaPhong.toString(),
           room: phong.TenPhong,
@@ -343,9 +355,9 @@ export default function Payments() {
           waterUsage: phong.khachThue?.length || 1, // Số người
           building: phong.TenDay,
           selected: false,
-          internetPlan: 1,
-          parkingCount: 0,
-          trashIncluded: true
+          internetPlan,
+          parkingCount,
+          trashIncluded
         };
       });
 
@@ -808,6 +820,55 @@ export default function Payments() {
       const serviceTotal = internetAmount + trashAmount + parkingAmount;
       return total + room.rentAmount + electricityAmount + waterAmount + serviceTotal + addOn;
     }, 0);
+  };
+
+  // Tính breakdown chi tiết cho tổng kết
+  const calculateBulkBreakdown = () => {
+    const planPrice = (plan: InternetPlan) =>
+      plan === 1 ? bulkSettings.internetPricePlan1 : bulkSettings.internetPricePlan2;
+
+    const selectedRooms = bulkRooms.filter(r => r.selected);
+    const selectedCharges = commonCharges.filter(c => c.selected);
+
+    let totalRent = 0;
+    let totalElectricity = 0;
+    let totalWater = 0;
+    let totalInternet = 0;
+    let totalTrash = 0;
+    let totalParking = 0;
+    let totalParkingCount = 0;
+
+    selectedRooms.forEach(room => {
+      totalRent += room.rentAmount;
+      totalElectricity += room.electricityUsage * bulkSettings.electricityRate;
+      totalWater += room.waterUsage * bulkSettings.waterRate;
+
+      const internetPlan = room.internetPlan ?? bulkSettings.defaultInternetPlan;
+      totalInternet += planPrice(internetPlan);
+
+      const trashAmount = room.trashIncluded === false ? 0 : bulkSettings.trashPrice;
+      totalTrash += trashAmount;
+
+      const parkingCount = room.parkingCount ?? bulkSettings.defaultParkingCount;
+      totalParkingCount += parkingCount;
+      totalParking += parkingCount * bulkSettings.parkingPerVehicle;
+    });
+
+    const totalAdditional = selectedCharges.reduce((s, c) => s + c.amount, 0);
+    const grandTotal = totalRent + totalElectricity + totalWater + totalInternet + totalTrash + totalParking + totalAdditional;
+
+    return {
+      roomCount: selectedRooms.length,
+      totalRent,
+      totalElectricity,
+      totalWater,
+      totalInternet,
+      totalTrash,
+      totalParking,
+      totalParkingCount,
+      totalAdditional,
+      grandTotal
+    };
   };
 
 
@@ -1819,7 +1880,7 @@ export default function Payments() {
                             <div className="flex justify-between text-sm">
                               <span className="text-gray-700">Phí gửi xe:</span>
                               <span className="font-medium text-gray-900">
-                                {bulkSettings.parkingPerVehicle.toLocaleString('vi-VN')}đ / Xe
+                                {bulkSettings.parkingPerVehicle.toLocaleString('vi-VN')}đ/xe
                               </span>
                             </div>
                             <div className="flex justify-between text-sm">
@@ -1971,18 +2032,69 @@ export default function Payments() {
                         </div>
 
                         {/* Summary */}
-                        <div className="bg-green-50 p-4 rounded-lg mt-4">
-                          <h4 className="font-semibold text-gray-900 mb-2">Tổng kết</h4>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-600">Số phòng được chọn:</span>
-                              <span className="font-medium ml-2">{bulkRooms.filter(room => room.selected).length}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Tổng giá trị hóa đơn:</span>
-                              <span className="font-bold ml-2 text-green-600">{calculateBulkTotal().toLocaleString('vi-VN')}đ</span>
-                            </div>
-                          </div>
+                        <div className="bg-green-50 p-5 rounded-lg mt-4">
+                          <h4 className="font-semibold text-gray-900 mb-4 text-lg flex items-center">
+                            <i className="ri-file-list-3-line mr-2"></i>
+                            Tổng kết hóa đơn hàng loạt
+                          </h4>
+                          {(() => {
+                            const breakdown = calculateBulkBreakdown();
+                            return (
+                              <div className="space-y-4">
+                                {/* Header Info */}
+                                <div className="grid grid-cols-2 gap-4 pb-3 border-b border-green-200">
+                                  <div className="flex items-center">
+                                    <i className="ri-building-4-line text-green-600 mr-2"></i>
+                                    <div>
+                                      <div className="text-xs text-gray-500">Số phòng được chọn</div>
+                                      <div className="text-lg font-bold text-gray-900">{breakdown.roomCount}</div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <i className="ri-money-dollar-circle-line text-green-600 mr-2"></i>
+                                    <div>
+                                      <div className="text-xs text-gray-500">Tổng giá trị</div>
+                                      <div className="text-lg font-bold text-green-600">{breakdown.grandTotal.toLocaleString('vi-VN')}đ</div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Breakdown Details */}
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                  <div className="flex justify-between items-center bg-white p-2 rounded">
+                                    <span className="text-gray-600">Tiền thuê phòng:</span>
+                                    <span className="font-semibold text-gray-900">{breakdown.totalRent.toLocaleString('vi-VN')}đ</span>
+                                  </div>
+                                  <div className="flex justify-between items-center bg-white p-2 rounded">
+                                    <span className="text-gray-600">Tiền điện:</span>
+                                    <span className="font-semibold text-gray-900">{breakdown.totalElectricity.toLocaleString('vi-VN')}đ</span>
+                                  </div>
+                                  <div className="flex justify-between items-center bg-white p-2 rounded">
+                                    <span className="text-gray-600">Tiền nước:</span>
+                                    <span className="font-semibold text-gray-900">{breakdown.totalWater.toLocaleString('vi-VN')}đ</span>
+                                  </div>
+                                  <div className="flex justify-between items-center bg-white p-2 rounded">
+                                    <span className="text-gray-600">Tiền internet:</span>
+                                    <span className="font-semibold text-gray-900">{breakdown.totalInternet.toLocaleString('vi-VN')}đ</span>
+                                  </div>
+                                  <div className="flex justify-between items-center bg-white p-2 rounded">
+                                    <span className="text-gray-600">Phí rác:</span>
+                                    <span className="font-semibold text-gray-900">{breakdown.totalTrash.toLocaleString('vi-VN')}đ</span>
+                                  </div>
+                                  <div className="flex justify-between items-center bg-white p-2 rounded">
+                                    <span className="text-gray-600">Phí gửi xe ({breakdown.totalParkingCount} xe):</span>
+                                    <span className="font-semibold text-gray-900">{breakdown.totalParking.toLocaleString('vi-VN')}đ</span>
+                                  </div>
+                                  {breakdown.totalAdditional > 0 && (
+                                    <div className="flex justify-between items-center bg-orange-50 p-2 rounded col-span-2 border border-orange-200">
+                                      <span className="text-gray-600">Chi phí phát sinh:</span>
+                                      <span className="font-semibold text-orange-700">{breakdown.totalAdditional.toLocaleString('vi-VN')}đ</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -2415,7 +2527,17 @@ export default function Payments() {
                         <div className="space-y-3">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Khách thuê:</span>
-                            <span className="font-medium">{selectedHoaDon.hopDong?.khachThue?.HoTen || selectedHoaDon.hopDong?.TenKhachThue || 'Chưa có'}</span>
+                            <span className="font-medium">
+                              {(() => {
+                                const tenKhach = selectedHoaDon.hopDong?.khachThue?.HoTen || selectedHoaDon.hopDong?.TenKhachThue;
+                                console.log('Debug Khách thuê:', {
+                                  khachThueHoTen: selectedHoaDon.hopDong?.khachThue?.HoTen,
+                                  TenKhachThue: selectedHoaDon.hopDong?.TenKhachThue,
+                                  result: tenKhach
+                                });
+                                return tenKhach || 'Chưa có';
+                              })()}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Phòng:</span>
@@ -2434,6 +2556,10 @@ export default function Payments() {
                             <span className="font-medium">
                               {new Date(selectedHoaDon.NgayLap).toLocaleDateString('vi-VN')}
                             </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Người lập:</span>
+                            <span className="font-medium">{selectedHoaDon.nhanVien?.HoTen || 'Chưa có'}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-gray-600">Hạn thanh toán:</span>

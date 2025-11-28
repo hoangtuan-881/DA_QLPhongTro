@@ -1468,7 +1468,7 @@ export default function Rooms() {
       </div>
 
       {/* Room Detail Modal */}
-      {selectedPhongTro && (
+      {selectedPhongTro && !showEditModal && !showCheckOutModal && !showChangeRoomModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setSelectedPhongTro(null)}></div>
@@ -1560,6 +1560,55 @@ export default function Rooms() {
                         <p className="text-gray-500 text-sm">Chưa có thông tin tiện nghi</p>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* Dịch vụ đăng ký */}
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-4">Dịch vụ đăng ký</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    {selectedPhongTro.hopDongDichVu && selectedPhongTro.hopDongDichVu.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-white">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Tên dịch vụ
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Đơn vị tính
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Giá áp dụng
+                              </th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Số lượng
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {selectedPhongTro.hopDongDichVu.map((dichVu) => (
+                              <tr key={dichVu.MaHopDongDichVu}>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {dichVu.TenDichVu}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
+                                  {dichVu.DonViTinh}
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                  {parseFloat(dichVu.GiaApDung).toLocaleString('vi-VN')}đ
+                                </td>
+                                <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
+                                  {dichVu.SoLuong}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm">Chưa có dịch vụ nào được đăng ký</p>
+                    )}
                   </div>
                 </div>
 
@@ -2298,50 +2347,55 @@ export default function Rooms() {
                 {detailActiveTab === 'services' && (
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-4">Dịch vụ đăng ký</h3>
-                    <p className="text-sm text-gray-500 mb-4">Chọn các dịch vụ mà phòng này đăng ký sử dụng:</p>
+                    <p className="text-sm text-gray-500 mb-4">Danh sách các dịch vụ mà phòng này đã đăng ký:</p>
 
-                    {loadingLoaiDichVus ? (
-                      <div className="flex justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                      </div>
-                    ) : loaiDichVus.length > 0 ? (
-                      <div className="space-y-3">
-                        {loaiDichVus.map((loaiDV) => (
-                          <label
-                            key={loaiDV.MaLoaiDV}
-                            className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedDichVuIds.includes(loaiDV.MaLoaiDV)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedDichVuIds([...selectedDichVuIds, loaiDV.MaLoaiDV]);
-                                } else {
-                                  setSelectedDichVuIds(selectedDichVuIds.filter(id => id !== loaiDV.MaLoaiDV));
-                                }
-                              }}
-                              className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                            />
-                            <div className="flex-1">
-                              <div className="font-medium text-gray-900">{loaiDV.TenDichVu}</div>
-                              <div className="text-sm text-gray-600">
-                                {loaiDV.DonGiaMacDinh ? (
-                                  <>Đơn giá: {loaiDV.DonGiaMacDinh.toLocaleString('vi-VN')}đ/{loaiDV.DonViTinh || 'đơn vị'}</>
-                                ) : (
-                                  <>Đơn vị tính: {loaiDV.DonViTinh || 'N/A'}</>
-                                )}
-                              </div>
-                            </div>
-                          </label>
-                        ))}
+                    {editingPhongTro.hopDongDichVu && editingPhongTro.hopDongDichVu.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Tên dịch vụ
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Đơn vị tính
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Giá áp dụng
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Số lượng
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {editingPhongTro.hopDongDichVu.map((dichVu) => (
+                              <tr key={dichVu.MaHopDongDichVu}>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {dichVu.TenDichVu}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                  {dichVu.DonViTinh}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                  {parseFloat(dichVu.GiaApDung).toLocaleString('vi-VN')}đ
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                  {dichVu.SoLuong}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     ) : (
-                      <p className="text-gray-500 italic">Không có dịch vụ nào để chọn</p>
+                      <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                        <p className="text-gray-500">Chưa có dịch vụ nào được đăng ký</p>
+                      </div>
                     )}
 
                     <div className="mt-4 text-sm text-gray-500">
-                      Đã chọn: <span className="font-medium text-indigo-600">{selectedDichVuIds.length}</span> dịch vụ
+                      Tổng số dịch vụ: <span className="font-medium text-indigo-600">{editingPhongTro.hopDongDichVu?.length || 0}</span>
                     </div>
                   </div>
                 )}
@@ -2836,7 +2890,7 @@ export default function Rooms() {
       )}
 
       {/* Check Out Modal */}
-      {showCheckOutModal && selectedRoom && (
+      {showCheckOutModal && selectedPhongTro && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowCheckOutModal(false)}></div>
@@ -2847,17 +2901,15 @@ export default function Rooms() {
                 <div className="bg-red-50 p-4 rounded-lg">
                   <h3 className="font-medium text-gray-900 mb-2">Thông tin phòng</h3>
                   <p className="text-sm text-gray-600">
-                    Phòng: <span className="font-medium">{selectedRoom.number}</span>
+                    Phòng: <span className="font-medium">{selectedPhongTro.TenPhong}</span>
                   </p>
                   <p className="text-sm text-gray-600">
-                    Khách thuê: <span className="font-medium">{selectedRoom.tenant?.name}</span>
+                    Khách thuê: <span className="font-medium">{selectedPhongTro.khachThue?.find(k => k.VaiTro === 'KHÁCH_CHÍNH')?.HoTen || '-'}</span>
                   </p>
                   <p className="text-sm text-gray-600">
-                    Hợp đồng đến:{' '}
+                    Dãy trọ:{' '}
                     <span className="font-medium">
-                      {selectedRoom.tenant?.contractEnd
-                        ? new Date(selectedRoom.tenant.contractEnd).toLocaleDateString('vi-VN')
-                        : '-'}
+                      {selectedPhongTro.TenDay || '-'}
                     </span>
                   </p>
                 </div>

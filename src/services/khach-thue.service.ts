@@ -1,6 +1,27 @@
 import httpClient from '../lib/http-client';
 import { API_ENDPOINTS } from '../config/api';
 
+export interface Xe {
+  MaXe: number;
+  MaKhachThue: number;
+  BienSoXe: string;
+  GhiChu: string | null;
+}
+
+export interface TaiKhoan {
+  MaTaiKhoan: number;
+  TenDangNhap: string;
+  MaQuyen: number;
+  TenQuyen: string;
+  TrangThaiTaiKhoan: string;
+}
+
+export interface PhongTro {
+  MaPhong: number;
+  TenPhong: string;
+  MaDay: number;
+}
+
 export interface KhachThue {
   MaKhachThue: number;
   HoTen: string;
@@ -14,9 +35,6 @@ export interface KhachThue {
   NgaySinh: string | null;
   NoiSinh: string | null;
   VaiTro: string;
-  SoXe: number;
-  BienSoXe: string | null;
-  MaLoaiXe: number | null;
   GhiChu: string | null;
   MaPhong: number | null;
   MaTaiKhoan: number | null;
@@ -25,6 +43,11 @@ export interface KhachThue {
   // Computed attributes
   TenPhong?: string;
   DiaChiDay?: string;
+
+  // Relations from backend
+  xes?: Xe[];
+  taiKhoan?: TaiKhoan;
+  phongTro?: PhongTro;
 }
 
 export type KhachThueListItem = Pick<KhachThue, 'MaKhachThue' | 'HoTen' | 'SDT1' | 'Email' | 'MaPhong' | 'TenPhong'>;

@@ -1,70 +1,21 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../dashboard/components/Sidebar';
 import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
-
-interface User {
-  id: number;
-  fullName: string;
-  email: string;
-  phone: string;
-  role: string;
-  status: 'active' | 'inactive';
-  createdAt: string;
-  lastLogin: string;
-}
+import taiKhoanService, { TaiKhoan, TaiKhoanCreateInput, TaiKhoanUpdateInput } from '../../services/tai-khoan.service';
+import { getErrorMessage } from '../../lib/http-client';
 
 export default function UserManagement() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { success, error, warning } = useToast();
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: 1,
-      fullName: 'Nguyễn Văn Admin',
-      email: 'admin@tro.com',
-      phone: '0901234567',
-      role: 'Admin',
-      status: 'active',
-      createdAt: '2024-01-15',
-      lastLogin: '2024-01-20 09:30'
-    },
-    {
-      id: 2,
-      fullName: 'Trần Thị Quản Lý',
-      email: 'manager@tro.com',
-      phone: '0912345678',
-      role: 'Quản lý',
-      status: 'active',
-      createdAt: '2024-01-16',
-      lastLogin: '2024-01-20 08:15'
-    },
-    {
-      id: 3,
-      fullName: 'Lê Văn Khách',
-      email: 'khach@email.com',
-      phone: '0923456789',
-      role: 'Khách hàng',
-      status: 'active',
-      createdAt: '2024-01-17',
-      lastLogin: '2024-01-19 20:45'
-    },
-    {
-      id: 4,
-      fullName: 'Phạm Thị Nhân Viên',
-      email: 'staff@tro.com',
-      phone: '0934567890',
-      role: 'Nhân viên',
-      status: 'inactive',
-      createdAt: '2024-01-18',
-      lastLogin: '2024-01-18 17:30'
-    }
-  ]);
+  const [taiKhoans, setTaiKhoans] = useState<TaiKhoan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedTaiKhoan, setSelectedTaiKhoan] = useState<TaiKhoan | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [confirmDialog, setConfirmDialog] = useState({
@@ -75,19 +26,58 @@ export default function UserManagement() {
     onConfirm: () => { }
   });
 
-  const roles = ['Admin', 'Quản lý', 'Nhân viên', 'Khách hàng'];
+  const roles = [
+    { value: 0, label: 'Chủ trọ' },
+    { value: 1, label: 'Quản lý' },
+    { value: 2, label: 'Nhân viên' },
+    { value: 3, label: 'Khách thuê' }
+  ];
 
-  const filteredUsers = users.filter(user => {
+  // Fetch data from API
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchData = async () => {
+      try {
+        const response = await taiKhoanService.getAll(controller.signal);
+        if (!controller.signal.aborted) {
+          setTaiKhoans(response.data.data || []);
+          setLoading(false);
+        }
+      } catch (err: any) {
+        if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
+          error({ title: 'Lỗi tải dữ liệu', message: getErrorMessage(err) });
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+    return () => controller.abort();
+  }, [refreshKey]);
+
+  const refreshData = () => {
+    setLoading(true);
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const filteredTaiKhoans = taiKhoans.filter(tk => {
+    const profile = tk.nhanVien || tk.khachThue;
+    const hoTen = profile?.HoTen || '';
+    const email = profile?.Email || '';
+    const sdt = profile?.SDT || '';
+
     const matchesSearch =
-      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.phone.includes(searchTerm);
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+      hoTen.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tk.TenDangNhap.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sdt.includes(searchTerm);
+    const matchesRole = roleFilter === 'all' || tk.MaQuyen === parseInt(roleFilter);
     return matchesSearch && matchesRole;
   });
 
-  const handleCreateUser = (formData: any) => {
-    if (!formData.email || !formData.fullName || !formData.phone || !formData.password) {
+  const handleCreateUser = async (formData: any) => {
+    if (!formData.TenDangNhap || !formData.Email || !formData.HoTen || !formData.SDT || !formData.password) {
       error({ title: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
@@ -95,28 +85,23 @@ export default function UserManagement() {
     setConfirmDialog({
       isOpen: true,
       title: 'Tạo tài khoản mới',
-      message: `Bạn có chắc chắn muốn tạo tài khoản mới cho "${formData.fullName}" không?`,
+      message: `Bạn có chắc chắn muốn tạo tài khoản mới cho "${formData.HoTen}" không?`,
       type: 'info',
-      onConfirm: () => {
-        const user: User = {
-          id: Date.now(),
-          fullName: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          role: formData.role,
-          status: 'active',
-          createdAt: new Date().toISOString().split('T')[0],
-          lastLogin: ''
-        };
-        setUsers((prev) => [user, ...prev]);
-        setShowAddModal(false);
-        success({ title: `Đã tạo tài khoản cho ${formData.fullName} thành công!` });
+      onConfirm: async () => {
+        try {
+          await taiKhoanService.create(formData as TaiKhoanCreateInput);
+          setShowAddModal(false);
+          success({ title: `Đã tạo tài khoản cho ${formData.HoTen} thành công!` });
+          refreshData();
+        } catch (err) {
+          error({ title: 'Lỗi tạo tài khoản', message: getErrorMessage(err) });
+        }
       }
     });
   };
 
-  const handleUpdateUser = (formData: any) => {
-    if (!selectedUser || !formData.email || !formData.fullName || !formData.phone) {
+  const handleUpdateUser = async (formData: any) => {
+    if (!selectedTaiKhoan || !formData.TenDangNhap || !formData.Email || !formData.HoTen || !formData.SDT) {
       error({ title: 'Vui lòng điền đầy đủ thông tin bắt buộc!' });
       return;
     }
@@ -124,73 +109,90 @@ export default function UserManagement() {
     setConfirmDialog({
       isOpen: true,
       title: 'Cập nhật tài khoản',
-      message: `Bạn có chắc chắn muốn lưu thay đổi thông tin của "${selectedUser.fullName}" không?`,
+      message: `Bạn có chắc chắn muốn lưu thay đổi thông tin của "${formData.HoTen}" không?`,
       type: 'info',
-      onConfirm: () => {
-        setUsers(users.map(u =>
-          u.id === selectedUser.id
-            ? { ...u, fullName: formData.fullName, email: formData.email, phone: formData.phone, role: formData.role, status: formData.status }
-            : u
-        ));
-        setShowEditModal(false);
-        setSelectedUser(null);
-        success({ title: `Đã cập nhật thông tin tài khoản ${selectedUser.fullName} thành công!` });
-      }
-    });
-  };
-
-  const handleDeleteUser = (userId: number) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Xóa tài khoản',
-      message: `Bạn có chắc chắn muốn xóa tài khoản của "${user.fullName}" không? Hành động này không thể hoàn tác.`,
-      type: 'danger',
-      onConfirm: () => {
-        setUsers(users.filter(u => u.id !== userId));
-        error({ title: `Đã xóa tài khoản ${user.fullName}!` });
-      }
-    });
-  };
-
-  const handleStatusChange = (userId: number, newStatus: 'active' | 'inactive') => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-
-    const statusText = newStatus === 'active' ? 'kích hoạt' : 'vô hiệu hóa';
-
-    setConfirmDialog({
-      isOpen: true,
-      title: `${statusText.charAt(0).toUpperCase() + statusText.slice(1)} tài khoản`,
-      message: `Bạn có chắc chắn muốn ${statusText} tài khoản của "${user.fullName}" không?`,
-      type: newStatus === 'active' ? 'info' : 'warning',
-      onConfirm: () => {
-        setUsers(users.map(user =>
-          user.id === userId ? { ...user, status: newStatus } : user
-        ));
-        if (newStatus === 'active') {
-          success({ title: `Đã kích hoạt tài khoản ${user.fullName} thành công!` });
-        } else {
-          warning({ title: `Đã vô hiệu hóa tài khoản ${user.fullName}!` });
+      onConfirm: async () => {
+        try {
+          await taiKhoanService.update(selectedTaiKhoan.MaTaiKhoan, formData as TaiKhoanUpdateInput);
+          setShowEditModal(false);
+          setSelectedTaiKhoan(null);
+          success({ title: `Đã cập nhật thông tin tài khoản ${formData.HoTen} thành công!` });
+          refreshData();
+        } catch (err) {
+          error({ title: 'Lỗi cập nhật tài khoản', message: getErrorMessage(err) });
         }
       }
     });
   };
 
-  const handleResetPassword = (userId: number) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
+  const handleDeleteUser = (maTaiKhoan: number) => {
+    const tk = taiKhoans.find(t => t.MaTaiKhoan === maTaiKhoan);
+    if (!tk) return;
+
+    const profile = tk.nhanVien || tk.khachThue;
+    const hoTen = profile?.HoTen || tk.TenDangNhap;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Xóa tài khoản',
+      message: `Bạn có chắc chắn muốn xóa tài khoản của "${hoTen}" không? Hành động này không thể hoàn tác.`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await taiKhoanService.delete(maTaiKhoan);
+          error({ title: `Đã xóa tài khoản ${hoTen}!` });
+          refreshData();
+        } catch (err) {
+          error({ title: 'Lỗi xóa tài khoản', message: getErrorMessage(err) });
+        }
+      }
+    });
+  };
+
+  const handleStatusChange = (maTaiKhoan: number, newStatus: 'Hoạt động' | 'Tạm khóa') => {
+    const tk = taiKhoans.find(t => t.MaTaiKhoan === maTaiKhoan);
+    if (!tk) return;
+
+    const profile = tk.nhanVien || tk.khachThue;
+    const hoTen = profile?.HoTen || tk.TenDangNhap;
+    const statusText = newStatus === 'Hoạt động' ? 'kích hoạt' : 'vô hiệu hóa';
+
+    setConfirmDialog({
+      isOpen: true,
+      title: `${statusText.charAt(0).toUpperCase() + statusText.slice(1)} tài khoản`,
+      message: `Bạn có chắc chắn muốn ${statusText} tài khoản của "${hoTen}" không?`,
+      type: newStatus === 'Hoạt động' ? 'info' : 'warning',
+      onConfirm: async () => {
+        try {
+          await taiKhoanService.update(maTaiKhoan, { TrangThaiTaiKhoan: newStatus });
+          if (newStatus === 'Hoạt động') {
+            success({ title: `Đã kích hoạt tài khoản ${hoTen} thành công!` });
+          } else {
+            warning({ title: `Đã vô hiệu hóa tài khoản ${hoTen}!` });
+          }
+          refreshData();
+        } catch (err) {
+          error({ title: 'Lỗi cập nhật trạng thái', message: getErrorMessage(err) });
+        }
+      }
+    });
+  };
+
+  const handleResetPassword = (maTaiKhoan: number) => {
+    const tk = taiKhoans.find(t => t.MaTaiKhoan === maTaiKhoan);
+    if (!tk) return;
+
+    const profile = tk.nhanVien || tk.khachThue;
+    const hoTen = profile?.HoTen || tk.TenDangNhap;
 
     setConfirmDialog({
       isOpen: true,
       title: 'Đặt lại mật khẩu',
-      message: `Bạn có chắc chắn muốn đặt lại mật khẩu cho tài khoản của "${user.fullName}" không? Mật khẩu mới sẽ được gửi qua email.`,
+      message: `Bạn có chắc chắn muốn đặt lại mật khẩu cho tài khoản của "${hoTen}" không? Mật khẩu mới sẽ được gửi qua email.`,
       type: 'warning',
       onConfirm: () => {
-        console.log('Reset password for user:', userId);
-        warning({ title: `Đã đặt lại mật khẩu cho ${user.fullName} và gửi email thông báo!` });
+        // TODO: Implement reset password API
+        warning({ title: `Đã đặt lại mật khẩu cho ${hoTen} và gửi email thông báo!` });
       }
     });
   };
@@ -238,7 +240,7 @@ export default function UserManagement() {
                   >
                     <option value="all">Tất cả vai trò</option>
                     {roles.map(role => (
-                      <option key={role} value={role}>{role}</option>
+                      <option key={role.value} value={role.value}>{role.label}</option>
                     ))}
                   </select>
                 </div>
@@ -258,88 +260,118 @@ export default function UserManagement() {
 
             {/* Users Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tài khoản
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Vai trò
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Trạng thái
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Lần đăng nhập cuối
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Thao tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{user.email}</div>
-                          <div className="text-sm text-gray-500">{user.phone}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'Admin' ? 'bg-red-100 text-red-800' :
-                            user.role === 'Quản lý' ? 'bg-blue-100 text-blue-800' :
-                              user.role === 'Nhân viên' ? 'bg-green-100 text-green-800' :
-                                'bg-gray-100 text-gray-800'
-                            }`}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => handleStatusChange(user.id, user.status === 'active' ? 'inactive' : 'active')}
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-pointer hover:opacity-80 ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}
-                          >
-                            {user.status === 'active' ? 'Hoạt động' : 'Tạm khóa'}
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.lastLogin}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setShowEditModal(true);
-                              }}
-                              className="text-indigo-600 hover:text-indigo-900"
-                              title="Chỉnh sửa"
-                            >
-                              <i className="ri-edit-line"></i>
-                            </button>
-                            <button
-                              onClick={() => handleResetPassword(user.id)}
-                              className="text-yellow-600 hover:text-yellow-900"
-                              title="Đặt lại mật khẩu"
-                            >
-                              <i className="ri-key-line"></i>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="text-red-600 hover:text-red-900 cursor-pointer"
-                              title="Xóa"
-                            >
-                              <i className="ri-delete-bin-line"></i>
-                            </button>
-                          </div>
-                        </td>
+              {loading && (
+                <div className="flex justify-center items-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                </div>
+              )}
+
+              {!loading && filteredTaiKhoans.length === 0 && (
+                <div className="text-center py-12">
+                  <i className="ri-user-line text-4xl text-gray-400 mb-2"></i>
+                  <p className="text-gray-500">Không có tài khoản nào</p>
+                </div>
+              )}
+
+              {!loading && filteredTaiKhoans.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tài khoản
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Vai trò
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Trạng thái
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Thao tác
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredTaiKhoans.map((tk) => {
+                        const profile = tk.nhanVien || tk.khachThue;
+                        const hoTen = profile?.HoTen || tk.TenDangNhap;
+                        const email = profile?.Email || '';
+                        const sdt = profile?.SDT || '';
+
+                        return (
+                          <tr key={tk.MaTaiKhoan} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">{hoTen}</div>
+                              <div className="text-sm text-gray-500">
+                                <span className="font-medium">Tên đăng nhập:</span> {tk.TenDangNhap}
+                              </div>
+                              {email && (
+                                <div className="text-sm text-gray-500">
+                                  <span className="font-medium">Email:</span> {email}
+                                </div>
+                              )}
+                              {sdt && (
+                                <div className="text-sm text-gray-500">
+                                  <span className="font-medium">SĐT:</span> {sdt}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                tk.MaQuyen === 0 ? 'bg-purple-100 text-purple-800' :
+                                tk.MaQuyen === 1 ? 'bg-blue-100 text-blue-800' :
+                                tk.MaQuyen === 2 ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {tk.TenQuyen}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <button
+                                onClick={() => handleStatusChange(tk.MaTaiKhoan, tk.TrangThaiTaiKhoan === 'Hoạt động' ? 'Tạm khóa' : 'Hoạt động')}
+                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-pointer hover:opacity-80 ${
+                                  tk.TrangThaiTaiKhoan === 'Hoạt động' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}
+                              >
+                                {tk.TrangThaiTaiKhoan}
+                              </button>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedTaiKhoan(tk);
+                                    setShowEditModal(true);
+                                  }}
+                                  className="text-indigo-600 hover:text-indigo-900"
+                                  title="Chỉnh sửa"
+                                >
+                                  <i className="ri-edit-line"></i>
+                                </button>
+                                <button
+                                  onClick={() => handleResetPassword(tk.MaTaiKhoan)}
+                                  className="text-yellow-600 hover:text-yellow-900"
+                                  title="Đặt lại mật khẩu"
+                                >
+                                  <i className="ri-key-line"></i>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(tk.MaTaiKhoan)}
+                                  className="text-red-600 hover:text-red-900 cursor-pointer"
+                                  title="Xóa"
+                                >
+                                  <i className="ri-delete-bin-line"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </main>
@@ -355,13 +387,13 @@ export default function UserManagement() {
         )}
 
         {/* Edit User Modal */}
-        {showEditModal && selectedUser && (
+        {showEditModal && selectedTaiKhoan && (
           <UserModal
             title="Chỉnh sửa tài khoản"
-            user={selectedUser}
+            taiKhoan={selectedTaiKhoan}
             onClose={() => {
               setShowEditModal(false);
-              setSelectedUser(null);
+              setSelectedTaiKhoan(null);
             }}
             onSubmit={handleUpdateUser}
             roles={roles}
@@ -387,19 +419,22 @@ export default function UserManagement() {
 
 interface UserModalProps {
   title: string;
-  user?: User;
+  taiKhoan?: TaiKhoan;
   onClose: () => void;
   onSubmit: (data: any) => void;
-  roles: string[];
+  roles: { value: number; label: string }[];
 }
 
-function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
+function UserModal({ title, taiKhoan, onClose, onSubmit, roles }: UserModalProps) {
+  const profile = taiKhoan?.nhanVien || taiKhoan?.khachThue;
+
   const [formData, setFormData] = useState({
-    fullName: user?.fullName || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    role: user?.role || 'Khách hàng',
-    status: user?.status || 'active',
+    HoTen: profile?.HoTen || '',
+    TenDangNhap: taiKhoan?.TenDangNhap || '',
+    Email: profile?.Email || '',
+    SDT: profile?.SDT || '',
+    MaQuyen: taiKhoan?.MaQuyen ?? 3,
+    TrangThaiTaiKhoan: taiKhoan?.TrangThaiTaiKhoan || 'Hoạt động',
     password: ''
   });
 
@@ -430,10 +465,24 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
               <input
                 type="text"
                 required
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                value={formData.HoTen}
+                onChange={(e) => setFormData({ ...formData, HoTen: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 placeholder="Nhập họ và tên"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tên đăng nhập *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.TenDangNhap}
+                onChange={(e) => setFormData({ ...formData, TenDangNhap: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                placeholder="Nhập tên đăng nhập"
               />
             </div>
 
@@ -444,8 +493,8 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
               <input
                 type="email"
                 required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                value={formData.Email}
+                onChange={(e) => setFormData({ ...formData, Email: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 placeholder="Nhập email"
               />
@@ -458,8 +507,8 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
               <input
                 type="tel"
                 required
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                value={formData.SDT}
+                onChange={(e) => setFormData({ ...formData, SDT: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 placeholder="Nhập số điện thoại"
               />
@@ -471,31 +520,33 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
               </label>
               <select
                 required
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                value={formData.MaQuyen}
+                onChange={(e) => setFormData({ ...formData, MaQuyen: parseInt(e.target.value) })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-8"
               >
                 {roles.map(role => (
-                  <option key={role} value={role}>{role}</option>
+                  <option key={role.value} value={role.value}>{role.label}</option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Trạng thái
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-8"
-              >
-                <option value="active">Hoạt động</option>
-                <option value="inactive">Tạm khóa</option>
-              </select>
-            </div>
+            {taiKhoan && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Trạng thái
+                </label>
+                <select
+                  value={formData.TrangThaiTaiKhoan}
+                  onChange={(e) => setFormData({ ...formData, TrangThaiTaiKhoan: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm pr-8"
+                >
+                  <option value="Hoạt động">Hoạt động</option>
+                  <option value="Tạm khóa">Tạm khóa</option>
+                </select>
+              </div>
+            )}
 
-            {!user && (
+            {!taiKhoan && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Mật khẩu *
@@ -523,7 +574,7 @@ function UserModal({ title, user, onClose, onSubmit, roles }: UserModalProps) {
                 type="submit"
                 className="flex-1 bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-700 transition duration-200 whitespace-nowrap"
               >
-                {user ? 'Cập nhật' : 'Thêm mới'}
+                {taiKhoan ? 'Cập nhật' : 'Thêm mới'}
               </button>
             </div>
           </form>

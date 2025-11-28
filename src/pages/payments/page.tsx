@@ -280,6 +280,25 @@ export default function Payments() {
           return !hasInvoice;
         })
         .map(phong => {
+          // Tìm bản ghi SoDien của phòng này trong tháng được chọn
+          const currentMonthReading = soDiens.find(
+            sd => sd.MaPhong === phong.MaPhong && sd.Thang === electricFilterMonth
+          );
+
+          // Nếu đã có bản ghi cho tháng này, dùng dữ liệu đó
+          if (currentMonthReading) {
+            return {
+              id: phong.MaPhong.toString(),
+              building: phong.TenDay || 'N/A',
+              room: phong.TenPhong,
+              tenantName: phong.khachThue?.[0]?.HoTen || 'N/A',
+              oldReading: currentMonthReading.ChiSoCu,
+              newReading: currentMonthReading.ChiSoMoi,
+              usage: currentMonthReading.SoKwh
+            };
+          }
+
+          // Nếu chưa có, lấy bản ghi gần nhất để làm chỉ số cũ
           const lastReading = soDiens
             .filter(sd => sd.MaPhong === phong.MaPhong)
             .sort((a, b) => new Date(b.NgayGhi).getTime() - new Date(a.NgayGhi).getTime())[0];
@@ -401,6 +420,34 @@ export default function Payments() {
     }
     setShowConfirmDialog(false);
     setConfirmAction(null);
+  };
+
+  // Helper: Update SoDien sau khi lập hóa đơn (set ChiSoCu = ChiSoMoi, SoKwh = 0)
+  const updateSoDienAfterInvoice = async (maPhong: number, thang: string) => {
+    try {
+      // Fetch lại tất cả SoDien từ backend để có dữ liệu mới nhất
+      const response = await soDienService.getAll();
+      const allSoDiens = response.data.data || [];
+
+      // Tìm bản ghi SoDien của phòng này trong tháng này
+      const soDien = allSoDiens.find(sd => sd.MaPhong === maPhong && sd.Thang === thang);
+
+      if (soDien) {
+        // Update: ChiSoCu = ChiSoMoi (để "confirm" chỉ số cho kỳ tiếp theo)
+        // Backend sẽ tự tính lại SoKwh = ChiSoMoi - ChiSoCu = 0
+        await soDienService.update(soDien.MaSoDien, {
+          ChiSoCu: soDien.ChiSoMoi,
+          ChiSoMoi: soDien.ChiSoMoi,
+          NgayGhi: soDien.NgayGhi
+        });
+        console.log(`✅ Updated SoDien for room ${maPhong}, month ${thang}: ChiSoCu=${soDien.ChiSoMoi}, ChiSoMoi=${soDien.ChiSoMoi}`);
+      } else {
+        console.warn(`⚠️ No SoDien found for room ${maPhong}, month ${thang}`);
+      }
+    } catch (err) {
+      console.error(`❌ Failed to update SoDien for room ${maPhong}:`, err);
+      // Không throw error để không block việc tạo hóa đơn
+    }
   };
 
   const handleUpdateReading = (id: string, field: 'oldReading' | 'newReading', value: number) => {
@@ -794,6 +841,11 @@ export default function Payments() {
 
       await hoaDonService.createBulk(bulkData);
 
+      // Update SoDien cho tất cả các phòng đã tạo hóa đơn
+      for (const room of selectedRooms) {
+        await updateSoDienAfterInvoice(parseInt(room.id), bulkSettings.month);
+      }
+
       const totalAmount = calculateBulkTotal();
 
       success({
@@ -931,6 +983,9 @@ export default function Payments() {
       };
 
       await hoaDonService.create(hoaDonData);
+
+      // Update SoDien: ChiSoCu = ChiSoMoi, SoKwh = 0
+      await updateSoDienAfterInvoice(newInvoice.MaPhong, newInvoice.month);
 
       success({
         title: 'Tạo hóa đơn thành công',

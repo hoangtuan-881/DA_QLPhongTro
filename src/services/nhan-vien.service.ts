@@ -1,19 +1,60 @@
 import httpClient from '../lib/http-client';
 import { API_ENDPOINTS } from '../config/api';
 
+export interface TaiKhoanInfo {
+  TenDangNhap: string;
+  MaQuyen: number;
+  TrangThaiTaiKhoan: 'Hoạt động' | 'Bị khóa';
+}
+
 export interface NhanVien {
   MaNV: number;
   HoTen: string;
+  CCCD: string | null;
+  NgayCapCCCD: string | null;
+  NoiCapCCCD: string | null;
   SDT: string | null;
   Email: string | null;
+  DiaChi: string | null;
+  NgaySinh: string | null;
+  GioiTinh: 'Nam' | 'Nữ' | 'Khác' | null;
   MaTaiKhoan: number | null;
+  TaiKhoan?: TaiKhoanInfo;
 }
 
-export type NhanVienListItem = Pick<NhanVien, 'MaNV' | 'HoTen' | 'SDT' | 'Email'>;
+export interface NhanVienCreateInput {
+  HoTen: string;
+  CCCD?: string | null;
+  NgayCapCCCD?: string | null;
+  NoiCapCCCD?: string | null;
+  SDT: string;
+  Email?: string | null;
+  DiaChi?: string | null;
+  NgaySinh?: string | null;
+  GioiTinh?: 'Nam' | 'Nữ' | 'Khác' | null;
+  // Tài khoản
+  TenDangNhap: string;
+  password: string;
+  MaQuyen: number;
+  TrangThaiTaiKhoan?: 'Hoạt động' | 'Bị khóa';
+}
 
-export type NhanVienCreateInput = Omit<NhanVien, 'MaNV'>;
-
-export type NhanVienUpdateInput = Partial<Omit<NhanVien, 'MaNV'>>;
+export interface NhanVienUpdateInput {
+  HoTen?: string;
+  CCCD?: string | null;
+  NgayCapCCCD?: string | null;
+  NoiCapCCCD?: string | null;
+  SDT?: string;
+  Email?: string | null;
+  DiaChi?: string | null;
+  NgaySinh?: string | null;
+  GioiTinh?: 'Nam' | 'Nữ' | 'Khác' | null;
+  // Tài khoản (optional khi update)
+  TenDangNhap?: string;
+  password?: string;
+  MaQuyen?: number;
+  TrangThaiTaiKhoan?: 'Hoạt động' | 'Bị khóa';
+}
 
 class NhanVienService {
   async getAll(signal?: AbortSignal) {

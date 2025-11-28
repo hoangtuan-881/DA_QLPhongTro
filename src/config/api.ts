@@ -35,7 +35,10 @@ export const API_ENDPOINTS = {
   KHACH_THUE: '/admin/khach-thue',
 
   // Nhan Vien (Staff)
-  NHAN_VIEN: '/nhan-vien',
+  NHAN_VIEN: '/admin/nhan-vien',
+
+  // Tai Khoan (Accounts)
+  TAI_KHOAN: '/admin/tai-khoan',
 
   // Hop Dong (Contracts)
   HOP_DONG: '/hop-dong',

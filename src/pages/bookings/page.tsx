@@ -8,6 +8,8 @@ import phongTroService, { PhongTro } from '../../services/phong-tro.service';
 import dichVuService, { DichVu } from '../../services/dich-vu.service';
 import khachThueService, { KhachThue } from '../../services/khach-thue.service';
 import { getErrorMessage } from '../../lib/http-client';
+import { usePagination } from '../../hooks/usePagination';
+import Pagination from '../../components/base/Pagination';
 
 // Local interfaces for UI state
 interface BookingFormData {
@@ -191,6 +193,24 @@ export default function Bookings() {
       booking.HoTenNguoiDat.toLowerCase().includes(searchText.toLowerCase()) ||
       booking.SoDienThoaiNguoiDat.includes(searchText);
     return matchStatus && matchBlock && matchSearch;
+  });
+
+  // NEW: Pagination logic
+  const {
+    paginatedData: paginatedBookings,
+    currentPage,
+    totalPages,
+    startIndex,
+    endIndex,
+    itemsPerPage,
+    totalItems,
+    setItemsPerPage,
+    nextPage,
+    prevPage,
+    goToPage,
+  } = usePagination({
+    data: filteredBookings,
+    initialItemsPerPage: 10, // You can adjust this value
   });
 
   // Data fetching
@@ -708,7 +728,7 @@ export default function Bookings() {
             )}
 
             {/* Empty State */}
-            {!loading && filteredBookings.length === 0 && (
+            {!loading && paginatedBookings.length === 0 && (
               <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                 <i className="ri-inbox-line text-6xl text-gray-400 mb-4"></i>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Không có đặt phòng nào</h3>
@@ -717,7 +737,7 @@ export default function Bookings() {
             )}
 
             {/* Bookings Table */}
-            {!loading && filteredBookings.length > 0 && (
+            {!loading && paginatedBookings.length > 0 && (
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -747,7 +767,7 @@ export default function Bookings() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredBookings.map((booking) => {
+                      {paginatedBookings.map((booking) => {
                         const phong = getPhongByMaPhong(booking.MaPhong);
                         return (
                           <tr key={booking.MaPhieuDatCoc} className="hover:bg-gray-50">
@@ -841,6 +861,23 @@ export default function Bookings() {
                   </table>
                 </div>
               </div>
+            )}
+
+            {/* NEW: Pagination Controls */}
+            {!loading && filteredBookings.length > 0 && ( // Chỉ hiển thị phân trang nếu có dữ liệu đã lọc
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                itemsPerPage={itemsPerPage}
+                onPageChange={goToPage}
+                onItemsPerPageChange={setItemsPerPage}
+                onNext={nextPage}
+                onPrev={prevPage}
+                itemLabel="đặt phòng"
+              />
             )}
           </div>
         </main>

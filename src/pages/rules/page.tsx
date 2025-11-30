@@ -9,6 +9,8 @@ import noiQuyService, { type NoiQuy } from '../../services/noi-quy.service';
 import viPhamService, { type ViPham, type ViPhamCreate, type ViPhamUpdate } from '../../services/vi-pham.service';
 import khachThueService, { type KhachThueListItem } from '../../services/khach-thue.service';
 import { getErrorMessage } from '../../lib/http-client';
+import { usePagination } from '../../hooks/usePagination';
+import Pagination from '../../components/base/Pagination';
 
 export default function Rules() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -17,12 +19,46 @@ export default function Rules() {
 
   // NoiQuy state
   const [noiQuys, setNoiQuys] = useState<NoiQuy[]>([]);
+  // NEW: Pagination logic for NoiQuy
+  const {
+    paginatedData: paginatedNoiQuys,
+    currentPage: noiQuyCurrentPage,
+    totalPages: noiQuyTotalPages,
+    startIndex: noiQuyStartIndex,
+    endIndex: noiQuyEndIndex,
+    itemsPerPage: noiQuyItemsPerPage,
+    totalItems: noiQuyTotalItems,
+    setItemsPerPage: setNoiQuyItemsPerPage,
+    nextPage: noiQuyNextPage,
+    prevPage: noiQuyPrevPage,
+    goToPage: noiQuyGoToPage,
+  } = usePagination({
+    data: noiQuys,
+    initialItemsPerPage: 10,
+  });
   const [loadingNoiQuys, setLoadingNoiQuys] = useState(true);
   const [noiQuyRefreshKey, setNoiQuyRefreshKey] = useState(0);
   const [selectedNoiQuy, setSelectedNoiQuy] = useState<NoiQuy | null>(null);
 
   // ViPham state
   const [violations, setViolations] = useState<ViPham[]>([]);
+  // NEW: Pagination logic for ViPham
+  const {
+    paginatedData: paginatedViolations,
+    currentPage: violationCurrentPage,
+    totalPages: violationTotalPages,
+    startIndex: violationStartIndex,
+    endIndex: violationEndIndex,
+    itemsPerPage: violationItemsPerPage,
+    totalItems: violationTotalItems,
+    setItemsPerPage: setViolationItemsPerPage,
+    nextPage: violationNextPage,
+    prevPage: violationPrevPage,
+    goToPage: violationGoToPage,
+  } = usePagination({
+    data: violations,
+    initialItemsPerPage: 10,
+  });
   const [loadingViolations, setLoadingViolations] = useState(false);
   const [violationRefreshKey, setViolationRefreshKey] = useState(0);
   const [selectedViolation, setSelectedViolation] = useState<ViPham | null>(null);
@@ -462,47 +498,68 @@ export default function Rules() {
                 <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                   {loadingNoiQuys ? (
                     <div className="p-6 text-center">Đang tải...</div>
-                  ) : noiQuys.length === 0 ? (
-                    <div className="p-6 text-center text-gray-500">Chưa có nội quy nào.</div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nội quy</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Danh mục</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {noiQuys.map((noiQuy) => (
-                            <tr key={noiQuy.MaNoiQuy} className="hover:bg-gray-50">
-                              <td className="px-6 py-4">
-                                <div>
-                                  <div className="text-sm font-medium text-gray-900">{noiQuy.TieuDe}</div>
-                                  <div className="text-sm text-gray-500 mt-1">{noiQuy.NoiDung}</div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(noiQuy.PhanLoai)}`}>{getCategoryText(noiQuy.PhanLoai)}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${noiQuy.TrangThai ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{noiQuy.TrangThai ? 'Đang áp dụng' : 'Tạm dừng'}</span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div className="flex items-center space-x-2">
-                                  <button onClick={() => setSelectedNoiQuy(noiQuy)} className="p-2 rounded-md text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 cursor-pointer" title="Chi tiết nội quy"><i className="ri-eye-line text-lg"></i></button>
-                                  <button onClick={() => openEditRule(noiQuy)} className="p-2 rounded-md text-green-600 hover:text-green-900 hover:bg-green-50 cursor-pointer" title="Sửa nội quy"><i className="ri-edit-line text-lg"></i></button>
-                                  <button onClick={() => toggleRuleActive(noiQuy)} className={`p-2 rounded-md hover:bg-gray-50 cursor-pointer ${noiQuy.TrangThai ? 'text-yellow-600 hover:text-yellow-700' : 'text-teal-600 hover:text-teal-700'}`} title={noiQuy.TrangThai ? 'Tạm dừng nội quy' : 'Kích hoạt nội quy'}><i className={noiQuy.TrangThai ? 'ri-pause-line text-lg' : 'ri-play-line text-lg'}></i></button>
-                                  <button onClick={() => handleDeleteRule(noiQuy)} className="p-2 rounded-md text-red-600 hover:text-red-900 hover:bg-red-50 cursor-pointer" title="Xóa nội quy"><i className="ri-delete-bin-line text-lg"></i></button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    <>
+                      {paginatedNoiQuys.length === 0 ? (
+                        <div className="p-6 text-center text-gray-500">Chưa có nội quy nào.</div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nội quy</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Danh mục</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {paginatedNoiQuys.map((noiQuy) => (
+                                <tr key={noiQuy.MaNoiQuy} className="hover:bg-gray-50">
+                                  <td className="px-6 py-4">
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900">{noiQuy.TieuDe}</div>
+                                      <div className="text-sm text-gray-500 mt-1">{noiQuy.NoiDung}</div>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(noiQuy.PhanLoai)}`}>{getCategoryText(noiQuy.PhanLoai)}</span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${noiQuy.TrangThai ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>{noiQuy.TrangThai ? 'Đang áp dụng' : 'Tạm dừng'}</span>
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <div className="flex items-center space-x-2">
+                                      <button onClick={() => setSelectedNoiQuy(noiQuy)} className="p-2 rounded-md text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 cursor-pointer" title="Chi tiết nội quy"><i className="ri-eye-line text-lg"></i></button>
+                                      <button onClick={() => openEditRule(noiQuy)} className="p-2 rounded-md text-green-600 hover:text-green-900 hover:bg-green-50 cursor-pointer" title="Sửa nội quy"><i className="ri-edit-line text-lg"></i></button>
+                                      <button onClick={() => toggleRuleActive(noiQuy)} className={`p-2 rounded-md hover:bg-gray-50 cursor-pointer ${noiQuy.TrangThai ? 'text-yellow-600 hover:text-yellow-700' : 'text-teal-600 hover:text-teal-700'}`} title={noiQuy.TrangThai ? 'Tạm dừng nội quy' : 'Kích hoạt nội quy'}><i className={noiQuy.TrangThai ? 'ri-pause-line text-lg' : 'ri-play-line text-lg'}></i></button>
+                                      <button onClick={() => handleDeleteRule(noiQuy)} className="p-2 rounded-md text-red-600 hover:text-red-900 hover:bg-red-50 cursor-pointer" title="Xóa nội quy"><i className="ri-delete-bin-line text-lg"></i></button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {/* Pagination Controls for NoiQuy */}
+                      {!loadingNoiQuys && noiQuys.length > 0 && (
+                        <Pagination
+                          currentPage={noiQuyCurrentPage}
+                          totalPages={noiQuyTotalPages}
+                          totalItems={noiQuyTotalItems}
+                          startIndex={noiQuyStartIndex}
+                          endIndex={noiQuyEndIndex}
+                          itemsPerPage={noiQuyItemsPerPage}
+                          onPageChange={noiQuyGoToPage}
+                          onItemsPerPageChange={setNoiQuyItemsPerPage}
+                          onNext={noiQuyNextPage}
+                          onPrev={noiQuyPrevPage}
+                          itemLabel="nội quy"
+                        />
+                      )}
+                    </>
                   )}
                 </div>
               </>
@@ -512,55 +569,76 @@ export default function Rules() {
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                 {loadingViolations ? (
                   <div className="p-6 text-center">Đang tải...</div>
-                ) : violations.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">Chưa có vi phạm nào.</div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vi phạm</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách thuê</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mức độ</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày báo cáo</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {violations.map((violation) => (
-                          <tr key={violation.MaViPham} className="hover:bg-gray-50">
-                            <td className="px-6 py-4">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{violation.noiQuy.TieuDe}</div>
-                                <div className="text-sm text-gray-500 mt-1">{violation.MoTa}</div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">{violation.khachThue.HoTen}</div>
-                                <div className="text-sm text-gray-500">{violation.khachThue.phongTro?.dayTro?.TenDay} - {violation.khachThue.phongTro?.TenPhong}</div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getSeverityColor(violation.MucDo)}`}>{getSeverityText(violation.MucDo)}</span></td>
-                            <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(violation.TrangThai)}`}>{getStatusText(violation.TrangThai)}</span></td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{violation.NgayBaoCao}</div>
-                              <div className="text-sm text-gray-500">Bởi: {violation.nguoiBaoCao?.HoTen}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex items-center space-x-2">
-                                <button onClick={() => setSelectedViolation(violation)} className="p-2 rounded-md text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 cursor-pointer" title="Chi tiết vi phạm"><i className="ri-eye-line text-lg"></i></button>
-                                {violation.TrangThai === 'da_bao_cao' && (<button onClick={() => handleUpdateViolationStatus(violation, 'da_canh_cao')} className="p-2 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 cursor-pointer" title="Cảnh báo"><i className="ri-notification-3-line text-lg"></i></button>)}
-                                {(violation.TrangThai === 'da_bao_cao' || violation.TrangThai === 'da_canh_cao') && (<button onClick={() => handleUpdateViolationStatus(violation, 'da_giai_quyet')} className="p-2 rounded-md text-green-600 hover:text-green-800 hover:bg-green-50 cursor-pointer" title="Đánh dấu đã giải quyết"><i className="ri-check-double-line text-lg"></i></button>)}
-                                <button onClick={() => handleDeleteViolation(violation)} className="p-2 rounded-md text-red-600 hover:text-red-900 hover:bg-red-50 cursor-pointer" title="Xoá"><i className="ri-delete-bin-6-line text-lg"></i></button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <>
+                    {paginatedViolations.length === 0 ? (
+                      <div className="p-6 text-center text-gray-500">Chưa có vi phạm nào.</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vi phạm</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách thuê</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mức độ</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày báo cáo</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {paginatedViolations.map((violation) => (
+                              <tr key={violation.MaViPham} className="hover:bg-gray-50">
+                                <td className="px-6 py-4">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">{violation.noiQuy.TieuDe}</div>
+                                    <div className="text-sm text-gray-500 mt-1">{violation.MoTa}</div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">{violation.khachThue.HoTen}</div>
+                                    <div className="text-sm text-gray-500">{violation.khachThue.phongTro?.dayTro?.TenDay} - {violation.khachThue.phongTro?.TenPhong}</div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getSeverityColor(violation.MucDo)}`}>{getSeverityText(violation.MucDo)}</span></td>
+                                <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(violation.TrangThai)}`}>{getStatusText(violation.TrangThai)}</span></td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-gray-900">{violation.NgayBaoCao}</div>
+                                  <div className="text-sm text-gray-500">Bởi: {violation.nguoiBaoCao?.HoTen}</div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                  <div className="flex items-center space-x-2">
+                                    <button onClick={() => setSelectedViolation(violation)} className="p-2 rounded-md text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 cursor-pointer" title="Chi tiết vi phạm"><i className="ri-eye-line text-lg"></i></button>
+                                    {violation.TrangThai === 'da_bao_cao' && (<button onClick={() => handleUpdateViolationStatus(violation, 'da_canh_cao')} className="p-2 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 cursor-pointer" title="Cảnh báo"><i className="ri-notification-3-line text-lg"></i></button>)}
+                                    {(violation.TrangThai === 'da_bao_cao' || violation.TrangThai === 'da_canh_cao') && (<button onClick={() => handleUpdateViolationStatus(violation, 'da_giai_quyet')} className="p-2 rounded-md text-green-600 hover:text-green-800 hover:bg-green-50 cursor-pointer" title="Đánh dấu đã giải quyết"><i className="ri-check-double-line text-lg"></i></button>)}
+                                    <button onClick={() => handleDeleteViolation(violation)} className="p-2 rounded-md text-red-600 hover:text-red-900 hover:bg-red-50 cursor-pointer" title="Xoá"><i className="ri-delete-bin-6-line text-lg"></i></button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* Pagination Controls for ViPham */}
+                    {!loadingViolations && violations.length > 0 && (
+                      <Pagination
+                        currentPage={violationCurrentPage}
+                        totalPages={violationTotalPages}
+                        totalItems={violationTotalItems}
+                        startIndex={violationStartIndex}
+                        endIndex={violationEndIndex}
+                        itemsPerPage={violationItemsPerPage}
+                        onPageChange={violationGoToPage}
+                        onItemsPerPageChange={setViolationItemsPerPage}
+                        onNext={violationNextPage}
+                        onPrev={violationPrevPage}
+                        itemLabel="vi phạm"
+                      />
+                    )}
+                  </>
                 )}
               </div>
             )}

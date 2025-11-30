@@ -6,6 +6,8 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle';
 import { useToast } from '@/hooks/useToast';
 import nhanVienService, { NhanVien, NhanVienCreateInput, NhanVienUpdateInput } from '@/services/nhan-vien.service';
 import { getErrorMessage } from '@/lib/http-client';
+import { usePagination } from '@/hooks/usePagination'; // NEW
+import Pagination from '@/components/base/Pagination'; // NEW
 
 interface EmployeeFormState {
     // Thông tin cá nhân
@@ -98,6 +100,24 @@ export default function EmployeeManagementPage() {
             (nv.Email && nv.Email.toLowerCase().includes(search.toLowerCase()));
 
         return matchSearch;
+    });
+
+    // NEW: Pagination logic
+    const {
+        paginatedData: paginatedNhanViens,
+        currentPage,
+        totalPages,
+        startIndex,
+        endIndex,
+        itemsPerPage,
+        totalItems,
+        setItemsPerPage,
+        nextPage,
+        prevPage,
+        goToPage,
+    } = usePagination({
+        data: filteredNhanViens,
+        initialItemsPerPage: 10, // You can adjust this value
     });
 
     const openDetailModal = (nv: NhanVien) => {
@@ -329,7 +349,7 @@ export default function EmployeeManagementPage() {
                                     <div className="flex justify-center items-center h-48">
                                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
                                     </div>
-                                ) : filteredNhanViens.length === 0 ? (
+                                ) : paginatedNhanViens.length === 0 ? (
                                     <div className="p-8 text-center text-gray-500">
                                         Không tìm thấy nhân viên nào.
                                     </div>
@@ -371,7 +391,7 @@ export default function EmployeeManagementPage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                                                {filteredNhanViens.map((nv) => (
+                                                {paginatedNhanViens.map((nv) => (
                                                     <tr
                                                         key={nv.MaNV}
                                                         className="hover:bg-gray-50"
@@ -457,6 +477,22 @@ export default function EmployeeManagementPage() {
                                             </tbody>
                                         </table>
                                     </div>
+                                )}
+                                {/* NEW: Pagination Controls */}
+                                {!loading && filteredNhanViens.length > 0 && ( // Chỉ hiển thị phân trang nếu có dữ liệu đã lọc
+                                    <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        totalItems={totalItems}
+                                        startIndex={startIndex}
+                                        endIndex={endIndex}
+                                        itemsPerPage={itemsPerPage}
+                                        onPageChange={goToPage}
+                                        onItemsPerPageChange={setItemsPerPage}
+                                        onNext={nextPage}
+                                        onPrev={prevPage}
+                                        itemLabel="nhân viên"
+                                    />
                                 )}
                             </div>
                         </div>

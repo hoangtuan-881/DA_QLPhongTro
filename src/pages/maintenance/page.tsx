@@ -12,6 +12,8 @@ import maintenanceService, {
 import khachThueService, { type KhachThueListItem } from '../../services/khach-thue.service';
 import nhanVienService, { type NhanVienListItem } from '../../services/nhan-vien.service';
 import { getErrorMessage } from '../../lib/http-client';
+import { usePagination } from '../../hooks/usePagination';
+import Pagination from '../../components/base/Pagination';
 
 export default function Maintenance() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -350,6 +352,24 @@ export default function Maintenance() {
     return statusMatch && priorityMatch && categoryMatch && searchMatch;
   });
 
+  // NEW: Pagination logic
+  const {
+    paginatedData: paginatedRequests,
+    currentPage,
+    totalPages,
+    startIndex,
+    endIndex,
+    itemsPerPage,
+    totalItems,
+    setItemsPerPage,
+    nextPage,
+    prevPage,
+    goToPage,
+  } = usePagination({
+    data: filteredRequests,
+    initialItemsPerPage: 10, // You can adjust this value
+  });
+
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -479,127 +499,165 @@ export default function Maintenance() {
               </div>
             </div>
 
-            {/* Maintenance Requests Table */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Yêu cầu
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Khách thuê
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Danh mục
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Mức độ
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Trạng thái
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Phân công
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Thao tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredRequests.map((request) => (
-                      <tr key={request.MaYeuCau} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{request.TieuDe}</div>
-                            <div className="text-sm text-gray-500">
-                              {new Date(request.NgayYeuCau).toLocaleDateString('vi-VN')}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{request.khachThue?.HoTen || 'N/A'}</div>
-                            <div className="text-sm text-gray-500">Phòng: {request.MaKhachThue}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(request.PhanLoai)}`}>
-                            {getCategoryText(request.PhanLoai)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(request.MucDoUuTien)}`}>
-                            {getPriorityText(request.MucDoUuTien)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.TrangThai)}`}>
-                            {getStatusText(request.TrangThai)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {request.nhanVienPhanCong ? (
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{request.nhanVienPhanCong.HoTen}</div>
-                              {request.NgayPhanCong && (
-                                <div className="text-sm text-gray-500">
-                                  {new Date(request.NgayPhanCong).toLocaleDateString('vi-VN')}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-500">Chưa phân công</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => handleViewDetail(request)}
-                              className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
-                              title="Xem chi tiết"
-                            >
-                              <i className="ri-eye-line"></i>
-                            </button>
-                            <button
-                              onClick={() => handleUpdate(request)}
-                              className="text-green-600 hover:text-green-900 cursor-pointer"
-                              title="Chỉnh sửa"
-                            >
-                              <i className="ri-edit-line"></i>
-                            </button>
-                            <button onClick={() => handleDeleteRequest(request.MaYeuCau)}
-                              className="text-red-600 hover:text-red-900 cursor-pointer"
-                              title="Xóa"
-                            >
-                              <i className="ri-delete-bin-line"></i>
-                            </button>
-                            {request.TrangThai === 'pending' && (
-                              <button
-                                onClick={() => handleAssign(request)}
-                                className="text-blue-600 hover:text-blue-900 cursor-pointer"
-                                title="Phân công"
-                              >
-                                <i className="ri-user-add-line"></i>
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleUpdate(request)}
-                              className="text-yellow-600 hover:text-yellow-900 cursor-pointer"
-                              title="Cập nhật trạng thái"
-                            >
-                              <i className="ri-refresh-line"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* Loading State */}
+            {loadingRequests ? (
+              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Đang tải dữ liệu...</p>
               </div>
-            </div>
+            ) : (
+              <>
+                {/* Empty State */}
+                {paginatedRequests.length === 0 && (
+                  <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                    <i className="ri-inbox-line text-6xl text-gray-400 mb-4"></i>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Không có yêu cầu bảo trì nào</h3>
+                    <p className="text-gray-600">Hãy tạo yêu cầu bảo trì đầu tiên hoặc điều chỉnh bộ lọc.</p>
+                  </div>
+                )}
+
+                {/* Maintenance Requests Table */}
+                {paginatedRequests.length > 0 && (
+                  <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Yêu cầu
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Khách thuê
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Danh mục
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Mức độ
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Trạng thái
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Phân công
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Thao tác
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {paginatedRequests.map((request) => (
+                            <tr key={request.MaYeuCau} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{request.TieuDe}</div>
+                                  <div className="text-sm text-gray-500">
+                                    {new Date(request.NgayYeuCau).toLocaleDateString('vi-VN')}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{request.khachThue?.HoTen || 'N/A'}</div>
+                                  <div className="text-sm text-gray-500">Phòng: {request.MaKhachThue}</div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(request.PhanLoai)}`}>
+                                  {getCategoryText(request.PhanLoai)}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(request.MucDoUuTien)}`}>
+                                  {getPriorityText(request.MucDoUuTien)}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.TrangThai)}`}>
+                                  {getStatusText(request.TrangThai)}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {request.nhanVienPhanCong ? (
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">{request.nhanVienPhanCong.HoTen}</div>
+                                    {request.NgayPhanCong && (
+                                      <div className="text-sm text-gray-500">
+                                        {new Date(request.NgayPhanCong).toLocaleDateString('vi-VN')}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-gray-500">Chưa phân công</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex space-x-2">
+                                  <button
+                                    onClick={() => handleViewDetail(request)}
+                                    className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
+                                    title="Xem chi tiết"
+                                  >
+                                    <i className="ri-eye-line"></i>
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdate(request)}
+                                    className="text-green-600 hover:text-green-900 cursor-pointer"
+                                    title="Chỉnh sửa"
+                                  >
+                                    <i className="ri-edit-line"></i>
+                                  </button>
+                                  <button onClick={() => handleDeleteRequest(request.MaYeuCau)}
+                                    className="text-red-600 hover:text-red-900 cursor-pointer"
+                                    title="Xóa"
+                                  >
+                                    <i className="ri-delete-bin-line"></i>
+                                  </button>
+                                  {request.TrangThai === 'pending' && (
+                                    <button
+                                      onClick={() => handleAssign(request)}
+                                      className="text-blue-600 hover:text-blue-900 cursor-pointer"
+                                      title="Phân công"
+                                    >
+                                      <i className="ri-user-add-line"></i>
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleUpdate(request)}
+                                    className="text-yellow-600 hover:text-yellow-900 cursor-pointer"
+                                    title="Cập nhật trạng thái"
+                                  >
+                                    <i className="ri-refresh-line"></i>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pagination Controls */}
+                {!loadingRequests && filteredRequests.length > 0 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    startIndex={startIndex}
+                    endIndex={endIndex}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={goToPage}
+                    onItemsPerPageChange={setItemsPerPage}
+                    onNext={nextPage}
+                    onPrev={prevPage}
+                    itemLabel="yêu cầu"
+                  />
+                )}
+              </>
+            )}
 
             {/* Add Request Modal */}
             {showAddModal && (

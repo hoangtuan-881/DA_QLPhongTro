@@ -5,6 +5,8 @@ import ConfirmDialog from '../../components/base/ConfirmDialog';
 import { useToast } from '../../hooks/useToast';
 import khachThueService, { KhachThue, KhachThueCreateInput, KhachThueUpdateInput } from '../../services/khach-thue.service';
 import { getErrorMessage } from '../../lib/http-client';
+import { usePagination } from '../../hooks/usePagination';
+import Pagination from '../../components/base/Pagination';
 
 export default function TenantsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -120,6 +122,24 @@ export default function TenantsPage() {
       khachThue.SDT1.includes(searchTerm) ||
       (khachThue.TenPhong && khachThue.TenPhong.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesStatus && matchesSearch;
+  });
+
+  // NEW: Pagination logic
+  const {
+    paginatedData: paginatedKhachThues,
+    currentPage,
+    totalPages,
+    startIndex,
+    endIndex,
+    itemsPerPage,
+    totalItems,
+    setItemsPerPage,
+    nextPage,
+    prevPage,
+    goToPage,
+  } = usePagination({
+    data: filteredKhachThues,
+    initialItemsPerPage: 10, // You can adjust this value
   });
 
   const handleEditKhachThue = (khachThue: KhachThue) => {
@@ -423,7 +443,7 @@ export default function TenantsPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredKhachThues.map(khachThue => (
+                    {paginatedKhachThues.map(khachThue => (
                       <tr key={khachThue.MaKhachThue} className="hover:bg-gray-50">
                         {/* 1) Khách thuê */}
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -524,11 +544,28 @@ export default function TenantsPage() {
               )}
             </div>
 
-            {!loading && filteredKhachThues.length === 0 && (
+            {!loading && paginatedKhachThues.length === 0 && (
               <div className="text-center py-12">
                 <i className="ri-search-line text-4xl text-gray-400 mb-4"></i>
                 <p className="text-gray-500">Không tìm thấy khách thuê nào phù hợp với bộ lọc</p>
               </div>
+            )}
+
+            {/* NEW: Pagination Controls */}
+            {!loading && filteredKhachThues.length > 0 && ( // Chỉ hiển thị phân trang nếu có dữ liệu đã lọc
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                itemsPerPage={itemsPerPage}
+                onPageChange={goToPage}
+                onItemsPerPageChange={setItemsPerPage}
+                onNext={nextPage}
+                onPrev={prevPage}
+                itemLabel="khách thuê"
+              />
             )}
           </div>
         </main>

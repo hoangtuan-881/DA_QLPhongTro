@@ -5,6 +5,8 @@ import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
 import taiKhoanService, { TaiKhoan, TaiKhoanCreateInput, TaiKhoanUpdateInput } from '../../services/tai-khoan.service';
 import { getErrorMessage } from '../../lib/http-client';
+import { usePagination } from '../../hooks/usePagination';
+import Pagination from '../../components/base/Pagination';
 
 export default function UserManagement() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -74,6 +76,24 @@ export default function UserManagement() {
       sdt.includes(searchTerm);
     const matchesRole = roleFilter === 'all' || tk.MaQuyen === parseInt(roleFilter);
     return matchesSearch && matchesRole;
+  });
+
+  // NEW: Pagination logic
+  const {
+    paginatedData: paginatedTaiKhoans,
+    currentPage,
+    totalPages,
+    startIndex,
+    endIndex,
+    itemsPerPage,
+    totalItems,
+    setItemsPerPage,
+    nextPage,
+    prevPage,
+    goToPage,
+  } = usePagination({
+    data: filteredTaiKhoans,
+    initialItemsPerPage: 10, // You can adjust this value
   });
 
   const handleCreateUser = async (formData: any) => {
@@ -266,14 +286,14 @@ export default function UserManagement() {
                 </div>
               )}
 
-              {!loading && filteredTaiKhoans.length === 0 && (
+              {!loading && paginatedTaiKhoans.length === 0 && (
                 <div className="text-center py-12">
                   <i className="ri-user-line text-4xl text-gray-400 mb-2"></i>
                   <p className="text-gray-500">Không có tài khoản nào</p>
                 </div>
               )}
 
-              {!loading && filteredTaiKhoans.length > 0 && (
+              {!loading && paginatedTaiKhoans.length > 0 && (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -293,7 +313,7 @@ export default function UserManagement() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredTaiKhoans.map((tk) => {
+                      {paginatedTaiKhoans.map((tk) => {
                         const profile = tk.nhanVien || tk.khachThue;
                         const hoTen = profile?.HoTen || tk.TenDangNhap;
                         const email = profile?.Email || '';
@@ -371,6 +391,23 @@ export default function UserManagement() {
                     </tbody>
                   </table>
                 </div>
+              )}
+
+              {/* NEW: Pagination Controls */}
+              {!loading && filteredTaiKhoans.length > 0 && ( // Chỉ hiển thị phân trang nếu có dữ liệu đã lọc
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={goToPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                  onNext={nextPage}
+                  onPrev={prevPage}
+                  itemLabel="tài khoản"
+                />
               )}
             </div>
           </div>

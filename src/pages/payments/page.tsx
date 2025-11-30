@@ -165,7 +165,7 @@ export default function Payments() {
     title: '',
     content: '',
     type: 'payment' as const,
-    sendMethod: 'app' as 'app' | 'sms' | 'both'
+    sendMethod: 'app' as 'app' | 'email' | 'both'
   });
 
   const { success, error, warning } = useToast();
@@ -656,29 +656,56 @@ export default function Payments() {
       return;
     }
 
-    if (!selectedHoaDonForNotification) return;
+    if (!selectedHoaDonForNotification?.hopDong?.khachThue?.MaTaiKhoan) {
+      error({
+        title: 'Lỗi gửi thông báo',
+        message: 'Không tìm thấy thông tin người nhận hợp lệ.'
+      });
+      return;
+    }
 
-    const tenantName = selectedHoaDonForNotification.hopDong?.khachThue?.HoTen || selectedHoaDonForNotification.hopDong?.TenKhachThue || 'Khách thuê';
+    const tenantName = selectedHoaDonForNotification.hopDong.khachThue.HoTen || 'Khách thuê';
+    const recipientId = selectedHoaDonForNotification.hopDong.khachThue.MaTaiKhoan;
     const methodText = notificationData.sendMethod === 'app' ? 'qua ứng dụng' :
-      notificationData.sendMethod === 'sms' ? 'qua SMS' : 'qua ứng dụng và SMS';
+      notificationData.sendMethod === 'email' ? 'qua Email' : 'qua ứng dụng và Email';
 
     showConfirm({
       title: 'Xác nhận gửi thông báo',
       message: `Bạn có chắc chắn muốn gửi thông báo ${methodText} cho "${tenantName}" không?`,
-      onConfirm: () => {
-        success({
-          title: 'Gửi thông báo thành công',
-          message: `Đã gửi thông báo ${methodText} cho ${tenantName}`
-        });
+      onConfirm: async () => {
+        try {
+          const payload = {
+            TieuDe: notificationData.title,
+            NoiDung: notificationData.content,
+            Loai: notificationData.type,
+            DoiTuongNhan: 'specific',
+            TrangThai: 'sent',
+            targetRooms: [selectedHoaDonForNotification.MaPhong],
+            MaHoaDon: selectedHoaDonForNotification.MaHoaDon, // Pass HoaDon ID
+            sendMethod: notificationData.sendMethod, // Pass send method
+          };
 
-        setShowNotificationModal(false);
-        setSelectedHoaDonForNotification(null);
-        setNotificationData({
-          title: '',
-          content: '',
-          type: 'payment',
-          sendMethod: 'app'
-        });
+          await thongBaoService.create(payload as any);
+
+          success({
+            title: 'Gửi thông báo thành công',
+            message: `Đã gửi thông báo nhắc nợ cho ${tenantName}`
+          });
+
+          setShowNotificationModal(false);
+          setSelectedHoaDonForNotification(null);
+          setNotificationData({
+            title: '',
+            content: '',
+            type: 'payment',
+            sendMethod: 'app'
+          });
+        } catch (err) {
+          error({
+            title: 'Lỗi gửi thông báo',
+            message: getErrorMessage(err)
+          });
+        }
       }
     });
   };
@@ -2873,17 +2900,43 @@ export default function Payments() {
                         />
                       </div>
 
-                      <div>
+                      <div className="mt-4">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Phương thức gửi</label>
-                        <select
-                          value={notificationData.sendMethod}
-                          onChange={(e) => setNotificationData({ ...notificationData, sendMethod: e.target.value as 'app' | 'sms' | 'both' })}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8"
-                        >
-                          <option value="app">Qua ứng dụng</option>
-                          <option value="sms">Qua SMS</option>
-                          <option value="both">Cả hai</option>
-                        </select>
+                        <div className="flex gap-4">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="sendMethod"
+                              value="app"
+                              checked={notificationData.sendMethod === 'app'}
+                              onChange={(e) => setNotificationData({ ...notificationData, sendMethod: e.target.value as any })}
+                              className="text-indigo-600"
+                            />
+                            <span className="ml-2 text-sm">Qua ứng dụng</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="sendMethod"
+                              value="email"
+                              checked={notificationData.sendMethod === 'email'}
+                              onChange={(e) => setNotificationData({ ...notificationData, sendMethod: e.target.value as any })}
+                              className="text-indigo-600"
+                            />
+                            <span className="ml-2 text-sm">Qua Email</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="sendMethod"
+                              value="both"
+                              checked={notificationData.sendMethod === 'both'}
+                              onChange={(e) => setNotificationData({ ...notificationData, sendMethod: e.target.value as any })}
+                              className="text-indigo-600"
+                            />
+                            <span className="ml-2 text-sm">Cả hai</span>
+                          </label>
+                        </div>
                       </div>
                     </div>
 

@@ -4,7 +4,7 @@ import Header from '../dashboard/components/Header';
 import { useToast } from '../../hooks/useToast';
 import ConfirmDialog from '../../components/base/ConfirmDialog';
 import maintenanceService, {
-  type MaintenanceRequest,
+  type YeuCauBaoTri,
   type MaintenanceRequestCreate,
   type MaintenanceRequestAssign,
   type MaintenanceRequestUpdateStatus
@@ -15,7 +15,7 @@ import { getErrorMessage } from '../../lib/http-client';
 
 export default function Maintenance() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<YeuCauBaoTri | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -25,7 +25,7 @@ export default function Maintenance() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
+  const [requests, setRequests] = useState<YeuCauBaoTri[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [requestRefreshKey, setRequestRefreshKey] = useState(0);
 
@@ -218,7 +218,7 @@ export default function Maintenance() {
   };
 
   // ===== Handler Functions =====
-  const handleViewDetail = (request: MaintenanceRequest) => {
+  const handleViewDetail = (request: YeuCauBaoTri) => {
     setSelectedRequest(request);
     setShowDetailModal(true);
   };
@@ -249,18 +249,18 @@ export default function Maintenance() {
     }
   };
 
-  const handleUpdate = (request: MaintenanceRequest) => {
+  const handleUpdate = (request: YeuCauBaoTri) => {
     setSelectedRequest(request);
     setUpdateData({
-      TrangThai: request.status as 'pending' | 'on_hold' | 'in_progress' | 'completed' | 'cancelled',
-      GhiChu: request.notes || '',
-      ChiPhiThucTe: request.actualCost,
+      TrangThai: request.TrangThai as 'pending' | 'on_hold' | 'in_progress' | 'completed' | 'cancelled',
+      GhiChu: request.GhiChu || '',
+      ChiPhiThucTe: request.ChiPhiThucTe ? Number(request.ChiPhiThucTe) : undefined,
       HinhAnhMinhChung: []
     });
     setShowUpdateModal(true);
   };
 
-  const handleAssign = (request: MaintenanceRequest) => {
+  const handleAssign = (request: YeuCauBaoTri) => {
     setSelectedRequest(request);
     setAssignData({
       MaNhanVienPhanCong: null,
@@ -280,7 +280,7 @@ export default function Maintenance() {
         MaNhanVienPhanCong: assignData.MaNhanVienPhanCong,
         GhiChu: assignData.GhiChu
       };
-      await maintenanceService.assign(selectedRequest.id, payload);
+      await maintenanceService.assign(selectedRequest.MaYeuCau, payload);
       success({ title: 'Thành công', message: 'Phân công nhân viên thành công' });
       setShowAssignModal(false);
       setSelectedRequest(null);
@@ -297,7 +297,7 @@ export default function Maintenance() {
     }
 
     try {
-      await maintenanceService.updateStatus(selectedRequest.id, updateData);
+      await maintenanceService.updateStatus(selectedRequest.MaYeuCau, updateData);
       success({ title: 'Thành công', message: 'Cập nhật trạng thái thành công' });
       setShowUpdateModal(false);
       setSelectedRequest(null);
@@ -341,13 +341,12 @@ export default function Maintenance() {
   };
 
   const filteredRequests = requests.filter(request => {
-    const statusMatch = filterStatus === 'all' || request.status === filterStatus;
-    const priorityMatch = filterPriority === 'all' || request.priority === filterPriority;
-    const categoryMatch = filterCategory === 'all' || request.category === filterCategory;
+    const statusMatch = filterStatus === 'all' || request.TrangThai === filterStatus;
+    const priorityMatch = filterPriority === 'all' || request.MucDoUuTien === filterPriority;
+    const categoryMatch = filterCategory === 'all' || request.PhanLoai === filterCategory;
     const searchMatch = searchTerm === '' ||
-      request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.room.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.tenantName.toLowerCase().includes(searchTerm.toLowerCase());
+      request.TieuDe.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (request.khachThue?.HoTen && request.khachThue.HoTen.toLowerCase().includes(searchTerm.toLowerCase()));
     return statusMatch && priorityMatch && categoryMatch && searchMatch;
   });
 
@@ -386,7 +385,7 @@ export default function Maintenance() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Chờ xử lý</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {requests.filter(r => r.status === 'pending').length}
+                      {requests.filter(r => r.TrangThai === 'pending').length}
                     </p>
                   </div>
                 </div>
@@ -399,7 +398,7 @@ export default function Maintenance() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Đang xử lý</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {requests.filter(r => r.status === 'in_progress').length}
+                      {requests.filter(r => r.TrangThai === 'in_progress').length}
                     </p>
                   </div>
                 </div>
@@ -412,7 +411,7 @@ export default function Maintenance() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Hoàn thành</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {requests.filter(r => r.status === 'completed').length}
+                      {requests.filter(r => r.TrangThai === 'completed').length}
                     </p>
                   </div>
                 </div>
@@ -425,7 +424,7 @@ export default function Maintenance() {
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Khẩn cấp</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {requests.filter(r => r.priority === 'urgent').length}
+                      {requests.filter(r => r.MucDoUuTien === 'urgent').length}
                     </p>
                   </div>
                 </div>
@@ -511,43 +510,43 @@ export default function Maintenance() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredRequests.map((request) => (
-                      <tr key={request.id} className="hover:bg-gray-50">
+                      <tr key={request.MaYeuCau} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{request.title}</div>
+                            <div className="text-sm font-medium text-gray-900">{request.TieuDe}</div>
                             <div className="text-sm text-gray-500">
-                              {new Date(request.requestDate).toLocaleDateString('vi-VN')}
+                              {new Date(request.NgayYeuCau).toLocaleDateString('vi-VN')}
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{request.tenantName}</div>
-                            <div className="text-sm text-gray-500">{request.building} - {request.room}</div>
+                            <div className="text-sm font-medium text-gray-900">{request.khachThue?.HoTen || 'N/A'}</div>
+                            <div className="text-sm text-gray-500">Phòng: {request.MaKhachThue}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(request.category)}`}>
-                            {getCategoryText(request.category)}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(request.PhanLoai)}`}>
+                            {getCategoryText(request.PhanLoai)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(request.priority)}`}>
-                            {getPriorityText(request.priority)}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(request.MucDoUuTien)}`}>
+                            {getPriorityText(request.MucDoUuTien)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}>
-                            {getStatusText(request.status)}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.TrangThai)}`}>
+                            {getStatusText(request.TrangThai)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {request.assignedTo ? (
+                          {request.nhanVienPhanCong ? (
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{request.assignedTo}</div>
-                              {request.scheduledDate && (
+                              <div className="text-sm font-medium text-gray-900">{request.nhanVienPhanCong.HoTen}</div>
+                              {request.NgayPhanCong && (
                                 <div className="text-sm text-gray-500">
-                                  {new Date(request.scheduledDate).toLocaleDateString('vi-VN')}
+                                  {new Date(request.NgayPhanCong).toLocaleDateString('vi-VN')}
                                 </div>
                               )}
                             </div>
@@ -571,13 +570,13 @@ export default function Maintenance() {
                             >
                               <i className="ri-edit-line"></i>
                             </button>
-                            <button onClick={() => handleDeleteRequest(request.id)}
+                            <button onClick={() => handleDeleteRequest(request.MaYeuCau)}
                               className="text-red-600 hover:text-red-900 cursor-pointer"
                               title="Xóa"
                             >
                               <i className="ri-delete-bin-line"></i>
                             </button>
-                            {request.status === 'pending' && (
+                            {request.TrangThai === 'pending' && (
                               <button
                                 onClick={() => handleAssign(request)}
                                 className="text-blue-600 hover:text-blue-900 cursor-pointer"
@@ -884,36 +883,35 @@ export default function Maintenance() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <span className="text-gray-600">Khách thuê:</span>
-                          <span className="font-medium ml-2">{selectedRequest.tenantName}</span>
+                          <span className="font-medium ml-2">{selectedRequest.khachThue?.HoTen || 'N/A'}</span>
                         </div>
                         <div>
-                          {/* THAY ĐỔI DÒNG NÀY */}
-                          <span className="text-gray-600">Khu vực:</span>
-                          <span className="font-medium ml-2">{selectedRequest.building} - {selectedRequest.room}</span>
+                          <span className="text-gray-600">Mã khách thuê:</span>
+                          <span className="font-medium ml-2">{selectedRequest.MaKhachThue}</span>
                         </div>
                       </div>
 
                       <div>
                         <span className="text-gray-600">Tiêu đề:</span>
-                        <span className="font-medium ml-2">{selectedRequest.title}</span>
+                        <span className="font-medium ml-2">{selectedRequest.TieuDe}</span>
                       </div>
 
                       <div>
                         <span className="text-gray-600">Mô tả:</span>
-                        <p className="mt-1 text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedRequest.description}</p>
+                        <p className="mt-1 text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedRequest.MoTa}</p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <span className="text-gray-600">Danh mục:</span>
-                          <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(selectedRequest.category)}`}>
-                            {getCategoryText(selectedRequest.category)}
+                          <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(selectedRequest.PhanLoai)}`}>
+                            {getCategoryText(selectedRequest.PhanLoai)}
                           </span>
                         </div>
                         <div>
                           <span className="text-gray-600">Mức độ:</span>
-                          <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(selectedRequest.priority)}`}>
-                            {getPriorityText(selectedRequest.priority)}
+                          <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(selectedRequest.MucDoUuTien)}`}>
+                            {getPriorityText(selectedRequest.MucDoUuTien)}
                           </span>
                         </div>
                       </div>
@@ -921,50 +919,57 @@ export default function Maintenance() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <span className="text-gray-600">Ngày yêu cầu:</span>
-                          <span className="font-medium ml-2">{new Date(selectedRequest.requestDate).toLocaleDateString('vi-VN')}</span>
+                          <span className="font-medium ml-2">{new Date(selectedRequest.NgayYeuCau).toLocaleDateString('vi-VN')}</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Trạng thái:</span>
-                          <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedRequest.status)}`}>
-                            {getStatusText(selectedRequest.status)}
+                          <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedRequest.TrangThai)}`}>
+                            {getStatusText(selectedRequest.TrangThai)}
                           </span>
                         </div>
                       </div>
 
-                      {selectedRequest.assignedTo && (
+                      {selectedRequest.nhanVienPhanCong && (
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <span className="text-gray-600">Phân công cho:</span>
-                            <span className="font-medium ml-2">{selectedRequest.assignedTo}</span>
+                            <span className="font-medium ml-2">{selectedRequest.nhanVienPhanCong.HoTen}</span>
                           </div>
-                          {selectedRequest.scheduledDate && (
+                          {selectedRequest.NgayPhanCong && (
                             <div>
                               <span className="text-gray-600">Ngày phân công:</span>
-                              <span className="font-medium ml-2">{new Date(selectedRequest.scheduledDate).toLocaleDateString('vi-VN')}</span>
+                              <span className="font-medium ml-2">{new Date(selectedRequest.NgayPhanCong).toLocaleDateString('vi-VN')}</span>
                             </div>
                           )}
                         </div>
                       )}
 
-                      {selectedRequest.completedDate && (
+                      {selectedRequest.NgayHoanThanh && (
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <span className="text-gray-600">Ngày hoàn thành:</span>
-                            <span className="font-medium ml-2">{new Date(selectedRequest.completedDate).toLocaleDateString('vi-VN')}</span>
+                            <span className="font-medium ml-2">{new Date(selectedRequest.NgayHoanThanh).toLocaleDateString('vi-VN')}</span>
                           </div>
                         </div>
                       )}
 
-                      {selectedRequest.notes && (
+                      {selectedRequest.GhiChu && (
                         <div>
                           <span className="text-gray-600">Ghi chú:</span>
-                          <p className="mt-1 text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedRequest.notes}</p>
+                          <p className="mt-1 text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedRequest.GhiChu}</p>
+                        </div>
+                      )}
+
+                      {selectedRequest.ChiPhiThucTe && (
+                        <div>
+                          <span className="text-gray-600">Chi phí thực tế:</span>
+                          <span className="font-medium ml-2">{Number(selectedRequest.ChiPhiThucTe).toLocaleString('vi-VN')} VND</span>
                         </div>
                       )}
                     </div>
 
                     <div className="flex gap-3 mt-6 pt-6 border-t">
-                      {selectedRequest.status === 'pending' && (
+                      {selectedRequest.TrangThai === 'pending' && (
                         <>
                           <button
                             onClick={() => {
@@ -988,11 +993,11 @@ export default function Maintenance() {
                           </button>
                         </>
                       )}
-                      {selectedRequest.status === 'in_progress' && (
+                      {selectedRequest.TrangThai === 'in_progress' && (
                         <button
                           onClick={() => {
                             setShowDetailModal(false);
-                            handleQuickStatusChange(selectedRequest.id, 'completed');
+                            handleQuickStatusChange(selectedRequest.MaYeuCau, 'completed');
                           }}
                           className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 cursor-pointer whitespace-nowrap flex items-center justify-center"
                         >
@@ -1013,7 +1018,7 @@ export default function Maintenance() {
                       <button
                         onClick={() => {
                           setShowDetailModal(false);
-                          handleDeleteRequest(selectedRequest.id);
+                          handleDeleteRequest(selectedRequest.MaYeuCau);
                         }}
                         className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 cursor-pointer whitespace-nowrap flex items-center justify-center"
                       >

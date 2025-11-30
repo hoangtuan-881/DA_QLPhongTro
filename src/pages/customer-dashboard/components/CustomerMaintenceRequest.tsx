@@ -1,28 +1,16 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ConfirmDialog from '../../../components/base/ConfirmDialog';
 import { useToast } from '../../../hooks/useToast';
-
-export interface MaintenanceRequest {
-  id: number;
-  title: string;
-  description: string;
-  category: string;
-  priority: 'Cao' | 'Trung bình' | 'Thấp';
-  status: 'Chờ xử lý' | 'Đang xử lý' | 'Hoàn thành' | 'Đã hủy';
-  createdDate: string;
-  estimatedCost?: string;
-  images: string[];
-  notes?: string;
-  technician?: string;
-  completedDate?: string;
-  actualCost?: string;
-}
+import maintenanceService, { type YeuCauBaoTri, type MaintenanceRequestCreate } from '../../../services/maintenance.service';
+import { getErrorMessage } from '../../../lib/http-client';
 
 export default function MaintenanceRequest() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<YeuCauBaoTri | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -39,60 +27,66 @@ export default function MaintenanceRequest() {
 
   const { success, error, warning } = useToast();
 
-  const [requests, setRequests] = useState<MaintenanceRequest[]>([
-    {
-      id: 1,
-      title: 'Điều hòa không hoạt động',
-      description: 'Điều hòa phòng 101A không thể bật, có thể do hỏng remote hoặc máy',
-      category: 'Điện lạnh',
-      priority: 'Cao',
-      status: 'Chờ xử lý',
-      createdDate: '2024-12-10',
-      estimatedCost: '500,000',
-      images: ['image1.jpg', 'image2.jpg'],
-      notes: 'Cần xử lý gấp vì trời nóng',
-    },
-    {
-      id: 2,
-      title: 'Vòi nước bồn rửa bát bị rò',
-      description: 'Vòi nước trong bếp bị rò rỉ, nước chảy liên tục',
-      category: 'Hệ thống nước',
-      priority: 'Trung bình',
-      status: 'Đang xử lý',
-      createdDate: '2024-12-08',
-      estimatedCost: '200,000',
-      images: ['image3.jpg'],
-      technician: 'Nguyễn Văn Tú',
-      notes: 'Đã liên hệ thợ sửa',
-    },
-    {
-      id: 3,
-      title: 'Bóng đèn phòng ngủ cháy',
-      description: 'Bóng đèn LED phòng ngủ bị cháy, cần thay mới',
-      category: 'Điện',
-      priority: 'Thấp',
-      status: 'Hoàn thành',
-      createdDate: '2024-12-05',
-      completedDate: '2024-12-06',
-      actualCost: '50,000',
-      images: [],
-      technician: 'Trần Minh Đức',
-      notes: 'Đã thay bóng đèn mới',
-    },
-  ]);
+  const [requests, setRequests] = useState<YeuCauBaoTri[]>([]);
+
+  // Get current tenant ID from localStorage or auth context
+  const getCurrentTenantId = (): number => {
+    const user = localStorage.getItem('user');
+    if (user) {
+      const userData = JSON.parse(user);
+      return userData.MaKhachThue || 0;
+    }
+    return 0;
+  };
+
+  // Fetch requests
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchRequests = async () => {
+      setLoading(true);
+      try {
+        const response = await maintenanceService.getAll(controller.signal);
+        if (!controller.signal.aborted) {
+          // Filter to only show current tenant's requests
+          const currentTenantId = getCurrentTenantId();
+          const tenantRequests = response.data.data.filter(
+            req => req.MaKhachThue === currentTenantId
+          );
+          setRequests(tenantRequests);
+        }
+      } catch (err: any) {
+        if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
+          error({ title: 'Lỗi tải dữ liệu', message: getErrorMessage(err) });
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchRequests();
+    return () => controller.abort();
+  }, [refreshKey, error]);
+
+  const refreshData = () => {
+    setLoading(true);
+    setRefreshKey(prev => prev + 1);
+  };
 
   // ===== Handlers =====
-  const handleCreateRequest = (e: React.FormEvent) => {
+  const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
 
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const category = formData.get('category') as string;
-    const priority = formData.get('priority') as 'Cao' | 'Trung bình' | 'Thấp';
+    const TieuDe = formData.get('title') as string;
+    const MoTa = formData.get('description') as string;
+    const PhanLoai = formData.get('category') as 'electrical' | 'plumbing' | 'appliance' | 'furniture' | 'other';
+    const MucDoUuTien = formData.get('priority') as 'low' | 'medium' | 'high' | 'urgent';
 
-    if (!title || !description || !category || !priority) {
+    if (!TieuDe || !MoTa || !PhanLoai || !MucDoUuTien) {
       error({ title: 'Vui lòng điền đầy đủ thông tin bắt buộc' });
       return;
     }
@@ -100,41 +94,45 @@ export default function MaintenanceRequest() {
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận gửi yêu cầu',
-      message: `Bạn có chắc chắn muốn gửi yêu cầu sửa chữa "${title}" không?`,
+      message: `Bạn có chắc chắn muốn gửi yêu cầu sửa chữa "${TieuDe}" không?`,
       type: 'info',
-      onConfirm: () => {
-        const request: MaintenanceRequest = {
-          id: Date.now(),
-          title,
-          description,
-          category,
-          priority,
-          status: 'Chờ xử lý',
-          createdDate: new Date().toISOString().split('T')[0],
-          notes: formData.get('notes') as string,
-          images: [],
-        };
+      onConfirm: async () => {
+        try {
+          const requestData: MaintenanceRequestCreate = {
+            MaKhachThue: getCurrentTenantId(),
+            TieuDe,
+            MoTa,
+            PhanLoai,
+            MucDoUuTien,
+            GhiChu: formData.get('notes') as string || '',
+            HinhAnhMinhChung: [],
+          };
 
-        setRequests((prev) => [...prev, request]);
-        setShowCreateModal(false);
-        form.reset();
-        success({ title: `Đã gửi yêu cầu sửa chữa "${title}" thành công!` });
-        setConfirmDialog((d) => ({ ...d, isOpen: false }));
+          await maintenanceService.create(requestData);
+          setShowCreateModal(false);
+          form.reset();
+          success({ title: `Đã gửi yêu cầu sửa chữa "${TieuDe}" thành công!` });
+          setConfirmDialog((d) => ({ ...d, isOpen: false }));
+          refreshData();
+        } catch (err) {
+          error({ title: 'Lỗi', message: getErrorMessage(err) });
+          setConfirmDialog((d) => ({ ...d, isOpen: false }));
+        }
       },
     });
   };
 
-  const handleUpdateRequest = (e: React.FormEvent) => {
+  const handleUpdateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
 
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const category = formData.get('category') as string;
-    const priority = formData.get('priority') as 'Cao' | 'Trung bình' | 'Thấp';
+    const TieuDe = formData.get('title') as string;
+    const MoTa = formData.get('description') as string;
+    const PhanLoai = formData.get('category') as 'electrical' | 'plumbing' | 'appliance' | 'furniture' | 'other';
+    const MucDoUuTien = formData.get('priority') as 'low' | 'medium' | 'high' | 'urgent';
 
-    if (!title || !description || !category || !priority || !selectedRequest) {
+    if (!TieuDe || !MoTa || !PhanLoai || !MucDoUuTien || !selectedRequest) {
       error({ title: 'Vui lòng điền đầy đủ thông tin bắt buộc' });
       return;
     }
@@ -142,58 +140,78 @@ export default function MaintenanceRequest() {
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận cập nhật',
-      message: `Bạn có chắc chắn muốn lưu thay đổi cho yêu cầu "${selectedRequest.title}" không?`,
+      message: `Bạn có chắc chắn muốn lưu thay đổi cho yêu cầu "${selectedRequest.TieuDe}" không?`,
       type: 'info',
-      onConfirm: () => {
-        const updatedRequest: MaintenanceRequest = {
-          ...selectedRequest,
-          title,
-          description,
-          category,
-          priority,
-          notes: formData.get('notes') as string,
-        };
+      onConfirm: async () => {
+        try {
+          const updateData = {
+            TieuDe,
+            MoTa,
+            PhanLoai,
+            MucDoUuTien,
+            GhiChu: formData.get('notes') as string || '',
+          };
 
-        setRequests((prev) => prev.map((r) => (r.id === selectedRequest.id ? updatedRequest : r)));
-        setShowEditModal(false);
-        setSelectedRequest(null);
-        success({ title: `Đã cập nhật yêu cầu "${title}" thành công!` });
-        setConfirmDialog((d) => ({ ...d, isOpen: false }));
+          await maintenanceService.update(selectedRequest.MaYeuCau, updateData);
+          setShowEditModal(false);
+          setSelectedRequest(null);
+          success({ title: `Đã cập nhật yêu cầu "${TieuDe}" thành công!` });
+          setConfirmDialog((d) => ({ ...d, isOpen: false }));
+          refreshData();
+        } catch (err) {
+          error({ title: 'Lỗi', message: getErrorMessage(err) });
+          setConfirmDialog((d) => ({ ...d, isOpen: false }));
+        }
       },
     });
   };
 
   const handleDeleteRequest = (requestId: number) => {
-    const req = requests.find((r) => r.id === requestId);
+    const req = requests.find((r) => r.MaYeuCau === requestId);
     if (!req) return;
 
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận xóa yêu cầu',
-      message: `Bạn có chắc chắn muốn xóa yêu cầu "${req.title}" không? Hành động này không thể hoàn tác.`,
+      message: `Bạn có chắc chắn muốn xóa yêu cầu "${req.TieuDe}" không? Hành động này không thể hoàn tác.`,
       type: 'danger',
-      onConfirm: () => {
-        setRequests((prev) => prev.filter((r) => r.id !== requestId));
-        success({ title: `Đã xóa yêu cầu "${req.title}" thành công!` });
-        setConfirmDialog((d) => ({ ...d, isOpen: false }));
+      onConfirm: async () => {
+        try {
+          await maintenanceService.delete(requestId);
+          success({ title: `Đã xóa yêu cầu "${req.TieuDe}" thành công!` });
+          setConfirmDialog((d) => ({ ...d, isOpen: false }));
+          refreshData();
+        } catch (err) {
+          error({ title: 'Lỗi', message: getErrorMessage(err) });
+          setConfirmDialog((d) => ({ ...d, isOpen: false }));
+        }
       },
     });
   };
 
   const handleCancelRequest = (requestId: number) => {
-    const req = requests.find((r) => r.id === requestId);
+    const req = requests.find((r) => r.MaYeuCau === requestId);
     if (!req) return;
 
     setConfirmDialog({
       isOpen: true,
       title: 'Xác nhận hủy yêu cầu',
-      message: `Bạn có chắc chắn muốn hủy yêu cầu "${req.title}" không?`,
+      message: `Bạn có chắc chắn muốn hủy yêu cầu "${req.TieuDe}" không?`,
       type: 'warning',
-      onConfirm: () => {
-        setRequests((prev) => prev.map((r) => (r.id === requestId ? { ...r, status: 'Đã hủy' } : r)));
-        warning({ title: `Đã hủy yêu cầu "${req.title}" thành công!` });
-        setShowDetailModal(false);
-        setConfirmDialog((d) => ({ ...d, isOpen: false }));
+      onConfirm: async () => {
+        try {
+          await maintenanceService.updateStatus(requestId, {
+            TrangThai: 'cancelled',
+            GhiChu: 'Khách hàng đã hủy yêu cầu',
+          });
+          warning({ title: `Đã hủy yêu cầu "${req.TieuDe}" thành công!` });
+          setShowDetailModal(false);
+          setConfirmDialog((d) => ({ ...d, isOpen: false }));
+          refreshData();
+        } catch (err) {
+          error({ title: 'Lỗi', message: getErrorMessage(err) });
+          setConfirmDialog((d) => ({ ...d, isOpen: false }));
+        }
       },
     });
   };
@@ -201,29 +219,80 @@ export default function MaintenanceRequest() {
   // ===== UI helpers =====
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Chờ xử lý':
+      case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'Đang xử lý':
+      case 'in_progress':
         return 'bg-blue-100 text-blue-800';
-      case 'Hoàn thành':
+      case 'completed':
         return 'bg-green-100 text-green-800';
-      case 'Đã hủy':
+      case 'cancelled':
+      case 'on_hold':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Chờ xử lý';
+      case 'in_progress':
+        return 'Đang xử lý';
+      case 'completed':
+        return 'Hoàn thành';
+      case 'cancelled':
+        return 'Đã hủy';
+      case 'on_hold':
+        return 'Tạm dừng';
+      default:
+        return status;
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'Cao':
+      case 'urgent':
+      case 'high':
         return 'bg-red-100 text-red-800';
-      case 'Trung bình':
+      case 'medium':
         return 'bg-yellow-100 text-yellow-800';
-      case 'Thấp':
+      case 'low':
         return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityText = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return 'Khẩn cấp';
+      case 'high':
+        return 'Cao';
+      case 'medium':
+        return 'Trung bình';
+      case 'low':
+        return 'Thấp';
+      default:
+        return priority;
+    }
+  };
+
+  const getCategoryText = (category: string) => {
+    switch (category) {
+      case 'electrical':
+        return 'Điện';
+      case 'plumbing':
+        return 'Hệ thống nước';
+      case 'appliance':
+        return 'Điện lạnh';
+      case 'furniture':
+        return 'Nội thất';
+      case 'other':
+        return 'Khác';
+      default:
+        return category;
     }
   };
 
@@ -257,7 +326,7 @@ export default function MaintenanceRequest() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Chờ xử lý</p>
               <p className="text-2xl font-bold text-gray-900">
-                {requests.filter((r) => r.status === 'Chờ xử lý').length}
+                {requests.filter((r) => r.TrangThai === 'pending').length}
               </p>
             </div>
           </div>
@@ -270,7 +339,7 @@ export default function MaintenanceRequest() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Đang xử lý</p>
               <p className="text-2xl font-bold text-gray-900">
-                {requests.filter((r) => r.status === 'Đang xử lý').length}
+                {requests.filter((r) => r.TrangThai === 'in_progress').length}
               </p>
             </div>
           </div>
@@ -283,7 +352,7 @@ export default function MaintenanceRequest() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Hoàn thành</p>
               <p className="text-2xl font-bold text-gray-900">
-                {requests.filter((r) => r.status === 'Hoàn thành').length}
+                {requests.filter((r) => r.TrangThai === 'completed').length}
               </p>
             </div>
           </div>
@@ -296,7 +365,7 @@ export default function MaintenanceRequest() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Ưu tiên cao</p>
               <p className="text-2xl font-bold text-gray-900">
-                {requests.filter((r) => r.priority === 'Cao').length}
+                {requests.filter((r) => r.MucDoUuTien === 'urgent' || r.MucDoUuTien === 'high').length}
               </p>
             </div>
           </div>
@@ -321,72 +390,90 @@ export default function MaintenanceRequest() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {requests.map((request) => (
-                <tr key={request.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{request.title}</div>
-                      <div className="text-sm text-gray-500 truncate max-w-xs">{request.description}</div>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <i className="ri-loader-4-line animate-spin text-2xl"></i>
+                    <p className="mt-2">Đang tải dữ liệu...</p>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                      {request.category}
-                    </span>
+                </tr>
+              ) : requests.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <i className="ri-inbox-line text-4xl text-gray-300"></i>
+                    <p className="mt-2">Chưa có yêu cầu sửa chữa nào</p>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(request.priority)}`}>
-                      {request.priority}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
-                      {request.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{request.createdDate}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setShowDetailModal(true);
-                      }}
-                      className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
-                      title="Xem chi tiết"
-                    >
-                      <i className="ri-eye-line"></i>
-                    </button>
-                    {(request.status === 'Chờ xử lý' || request.status === 'Đang xử lý') && (
+                </tr>
+              ) : (
+                requests.map((request) => (
+                  <tr key={request.MaYeuCau} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{request.TieuDe}</div>
+                        <div className="text-sm text-gray-500 truncate max-w-xs">{request.MoTa}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {getCategoryText(request.PhanLoai)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(request.MucDoUuTien)}`}>
+                        {getPriorityText(request.MucDoUuTien)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.TrangThai)}`}>
+                        {getStatusText(request.TrangThai)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(request.NgayYeuCau).toLocaleDateString('vi-VN')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <button
                         onClick={() => {
                           setSelectedRequest(request);
-                          setShowEditModal(true);
+                          setShowDetailModal(true);
                         }}
-                        className="text-green-600 hover:text-green-900 cursor-pointer"
-                        title="Chỉnh sửa"
+                        className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
+                        title="Xem chi tiết"
                       >
-                        <i className="ri-edit-line"></i>
+                        <i className="ri-eye-line"></i>
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteRequest(request.id)}
-                      className="text-red-600 hover:text-red-900 cursor-pointer"
-                      title="Xóa"
-                    >
-                      <i className="ri-delete-bin-line"></i>
-                    </button>
-                    {request.status === 'Chờ xử lý' && (
+                      {(request.TrangThai === 'pending' || request.TrangThai === 'in_progress') && (
+                        <button
+                          onClick={() => {
+                            setSelectedRequest(request);
+                            setShowEditModal(true);
+                          }}
+                          className="text-green-600 hover:text-green-900 cursor-pointer"
+                          title="Chỉnh sửa"
+                        >
+                          <i className="ri-edit-line"></i>
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleCancelRequest(request.id)}
-                        className="text-orange-600 hover:text-orange-900 cursor-pointer"
-                        title="Hủy yêu cầu"
+                        onClick={() => handleDeleteRequest(request.MaYeuCau)}
+                        className="text-red-600 hover:text-red-900 cursor-pointer"
+                        title="Xóa"
                       >
-                        <i className="ri-close-circle-line"></i>
+                        <i className="ri-delete-bin-line"></i>
                       </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      {request.TrangThai === 'pending' && (
+                        <button
+                          onClick={() => handleCancelRequest(request.MaYeuCau)}
+                          className="text-orange-600 hover:text-orange-900 cursor-pointer"
+                          title="Hủy yêu cầu"
+                        >
+                          <i className="ri-close-circle-line"></i>
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -425,11 +512,11 @@ export default function MaintenanceRequest() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent pr-8"
                     >
                       <option value="">Chọn danh mục</option>
-                      <option value="Điện">Điện</option>
-                      <option value="Hệ thống nước">Hệ thống nước</option>
-                      <option value="Điện lạnh">Điện lạnh</option>
-                      <option value="Nội thất">Nội thất</option>
-                      <option value="Khác">Khác</option>
+                      <option value="electrical">Điện</option>
+                      <option value="plumbing">Hệ thống nước</option>
+                      <option value="appliance">Điện lạnh</option>
+                      <option value="furniture">Nội thất</option>
+                      <option value="other">Khác</option>
                     </select>
                   </div>
                 </div>
@@ -454,9 +541,10 @@ export default function MaintenanceRequest() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent pr-8"
                     >
                       <option value="">Chọn mức độ</option>
-                      <option value="Thấp">Thấp</option>
-                      <option value="Trung bình">Trung bình</option>
-                      <option value="Cao">Cao</option>
+                      <option value="low">Thấp</option>
+                      <option value="medium">Trung bình</option>
+                      <option value="high">Cao</option>
+                      <option value="urgent">Khẩn cấp</option>
                     </select>
                   </div>
 
@@ -523,23 +611,23 @@ export default function MaintenanceRequest() {
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-3">Thông tin cơ bản</h4>
                     <div className="space-y-2">
-                      <div className="flex justify-between"><span className="text-gray-600">Tiêu đề:</span><span className="font-medium">{selectedRequest.title}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-600">Danh mục:</span><span className="font-medium">{selectedRequest.category}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-600">Ưu tiên:</span><span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(selectedRequest.priority)}`}>{selectedRequest.priority}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-600">Trạng thái:</span><span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(selectedRequest.status)}`}>{selectedRequest.status}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-600">Tiêu đề:</span><span className="font-medium">{selectedRequest.TieuDe}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-600">Danh mục:</span><span className="font-medium">{getCategoryText(selectedRequest.PhanLoai)}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-600">Ưu tiên:</span><span className={`px-2 py-1 rounded-full text-xs ${getPriorityColor(selectedRequest.MucDoUuTien)}`}>{getPriorityText(selectedRequest.MucDoUuTien)}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-600">Trạng thái:</span><span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(selectedRequest.TrangThai)}`}>{getStatusText(selectedRequest.TrangThai)}</span></div>
                     </div>
                   </div>
 
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-3">Mô tả vấn đề</h4>
-                    <p className="text-gray-700">{selectedRequest.description}</p>
+                    <p className="text-gray-700">{selectedRequest.MoTa}</p>
                   </div>
 
-                  {selectedRequest.images && selectedRequest.images.length > 0 && (
+                  {selectedRequest.HinhAnhMinhChung && selectedRequest.HinhAnhMinhChung.length > 0 && (
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="font-medium text-gray-900 mb-3">Hình ảnh minh họa</h4>
                       <div className="grid grid-cols-2 gap-2">
-                        {selectedRequest.images.map((_image: string, index: number) => (
+                        {selectedRequest.HinhAnhMinhChung.map((_image: string, index: number) => (
                           <div key={index} className="bg-gray-200 rounded-lg h-24 flex items-center justify-center">
                             <i className="ri-image-line text-gray-400 text-2xl"></i>
                           </div>
@@ -554,12 +642,15 @@ export default function MaintenanceRequest() {
                   <div className="bg-green-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-3">Thông tin xử lý</h4>
                     <div className="space-y-2">
-                      <div className="flex justify-between"><span className="text-gray-600">Ngày tạo:</span><span className="font-medium">{selectedRequest.createdDate}</span></div>
-                      {selectedRequest.completedDate && (
-                        <div className="flex justify-between"><span className="text-gray-600">Ngày hoàn thành:</span><span className="font-medium">{selectedRequest.completedDate}</span></div>
+                      <div className="flex justify-between"><span className="text-gray-600">Ngày tạo:</span><span className="font-medium">{new Date(selectedRequest.NgayYeuCau).toLocaleDateString('vi-VN')}</span></div>
+                      {selectedRequest.NgayHoanThanh && (
+                        <div className="flex justify-between"><span className="text-gray-600">Ngày hoàn thành:</span><span className="font-medium">{new Date(selectedRequest.NgayHoanThanh).toLocaleDateString('vi-VN')}</span></div>
                       )}
-                      {selectedRequest.technician && (
-                        <div className="flex justify-between"><span className="text-gray-600">Kỹ thuật viên:</span><span className="font-medium">{selectedRequest.technician}</span></div>
+                      {selectedRequest.nhanVienPhanCong && (
+                        <div className="flex justify-between"><span className="text-gray-600">Kỹ thuật viên:</span><span className="font-medium">{selectedRequest.nhanVienPhanCong.HoTen}</span></div>
+                      )}
+                      {selectedRequest.NgayPhanCong && (
+                        <div className="flex justify-between"><span className="text-gray-600">Ngày phân công:</span><span className="font-medium">{new Date(selectedRequest.NgayPhanCong).toLocaleDateString('vi-VN')}</span></div>
                       )}
                     </div>
                   </div>
@@ -567,28 +658,25 @@ export default function MaintenanceRequest() {
                   <div className="bg-orange-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-3">Chi phí</h4>
                     <div className="space-y-2">
-                      {selectedRequest.estimatedCost && (
-                        <div className="flex justify-between"><span className="text-gray-600">Chi phí ước tính:</span><span className="font-medium text-orange-600">{selectedRequest.estimatedCost} VNĐ</span></div>
-                      )}
-                      {selectedRequest.actualCost && (
-                        <div className="flex justify-between"><span className="text-gray-600">Chi phí thực tế:</span><span className="font-medium text-green-600">{selectedRequest.actualCost} VNĐ</span></div>
+                      {selectedRequest.ChiPhiThucTe && (
+                        <div className="flex justify-between"><span className="text-gray-600">Chi phí thực tế:</span><span className="font-medium text-green-600">{Number(selectedRequest.ChiPhiThucTe).toLocaleString('vi-VN')} VNĐ</span></div>
                       )}
                     </div>
                   </div>
 
-                  {selectedRequest.notes && (
+                  {selectedRequest.GhiChu && (
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <h4 className="font-medium text-gray-900 mb-3">Ghi chú</h4>
-                      <p className="text-gray-700">{selectedRequest.notes}</p>
+                      <p className="text-gray-700">{selectedRequest.GhiChu}</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {selectedRequest.status === 'Chờ xử lý' && (
+              {selectedRequest.TrangThai === 'pending' && (
                 <div className="flex gap-3 mt-6 pt-6 border-t">
                   <button
-                    onClick={() => handleCancelRequest(selectedRequest.id)}
+                    onClick={() => handleCancelRequest(selectedRequest.MaYeuCau)}
                     className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 cursor-pointer whitespace-nowrap flex items-center justify-center"
                   >
                     <i className="ri-close-line mr-2"></i>
@@ -599,7 +687,7 @@ export default function MaintenanceRequest() {
 
               <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 mt-6">
                 <button onClick={() => setShowDetailModal(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 whitespace-nowrap cursor-pointer">Đóng</button>
-                {(selectedRequest.status === 'Chờ xử lý' || selectedRequest.status === 'Đang xử lý') && (
+                {(selectedRequest.TrangThai === 'pending' || selectedRequest.TrangThai === 'in_progress') && (
                   <button
                     onClick={() => {
                       setShowDetailModal(false);
@@ -642,7 +730,7 @@ export default function MaintenanceRequest() {
                       type="text"
                       name="title"
                       required
-                      defaultValue={selectedRequest.title}
+                      defaultValue={selectedRequest.TieuDe}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
@@ -652,14 +740,14 @@ export default function MaintenanceRequest() {
                     <select
                       name="category"
                       required
-                      defaultValue={selectedRequest.category}
+                      defaultValue={selectedRequest.PhanLoai}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent pr-8"
                     >
-                      <option value="Điện">Điện</option>
-                      <option value="Hệ thống nước">Hệ thống nước</option>
-                      <option value="Điện lạnh">Điện lạnh</option>
-                      <option value="Nội thất">Nội thất</option>
-                      <option value="Khác">Khác</option>
+                      <option value="electrical">Điện</option>
+                      <option value="plumbing">Hệ thống nước</option>
+                      <option value="appliance">Điện lạnh</option>
+                      <option value="furniture">Nội thất</option>
+                      <option value="other">Khác</option>
                     </select>
                   </div>
                 </div>
@@ -670,7 +758,7 @@ export default function MaintenanceRequest() {
                     name="description"
                     required
                     rows={4}
-                    defaultValue={selectedRequest.description}
+                    defaultValue={selectedRequest.MoTa}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
@@ -681,12 +769,13 @@ export default function MaintenanceRequest() {
                     <select
                       name="priority"
                       required
-                      defaultValue={selectedRequest.priority}
+                      defaultValue={selectedRequest.MucDoUuTien}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent pr-8"
                     >
-                      <option value="Thấp">Thấp</option>
-                      <option value="Trung bình">Trung bình</option>
-                      <option value="Cao">Cao</option>
+                      <option value="low">Thấp</option>
+                      <option value="medium">Trung bình</option>
+                      <option value="high">Cao</option>
+                      <option value="urgent">Khẩn cấp</option>
                     </select>
                   </div>
                 </div>
@@ -696,8 +785,8 @@ export default function MaintenanceRequest() {
                   <textarea
                     name="notes"
                     rows={2}
-                    defaultValue={selectedRequest.notes || ''}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus-border-transparent"
+                    defaultValue={selectedRequest.GhiChu || ''}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
 

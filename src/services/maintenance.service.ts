@@ -7,30 +7,29 @@ import { type NhanVien } from './nhan-vien.service'; // Assuming NhanVien servic
 export interface KhachThueForMaintenance {
     MaKhachThue: number;
     HoTen: string;
-    phongTro: {
-        MaPhong: number;
-        TenPhong: string;
-        dayTro: DayTro;
-    };
 }
 
-export interface MaintenanceRequest {
-    id: number; // MaYeuCau
-    tenantName: string; // khachThue.HoTen
-    building: string; // khachThue.phongTro.dayTro.TenDay
-    room: string; // khachThue.phongTro.TenPhong
-    title: string; // TieuDe
-    description: string; // MoTa
-    category: 'electrical' | 'plumbing' | 'appliance' | 'furniture' | 'other'; // PhanLoai
-    priority: 'low' | 'medium' | 'high' | 'urgent'; // MucDoUuTien
-    status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold'; // TrangThai
-    requestDate: string; // NgayYeuCau (ISO string)
-    assignedTo?: string; // nhanVienPhanCong.HoTen
-    scheduledDate?: string; // NgayPhanCong (ISO string)
-    completedDate?: string; // NgayHoanThanh (ISO string)
-    notes?: string; // GhiChu
-    actualCost?: number; // ChiPhiThucTe
-    images?: string[]; // HinhAnhMinhChung
+export interface NhanVienPhanCong {
+    MaNV: number;
+    HoTen: string;
+}
+
+export interface YeuCauBaoTri {
+    MaYeuCau: number;
+    MaKhachThue: number;
+    TieuDe: string;
+    MoTa: string;
+    PhanLoai: 'electrical' | 'plumbing' | 'appliance' | 'furniture' | 'other';
+    MucDoUuTien: 'low' | 'medium' | 'high' | 'urgent';
+    TrangThai: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'on_hold';
+    NgayYeuCau: string;
+    NgayPhanCong?: string | null;
+    NgayHoanThanh?: string | null;
+    GhiChu?: string | null;
+    ChiPhiThucTe?: string | null;
+    HinhAnhMinhChung?: string[] | null;
+    khachThue?: KhachThueForMaintenance;
+    nhanVienPhanCong?: NhanVienPhanCong | null;
 }
 
 // Payload for creating a new request
@@ -80,19 +79,19 @@ const MAINTENANCE_API_URL = '/admin/yeu-cau-bao-tri';
 
 class MaintenanceService {
     getAll(signal?: AbortSignal) {
-        return httpClient.get<{ data: MaintenanceRequest[] }>(MAINTENANCE_API_URL, { signal });
+        return httpClient.get<{ data: YeuCauBaoTri[] }>(MAINTENANCE_API_URL, { signal });
     }
 
     getById(id: number, signal?: AbortSignal) {
-        return httpClient.get<{ data: MaintenanceRequest }>(`${MAINTENANCE_API_URL}/${id}`, { signal });
+        return httpClient.get<{ data: YeuCauBaoTri }>(`${MAINTENANCE_API_URL}/${id}`, { signal });
     }
 
     create(data: MaintenanceRequestCreate) {
-        return httpClient.post<{ data: MaintenanceRequest }>(MAINTENANCE_API_URL, data);
+        return httpClient.post<{ data: YeuCauBaoTri }>(MAINTENANCE_API_URL, data);
     }
 
     update(id: number, data: MaintenanceRequestUpdate) {
-        return httpClient.put<{ data: MaintenanceRequest }>(`${MAINTENANCE_API_URL}/${id}`, data);
+        return httpClient.put<{ data: YeuCauBaoTri }>(`${MAINTENANCE_API_URL}/${id}`, data);
     }
 
     delete(id: number) {
@@ -100,11 +99,11 @@ class MaintenanceService {
     }
 
     assign(id: number, data: MaintenanceRequestAssign) {
-        return httpClient.put<{ data: MaintenanceRequest }>(`${MAINTENANCE_API_URL}/${id}/assign`, data);
+        return httpClient.put<{ data: YeuCauBaoTri }>(`${MAINTENANCE_API_URL}/${id}/assign`, data);
     }
 
     updateStatus(id: number, data: MaintenanceRequestUpdateStatus) {
-        return httpClient.put<{ data: MaintenanceRequest }>(`${MAINTENANCE_API_URL}/${id}/status`, data);
+        return httpClient.put<{ data: YeuCauBaoTri }>(`${MAINTENANCE_API_URL}/${id}/status`, data);
     }
 }
 

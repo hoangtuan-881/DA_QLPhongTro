@@ -32,7 +32,7 @@ export interface YeuCauBaoTri {
     nhanVienPhanCong?: NhanVienPhanCong | null;
 }
 
-// Payload for creating a new request
+// Payload for creating a new request (Admin)
 export type MaintenanceRequestCreate = {
     MaKhachThue: number;
     TieuDe: string;
@@ -43,6 +43,9 @@ export type MaintenanceRequestCreate = {
     ChiPhiThucTe?: number;
     HinhAnhMinhChung?: string[];
 };
+
+// Payload for creating a new request (Customer - no MaKhachThue needed)
+export type MaintenanceRequestCreateForCustomer = Omit<MaintenanceRequestCreate, 'MaKhachThue'>;
 
 // Payload for updating a request (general update)
 export type MaintenanceRequestUpdate = {
@@ -76,8 +79,10 @@ export type MaintenanceRequestUpdateStatus = {
 
 
 const MAINTENANCE_API_URL = '/admin/yeu-cau-bao-tri';
+const CUSTOMER_MAINTENANCE_API_URL = '/customer/maintenance-requests';
 
 class MaintenanceService {
+    // Admin endpoints
     getAll(signal?: AbortSignal) {
         return httpClient.get<{ data: YeuCauBaoTri[] }>(MAINTENANCE_API_URL, { signal });
     }
@@ -88,6 +93,15 @@ class MaintenanceService {
 
     create(data: MaintenanceRequestCreate) {
         return httpClient.post<{ data: YeuCauBaoTri }>(MAINTENANCE_API_URL, data);
+    }
+
+    // Customer endpoints
+    getAllForCustomer(signal?: AbortSignal) {
+        return httpClient.get<{ data: YeuCauBaoTri[] }>(CUSTOMER_MAINTENANCE_API_URL, { signal });
+    }
+
+    createForCustomer(data: MaintenanceRequestCreateForCustomer) {
+        return httpClient.post<{ data: YeuCauBaoTri }>(CUSTOMER_MAINTENANCE_API_URL, data);
     }
 
     update(id: number, data: MaintenanceRequestUpdate) {

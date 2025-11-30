@@ -294,6 +294,17 @@ class CustomerService {
     });
     return response;
   }
+
+  /**
+   * Tải PDF hợp đồng
+   * GET /customer/contract/pdf
+   */
+  async getContractPdf() {
+    const response = await httpClient.get(`${CUSTOMER_API_URL}/contract/pdf`, {
+      responseType: 'blob', // Quan trọng: để nhận binary data
+    });
+    return response;
+  }
 }
 
 export default new CustomerService();

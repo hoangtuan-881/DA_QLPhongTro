@@ -76,10 +76,34 @@ export default function ContractInfo() {
   }, [contractInfo, totalServices]);
 
 
-  const handleViewContract = () => {
+  const handleViewContract = async () => {
     if (!contractInfo) return;
-    const contractUrl = `/contracts/${contractInfo.SoHopDong}.pdf`;
-    window.open(contractUrl, "_blank");
+
+    try {
+      // Fetch PDF với authentication token
+      const response = await customerService.getContractPdf();
+
+      // Tạo blob URL và download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+
+      // Mở trong tab mới
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.download = `HopDong_${contractInfo.SoHopDong}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error({
+        title: 'Lỗi tải hợp đồng',
+        message: getErrorMessage(error)
+      });
+    }
   };
 
   // Loading state

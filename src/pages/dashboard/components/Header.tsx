@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import UserMenu from '@/components/base/UserMenu';
 import thongBaoService from '@/services/thong-bao.service';
 import { ChiTietThongBao } from '@/types/thong-bao';
@@ -12,6 +12,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<ChiTietThongBao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const notificationRef = useRef<HTMLDivElement>(null);
 
   // Fetch notifications
@@ -82,6 +83,13 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
   const unreadCount = notifications.filter(n => n.TrangThaiDoc === 'chua_doc').length;
 
+  const filteredNotifications = useMemo(() => {
+    if (filter === 'unread') {
+      return notifications.filter(n => n.TrangThaiDoc === 'chua_doc');
+    }
+    return notifications;
+  }, [notifications, filter]);
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="flex items-center justify-between h-16 px-6">
@@ -135,18 +143,35 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     </button>
                   )}
                 </div>
+                
+                {/* Filter Tabs */}
+                <div className="p-2 border-b border-gray-200 flex items-center text-sm">
+                  <button
+                    onClick={() => setFilter('all')}
+                    className={`px-3 py-1 rounded-md ${filter === 'all' ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    Tất cả
+                  </button>
+                  <button
+                    onClick={() => setFilter('unread')}
+                    className={`px-3 py-1 rounded-md ml-2 ${filter === 'unread' ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    Chưa đọc
+                  </button>
+                </div>
+
                 <div className="max-h-64 overflow-y-auto">
                   {loading && (
                     <div className="p-4 text-center text-sm text-gray-500">
                       Đang tải...
                     </div>
                   )}
-                  {!loading && notifications.length === 0 && (
+                  {!loading && filteredNotifications.length === 0 && (
                     <div className="p-4 text-center text-sm text-gray-500">
-                      Không có thông báo nào
+                      {filter === 'unread' ? 'Không có thông báo chưa đọc' : 'Không có thông báo nào'}
                     </div>
                   )}
-                  {!loading && notifications.map((notification) => (
+                  {!loading && filteredNotifications.map((notification) => (
                     <div
                       key={notification.MaChiTiet}
                       onClick={() => {
@@ -166,7 +191,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                           {notification.ThongBao.NoiDung}
                         </p>
                         {notification.TrangThaiDoc === 'chua_doc' && (
-                          <span className="w-2 h-2 bg-blue-500 rounded-full ml-2 mt-1.5"></span>
+                          <span className="w-2 h-2 bg-blue-500 rounded-full ml-2 mt-1.5 flex-shrink-0"></span>
                         )}
                       </div>
                       <div className="flex items-center justify-between mt-1">

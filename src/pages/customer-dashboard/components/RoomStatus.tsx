@@ -178,8 +178,8 @@ export default function RoomStatus() {
               <span className="font-medium text-gray-900">{thongTinPhong.TenPhong}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Tầng:</span>
-              <span className="font-medium text-gray-900">Tầng {thongTinPhong.Tang}</span>
+              <span className="text-gray-600">Dãy trọ:</span>
+              <span className="font-medium text-gray-900">{thongTinPhong.TenDayTro}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Diện tích:</span>

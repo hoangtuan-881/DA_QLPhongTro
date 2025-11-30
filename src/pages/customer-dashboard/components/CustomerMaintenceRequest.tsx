@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import ConfirmDialog from '../../../components/base/ConfirmDialog';
 import { useToast } from '../../../hooks/useToast';
-import maintenanceService, { type YeuCauBaoTri, type MaintenanceRequestCreate } from '../../../services/maintenance.service';
+import maintenanceService, { type YeuCauBaoTri, type MaintenanceRequestCreateForCustomer } from '../../../services/maintenance.service';
 import { getErrorMessage } from '../../../lib/http-client';
 
 export default function MaintenanceRequest() {
@@ -29,31 +29,16 @@ export default function MaintenanceRequest() {
 
   const [requests, setRequests] = useState<YeuCauBaoTri[]>([]);
 
-  // Get current tenant ID from localStorage or auth context
-  const getCurrentTenantId = (): number => {
-    const user = localStorage.getItem('user');
-    if (user) {
-      const userData = JSON.parse(user);
-      return userData.MaKhachThue || 0;
-    }
-    return 0;
-  };
-
-  // Fetch requests
+  // Fetch requests for current customer
   useEffect(() => {
     const controller = new AbortController();
 
     const fetchRequests = async () => {
       setLoading(true);
       try {
-        const response = await maintenanceService.getAll(controller.signal);
+        const response = await maintenanceService.getAllForCustomer(controller.signal);
         if (!controller.signal.aborted) {
-          // Filter to only show current tenant's requests
-          const currentTenantId = getCurrentTenantId();
-          const tenantRequests = response.data.data.filter(
-            req => req.MaKhachThue === currentTenantId
-          );
-          setRequests(tenantRequests);
+          setRequests(response.data.data);
         }
       } catch (err: any) {
         if (err.name !== 'CanceledError' && err.code !== 'ERR_CANCELED') {
@@ -98,8 +83,7 @@ export default function MaintenanceRequest() {
       type: 'info',
       onConfirm: async () => {
         try {
-          const requestData: MaintenanceRequestCreate = {
-            MaKhachThue: getCurrentTenantId(),
+          const requestData: MaintenanceRequestCreateForCustomer = {
             TieuDe,
             MoTa,
             PhanLoai,
@@ -108,7 +92,7 @@ export default function MaintenanceRequest() {
             HinhAnhMinhChung: [],
           };
 
-          await maintenanceService.create(requestData);
+          await maintenanceService.createForCustomer(requestData);
           setShowCreateModal(false);
           form.reset();
           success({ title: `Đã gửi yêu cầu sửa chữa "${TieuDe}" thành công!` });

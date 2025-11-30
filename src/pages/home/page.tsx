@@ -5,6 +5,7 @@ import phongTroService, { PhongTro, getStatusColor, mapTrangThaiToStatus } from 
 import datCocService, { PhieuDatCocCreateInput } from '../../services/dat-coc.service';
 import { useToast } from '../../hooks/useToast';
 import { getErrorMessage } from '../../lib/http-client';
+import { getImageUrl } from '../../lib/image-helper';
 
 export default function Home() {
   return (
@@ -318,13 +319,30 @@ function RoomsOnHome() {
             {visiblePhongs.map((phong) => (
               <div key={phong.MaPhong} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col">
                 <div className="relative h-48 bg-gray-200">
-                  {phong.HinhAnh ? (
-                    <img src={phong.HinhAnh} alt={`Phòng ${phong.TenPhong} - Dãy ${phong.TenDay || ''}`} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <i className="ri-image-line text-gray-400 text-4xl" />
-                    </div>
-                  )}
+                  {getImageUrl(phong.HinhAnh) ? (
+                    <img
+                      src={getImageUrl(phong.HinhAnh)!}
+                      alt={`Phòng ${phong.TenPhong} - Dãy ${phong.TenDay || ''}`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Hide image on error and show placeholder
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                          const placeholder = parent.querySelector('.placeholder-icon');
+                          if (placeholder) {
+                            (placeholder as HTMLElement).style.display = 'flex';
+                          }
+                        }
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="placeholder-icon absolute inset-0 flex items-center justify-center"
+                    style={{ display: getImageUrl(phong.HinhAnh) ? 'none' : 'flex' }}
+                  >
+                    <i className="ri-image-line text-gray-400 text-4xl" />
+                  </div>
                   <div className="absolute top-4 left-4">
                     <span
                       className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(mapTrangThaiToStatus(phong.TrangThai))}`}

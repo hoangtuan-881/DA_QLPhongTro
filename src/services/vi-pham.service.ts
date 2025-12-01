@@ -46,12 +46,17 @@ export type ViPhamCreate = Omit<ViPham, 'MaViPham' | 'TrangThai' | 'NgayGiaiQuye
 
 export type ViPhamUpdate = Pick<ViPham, 'TrangThai' | 'GhiChu' | 'NgayGiaiQuyet'>;
 
+export interface ViPhamQueryParams {
+  sort_by?: string;
+  sort_direction?: 'asc' | 'desc';
+  signal?: AbortSignal;
+}
 
 const VIPHAM_API_URL = '/admin/vi-pham';
 
 class ViPhamService {
-    getAll(signal?: AbortSignal) {
-        return httpClient.get<{ data: ViPham[] }>(VIPHAM_API_URL, { signal });
+    getAll({ signal, ...params }: ViPhamQueryParams = {}) {
+        return httpClient.get<{ data: ViPham[] }>(VIPHAM_API_URL, { params, signal });
     }
 
     create(data: ViPhamCreate) {

@@ -348,7 +348,8 @@ export default function Maintenance() {
     const categoryMatch = filterCategory === 'all' || request.PhanLoai === filterCategory;
     const searchMatch = searchTerm === '' ||
       request.TieuDe.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (request.khachThue?.HoTen && request.khachThue.HoTen.toLowerCase().includes(searchTerm.toLowerCase()));
+      (request.khachThue?.HoTen && request.khachThue.HoTen.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (request.khachThue?.TenPhong && request.khachThue.TenPhong.toLowerCase().includes(searchTerm.toLowerCase()));
     return statusMatch && priorityMatch && categoryMatch && searchMatch;
   });
 
@@ -560,7 +561,7 @@ export default function Maintenance() {
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div>
                                   <div className="text-sm font-medium text-gray-900">{request.khachThue?.HoTen || 'N/A'}</div>
-                                  <div className="text-sm text-gray-500">Phòng: {request.MaKhachThue}</div>
+                                  <div className="text-sm text-gray-500">Phòng: {request.khachThue?.TenPhong || 'N/A'}</div>
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">

@@ -91,6 +91,10 @@ export default function Payments() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterMonth, setFilterMonth] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [electricFilterBuilding, setElectricFilterBuilding] = useState<string>('all');
   const [electricFilterMonth, setElectricFilterMonth] = useState<string>(
     new Date().toISOString().slice(0, 7) // Format: YYYY-MM
@@ -184,9 +188,6 @@ export default function Payments() {
     ConLai: 0,
     TongSoHoaDon: 0
   });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [perPage, setPerPage] = useState(10);
   const [total, setTotal] = useState(0);
 
   // Load HoaDon và Statistics từ Backend
@@ -195,25 +196,20 @@ export default function Payments() {
 
     const fetchData = async () => {
       try {
-        // Fetch statistics, paginated data, và ALL data cho check duplicate
-        const [statsResponse, hoaDonsResponse, allHoaDonsResponse] = await Promise.all([
+        // Fetch statistics and ALL data
+        const [statsResponse, allHoaDonsResponse] = await Promise.all([
           hoaDonService.getStatistics(controller.signal),
-          hoaDonService.getAll({ page: currentPage, perPage }, controller.signal),
-          hoaDonService.getAllNoPagination(controller.signal) // Fetch all for duplicate check
+          hoaDonService.getAllNoPagination(controller.signal) // Fetch all
         ]);
 
         if (!controller.signal.aborted) {
           setStatistics(statsResponse.data.data);
 
-          const response = hoaDonsResponse.data;
-          setHoaDons(response.data || []);
-          setCurrentPage(response.meta?.current_page || 1);
-          setTotalPages(response.meta?.last_page || 1);
-          setTotal(response.meta?.total || 0);
-
-          // Set all invoices for duplicate checking
           const allResponse = allHoaDonsResponse.data;
-          setAllHoaDonsForCheck(allResponse.data || []);
+          const allData = allResponse.data || [];
+          setHoaDons(allData);
+          setAllHoaDonsForCheck(allData); // Use the same full list for display and checking
+          setTotal(allData.length);
 
           setLoading(false);
         }
@@ -227,7 +223,7 @@ export default function Payments() {
 
     fetchData();
     return () => controller.abort();
-  }, [refreshKey, currentPage, perPage]);
+  }, [refreshKey]);
 
   const refreshData = () => {
     setLoading(true);
@@ -1136,23 +1132,41 @@ export default function Payments() {
     return !hasInvoice && matchesSearch; // Chỉ lấy phòng chưa có hóa đơn và khớp tìm kiếm
   });
 
-  const filteredHoaDons = filterStatus === 'all'
-    ? (hoaDons || [])
-    : (hoaDons || []).filter(hoaDon => hoaDon.TrangThai === filterStatus);
+  const filteredHoaDons = (hoaDons || []).filter(hoaDon => {
+    const matchesStatus = filterStatus === 'all' || hoaDon.TrangThai === filterStatus;
+    const term = searchTerm.trim().toLowerCase();
+    const matchesSearch = term === '' ||
+      (hoaDon.hopDong?.khachThue?.HoTen && hoaDon.hopDong.khachThue.HoTen.toLowerCase().includes(term)) ||
+      (hoaDon.phongTro?.TenPhong && hoaDon.phongTro.TenPhong.toLowerCase().includes(term));
+    const matchesMonth = !filterMonth || hoaDon.Thang === filterMonth;
+    return matchesStatus && matchesSearch && matchesMonth;
+  });
 
-  // Pagination handlers for Backend pagination
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchTerm, filterMonth]);
+
+  // Frontend Pagination
+  const totalPages = Math.ceil(filteredHoaDons.length / itemsPerPage);
+  const paginatedHoaDons = filteredHoaDons.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Frontend Pagination Handlers
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    setLoading(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const goToPage = (page: number) => handlePageChange(page);
-  const nextPage = () => {
-    if (currentPage < totalPages) handlePageChange(currentPage + 1);
+  const handleItemsPerPageChange = (perPage: number) => {
+    setItemsPerPage(perPage);
+    setCurrentPage(1);
   };
-  const prevPage = () => {
-    if (currentPage > 1) handlePageChange(currentPage - 1);
-  };
+
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, filteredHoaDons.length);
 
   const totalRevenue = statistics.DaThanhToan;
   const totalPending = statistics.ConLai;
@@ -1369,12 +1383,15 @@ export default function Payments() {
                 </select>
                 <input
                   type="month"
+                  value={filterMonth}
+                  onChange={(e) => setFilterMonth(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  defaultValue="2024-03"
                 />
                 <input
                   type="text"
                   placeholder="Tìm kiếm theo tên khách thuê..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1 min-w-64"
                 />
               </div>
@@ -1429,7 +1446,7 @@ export default function Payments() {
                         </td>
                       </tr>
                     ) : (
-                      filteredHoaDons.map((hoaDon) => (
+                      paginatedHoaDons.map((hoaDon) => (
                         <tr key={hoaDon.MaHoaDon} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
@@ -1543,15 +1560,19 @@ export default function Payments() {
 
               {/* Pagination */}
               {!loading && filteredHoaDons.length > 0 && (
-                <div className="mt-4">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={goToPage}
-                    onNext={nextPage}
-                    onPrev={prevPage}
-                  />
-                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredHoaDons.length}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  onNext={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+                  onPrev={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                  itemLabel="hóa đơn"
+                />
               )}
             </div>
 

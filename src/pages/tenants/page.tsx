@@ -58,10 +58,31 @@ export default function TenantsPage() {
 
     const fetchKhachThues = async () => {
       try {
-        const response = await khachThueService.getAll(controller.signal);
+        const response = await khachThueService.getAll({ 
+          signal: controller.signal,
+          sort_by: 'updated_at',
+          sort_direction: 'desc'
+        });
 
         if (!controller.signal.aborted) {
-          setKhachThues(response.data.data || []);
+          const order = {
+            'KHÁCH_CHÍNH': 1,
+            'THÀNH_VIÊN': 2,
+            'TIỀM_NĂNG': 3,
+            'ĐÃ_DỌN_ĐI': 4,
+          };
+
+          const sortedData = (response.data.data || []).sort((a, b) => {
+            const aOrder = order[a.VaiTro as keyof typeof order] || 5;
+            const bOrder = order[b.VaiTro as keyof typeof order] || 5;
+            if (aOrder !== bOrder) {
+              return aOrder - bOrder;
+            }
+            // If roles are the same, secondary sort is already handled by backend (updated_at)
+            return 0;
+          });
+
+          setKhachThues(sortedData);
           setLoading(false);
         }
       } catch (error: any) {

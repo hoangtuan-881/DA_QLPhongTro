@@ -85,12 +85,27 @@ export interface DataForContractResponse {
 }
 
 // =================== SERVICE CLASS ===================
+export interface HopDongQueryParams {
+  page?: number;
+  per_page?: number;
+  sort_by?: string;
+  sort_direction?: 'asc' | 'desc';
+  search?: string;
+  signal?: AbortSignal;
+  [key: string]: any;
+}
+
 class HopDongService {
   private endpoint = '/admin/hop-dong';
 
   // Get all contracts
-  async getAll(signal?: AbortSignal) {
-    return httpClient.get<{ data: HopDong[] }>(this.endpoint, { signal });
+  async getAll(params?: HopDongQueryParams) {
+    const { signal, ...queryParams } = params || {};
+    const config: any = { params: queryParams };
+    if (signal) {
+      config.signal = signal;
+    }
+    return httpClient.get<{ data: HopDong[] }>(this.endpoint, config);
   }
 
   // Get single contract by ID

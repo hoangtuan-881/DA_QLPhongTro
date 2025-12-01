@@ -65,9 +65,15 @@ export type KhachThueUpdateInput = Partial<
   Omit<KhachThue, 'MaKhachThue' | 'TenPhong' | 'DiaChiDay'>
 >;
 
+export interface KhachThueQueryParams {
+  sort_by?: string;
+  sort_direction?: 'asc' | 'desc';
+  signal?: AbortSignal;
+}
+
 class KhachThueService {
-  async getAll(signal?: AbortSignal) {
-    return httpClient.get<{ data: KhachThue[] }>(API_ENDPOINTS.KHACH_THUE, { signal });
+  async getAll({ signal, ...params }: KhachThueQueryParams = {}) {
+    return httpClient.get<{ data: KhachThue[] }>(API_ENDPOINTS.KHACH_THUE, { params, signal });
   }
 
   async getById(id: number, signal?: AbortSignal) {

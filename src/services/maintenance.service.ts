@@ -7,6 +7,7 @@ import { type NhanVien } from './nhan-vien.service'; // Assuming NhanVien servic
 export interface KhachThueForMaintenance {
     MaKhachThue: number;
     HoTen: string;
+    TenPhong?: string;
 }
 
 export interface NhanVienPhanCong {

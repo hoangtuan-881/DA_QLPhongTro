@@ -601,13 +601,13 @@ export default function Maintenance() {
                                   >
                                     <i className="ri-eye-line"></i>
                                   </button>
-                                  <button
+                                  {/* <button
                                     onClick={() => handleUpdate(request)}
                                     className="text-green-600 hover:text-green-900 cursor-pointer"
                                     title="Chỉnh sửa"
                                   >
                                     <i className="ri-edit-line"></i>
-                                  </button>
+                                  </button> */}
                                   <button onClick={() => handleDeleteRequest(request.MaYeuCau)}
                                     className="text-red-600 hover:text-red-900 cursor-pointer"
                                     title="Xóa"
@@ -1063,7 +1063,7 @@ export default function Maintenance() {
                           Hoàn thành
                         </button>
                       )}
-                      <button
+                      {/* <button
                         onClick={() => {
                           setShowDetailModal(false);
                           handleUpdate(selectedRequest);
@@ -1072,7 +1072,7 @@ export default function Maintenance() {
                       >
                         <i className="ri-edit-line mr-2"></i>
                         Chỉnh sửa
-                      </button>
+                      </button> */}
                       <button
                         onClick={() => {
                           setShowDetailModal(false);

@@ -8,11 +8,17 @@ export interface NoiQuy {
   TrangThai: boolean;
 }
 
+export interface NoiQuyQueryParams {
+  sort_by?: string;
+  sort_direction?: 'asc' | 'desc';
+  signal?: AbortSignal;
+}
+
 const NOIQUY_API_URL = '/admin/noi-quy';
 
 class NoiQuyService {
-  getAll(signal?: AbortSignal) {
-    return httpClient.get<{ data: NoiQuy[] }>(NOIQUY_API_URL, { signal });
+  getAll({ signal, ...params }: NoiQuyQueryParams = {}) {
+    return httpClient.get<{ data: NoiQuy[] }>(NOIQUY_API_URL, { params, signal });
   }
 
   getById(id: number, signal?: AbortSignal) {

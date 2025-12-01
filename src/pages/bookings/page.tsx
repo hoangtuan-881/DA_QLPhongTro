@@ -220,10 +220,10 @@ export default function Bookings() {
     const fetchData = async () => {
       try {
         const [phieuRes, phongRes, dichVuRes, khachThueRes] = await Promise.all([
-          datCocService.getAll({ signal: controller.signal }),
-          phongTroService.getAll(controller.signal),
-          dichVuService.getAll({ signal: controller.signal }),
-          khachThueService.getAll(controller.signal)
+          datCocService.getAll({ signal: controller.signal, sort_by: 'updated_at', sort_direction: 'desc' }),
+          phongTroService.getAll({ signal: controller.signal, sort_by: 'updated_at', sort_direction: 'desc' }),
+          dichVuService.getAll({ signal: controller.signal, sort_by: 'updated_at', sort_direction: 'desc' }),
+          khachThueService.getAll({ signal: controller.signal, sort_by: 'updated_at', sort_direction: 'desc' })
         ]);
 
         if (!controller.signal.aborted) {

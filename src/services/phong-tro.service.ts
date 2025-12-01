@@ -62,11 +62,27 @@ export type PhongTroCreateInput = Omit<PhongTro,
 
 export type PhongTroUpdateInput = Partial<PhongTroCreateInput>;
 
+import { type ApiResponse } from '@/lib/http-client';
+import { type AxiosResponse } from 'axios';
+
+export interface PhongTroQueryParams {
+    page?: number;
+    per_page?: number;
+    sort_by?: string;
+    sort_direction?: 'asc' | 'desc';
+    search?: string;
+    signal?: AbortSignal;
+    [key: string]: any;
+}
+
 class PhongTroService {
-  async getAll(signal?: AbortSignal) {
-    const config: any = {};
-    if (signal) config.signal = signal;
-    return httpClient.get<PhongTro[]>(API_ENDPOINTS.PHONG_TRO, config);
+  async getAll(params?: PhongTroQueryParams): Promise<AxiosResponse<ApiResponse<PhongTro[]>>> {
+    const { signal, ...queryParams } = params || {};
+    const config: any = { params: queryParams };
+    if (signal) {
+      config.signal = signal;
+    }
+    return httpClient.get<ApiResponse<PhongTro[]>>(API_ENDPOINTS.PHONG_TRO, config);
   }
 
   async getById(id: number, signal?: AbortSignal) {

@@ -159,12 +159,27 @@ export default function Contracts() {
     const fetchData = async () => {
       try {
         const [contractsRes, dataForContractRes] = await Promise.all([
-          hopDongService.getAll(controller.signal),
+          hopDongService.getAll({ 
+            signal: controller.signal,
+            sort_by: 'updated_at',
+            sort_direction: 'desc'
+          }),
           hopDongService.getDataForContract(controller.signal),
         ]);
 
         if (!controller.signal.aborted) {
-          setHopDongs(contractsRes.data.data || []);
+          const order = {
+            'DangHieuLuc': 1,
+            'HetHan': 2,
+            'DaChamDut': 3,
+          };
+          const sortedData = (contractsRes.data.data || []).sort((a, b) => {
+            const aOrder = order[a.TrangThai as keyof typeof order] || 4;
+            const bOrder = order[b.TrangThai as keyof typeof order] || 4;
+            return aOrder - bOrder;
+          });
+
+          setHopDongs(sortedData);
           setPhongTros(dataForContractRes.data.data.phongTros || []);
           setKhachThues(dataForContractRes.data.data.khachThues || []);
           setDichVus(dataForContractRes.data.data.dichVus || []);

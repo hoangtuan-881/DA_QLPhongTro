@@ -1135,7 +1135,7 @@ export default function Rooms() {
                     >
                       <option value="all">Tất cả trạng thái</option>
                       <option value="Trống">Phòng trống</option>
-                      <option value="Đã cho thuê">Đã thuê</option>
+                      <option value="Đã thuê">Đã thuê</option>
                       <option value="Bảo trì">Bảo trì</option>
                     </select>
                   </div>

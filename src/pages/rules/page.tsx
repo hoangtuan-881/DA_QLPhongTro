@@ -89,7 +89,11 @@ export default function Rules() {
     const fetchNoiQuy = async () => {
       setLoadingNoiQuys(true);
       try {
-        const response = await noiQuyService.getAll(controller.signal);
+        const response = await noiQuyService.getAll({
+          signal: controller.signal,
+          sort_by: 'updated_at',
+          sort_direction: 'desc',
+        });
         if (!controller.signal.aborted) {
           setNoiQuys(response.data.data || []);
         }
@@ -115,7 +119,11 @@ export default function Rules() {
     const fetchViPham = async () => {
       setLoadingViolations(true);
       try {
-        const response = await viPhamService.getAll(controller.signal);
+        const response = await viPhamService.getAll({
+          signal: controller.signal,
+          sort_by: 'updated_at',
+          sort_direction: 'desc',
+        });
         if (!controller.signal.aborted) {
           setViolations(response.data.data || []);
         }
@@ -175,7 +183,7 @@ export default function Rules() {
     const fetchTenants = async () => {
       setLoadingTenants(true);
       try {
-        const response = await khachThueService.getAll(controller.signal);
+        const response = await khachThueService.getAll({ signal: controller.signal });
         if (!controller.signal.aborted) {
           const tenantsWithRooms = response.data.data.filter(t => t.MaPhong);
           setAllTenants(tenantsWithRooms);

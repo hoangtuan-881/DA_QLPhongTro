@@ -13,13 +13,14 @@ export interface TaiKhoan {
   MaTaiKhoan: number;
   TenDangNhap: string;
   MaQuyen: number;
-  TenQuyen: string;
+  TenQuyen?: string;
   TrangThaiTaiKhoan: string;
 }
 
 // Nhan Vien Profile (Admin/Staff)
 export interface NhanVienProfile {
-  MaNhanVien: number;
+  MaNV?: number; // From user JSON
+  MaNhanVien: number; // From original interface
   HoTen: string;
   SDT: string;
   Email?: string;
@@ -30,7 +31,7 @@ export interface NhanVienProfile {
   NgaySinh?: string;
   GioiTinh?: string;
   MaTaiKhoan: number;
-  taiKhoan: TaiKhoan;
+  TaiKhoan: TaiKhoan; // FIX: PascalCase
 }
 
 // Khach Thue Profile (Tenant)
@@ -52,7 +53,7 @@ export interface KhachThueProfile {
   VaiTro?: string;
   SoXe?: number;
   MaLoaiXe?: number;
-  taiKhoan: TaiKhoan;
+  TaiKhoan: TaiKhoan; // FIX: PascalCase
 }
 
 // Update Profile Request
@@ -137,7 +138,7 @@ class ProfileService {
    * Check if profile is NhanVien
    */
   isNhanVienProfile(profile: any): profile is NhanVienProfile {
-    return 'MaNhanVien' in profile;
+    return 'MaNhanVien' in profile || 'MaNV' in profile;
   }
 
   /**

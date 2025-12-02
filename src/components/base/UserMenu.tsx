@@ -63,6 +63,8 @@ export default function UserMenu() {
   // Get user avatar (placeholder)
   const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || 'User')}&background=4f46e5&color=fff`;
 
+  const profilePath = user?.MaQuyen === 3 ? '/customer-dashboard/profile' : '/profile';
+
   return (
     <div className="relative" ref={menuRef}>
       {/* User Avatar Button */}
@@ -100,7 +102,7 @@ export default function UserMenu() {
           {/* Menu Items */}
           <div className="py-2">
             <Link
-              to="/profile"
+              to={profilePath}
               className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               onClick={() => setIsOpen(false)}
             >

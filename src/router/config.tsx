@@ -122,6 +122,10 @@ const routes: RouteObject[] = [
     element: <ProtectedRoute><Profile /></ProtectedRoute>
   },
   {
+    path: '/customer-dashboard/profile',
+    element: <RoleProtectedRoute allowedRoles={[3]}><Profile /></RoleProtectedRoute>
+  },
+  {
     path: '/test-toast',
     element: <TestToast />
   },
